@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -16,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Gamepad2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/AuthProvider';
+import { employees } from '@/lib/data';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -31,21 +33,25 @@ export default function LoginPage() {
 
     // Simulate API call
     setTimeout(() => {
-      if (username === 'admin' && password === '123456') {
-        login();
-        toast({
-          title: 'تم تسجيل الدخول بنجاح',
-          description: 'مرحباً بعودتك!',
-        });
-        router.push('/');
-      } else {
-        toast({
-          title: 'فشل تسجيل الدخول',
-          description: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
-          variant: 'destructive',
-        });
-      }
-      setLoading(false);
+        const cashier = employees.find(
+            (emp) => emp.role === 'كاشير' && emp.username === username && emp.password === password
+        );
+
+        if (cashier || (username === 'admin' && password === '123456')) {
+            login();
+            toast({
+            title: 'تم تسجيل الدخول بنجاح',
+            description: 'مرحباً بعودتك!',
+            });
+            router.push('/');
+        } else {
+            toast({
+            title: 'فشل تسجيل الدخول',
+            description: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
+            variant: 'destructive',
+            });
+        }
+        setLoading(false);
     }, 1000);
   };
 
@@ -68,7 +74,7 @@ export default function LoginPage() {
               <Input
                 id="username"
                 type="text"
-                placeholder="admin"
+                placeholder="admin or cashier username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required

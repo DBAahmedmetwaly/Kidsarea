@@ -1,3 +1,4 @@
+
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 
@@ -28,41 +29,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { employees } from '@/lib/data';
 
-const employees = [
-  {
-    name: 'عبدالله الأحمد',
-    email: 'abdullah.ahmad@example.com',
-    role: 'مشرف',
-    branch: 'فرع الرياض بارك',
-    status: 'Active',
-    avatarUrl: 'https://placehold.co/40x40.png',
-  },
-  {
-    name: 'مريم القحطاني',
-    email: 'mariam.qahtani@example.com',
-    role: 'موظف',
-    branch: 'فرع جدة مول',
-    status: 'Active',
-    avatarUrl: 'https://placehold.co/40x40.png',
-  },
-  {
-    name: 'يوسف الزهراني',
-    email: 'yusuf.zahrani@example.com',
-    role: 'موظف',
-    branch: 'فرع الرياض بارك',
-    status: 'On Leave',
-    avatarUrl: 'https://placehold.co/40x40.png',
-  },
-  {
-    name: 'نورة الشمري',
-    email: 'noura.shammari@example.com',
-    role: 'مدير فرع',
-    branch: 'فرع الدمام سيتي سنتر',
-    status: 'Active',
-    avatarUrl: 'https://placehold.co/40x40.png',
-  },
-];
 
 function EmployeesContent() {
   return (
@@ -96,6 +64,7 @@ function EmployeesContent() {
                 <TableHead>الدور</TableHead>
                 <TableHead className="hidden md:table-cell">الفرع</TableHead>
                 <TableHead className="hidden md:table-cell">الحالة</TableHead>
+                <TableHead className="hidden md:table-cell">اسم المستخدم</TableHead>
                 <TableHead>
                   <span className="sr-only">الإجراءات</span>
                 </TableHead>
@@ -122,6 +91,9 @@ function EmployeesContent() {
                     <Badge variant={employee.status === 'Active' ? 'default' : 'secondary'} className={employee.status === 'Active' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}>
                       {employee.status === 'Active' ? 'نشط' : 'في إجازة'}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {employee.username || 'N/A'}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>

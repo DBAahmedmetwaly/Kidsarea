@@ -33,3 +33,42 @@ export const games = [
     status: 'Available',
   },
 ];
+
+export const employees = [
+  {
+    name: 'عبدالله الأحمد',
+    email: 'abdullah.ahmad@example.com',
+    role: 'مشرف',
+    branch: 'فرع الرياض بارك',
+    status: 'Active',
+    avatarUrl: 'https://placehold.co/40x40.png',
+  },
+  {
+    name: 'مريم القحطاني',
+    email: 'mariam.qahtani@example.com',
+    role: 'كاشير',
+    branch: 'فرع جدة مول',
+    status: 'Active',
+    avatarUrl: 'https://placehold.co/40x40.png',
+    username: 'mariamc',
+    password: 'password1'
+  },
+  {
+    name: 'يوسف الزهراني',
+    email: 'yusuf.zahrani@example.com',
+    role: 'كاشير',
+    branch: 'فرع الرياض بارك',
+    status: 'On Leave',
+    avatarUrl: 'https://placehold.co/40x40.png',
+    username: 'yusufc',
+    password: 'password2'
+  },
+  {
+    name: 'نورة الشمري',
+    email: 'noura.shammari@example.com',
+    role: 'مدير فرع',
+    branch: 'فرع الدمام سيتي سنتر',
+    status: 'Active',
+    avatarUrl: 'https://placehold.co/40x40.png',
+  },
+];
