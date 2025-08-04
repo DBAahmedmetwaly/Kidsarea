@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch, Safe, Policies } from '@/lib/types';
+import type { Game, Employee, Branch, Safe, Policies, OpenShift } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
 interface FirebaseContextType {
@@ -21,6 +21,7 @@ interface FirebaseContextType {
   branches: Branch[];
   safes: Safe[];
   policies: Policies | null;
+  openShifts: OpenShift[];
   loading: boolean;
   error: Error | null;
 }
@@ -41,6 +42,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [safes, setSafes] = useState<Safe[]>([]);
   const [policies, setPolicies] = useState<Policies | null>(null);
+  const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -50,11 +52,12 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     const branchesRef = ref(db, 'branches');
     const safesRef = ref(db, 'safes');
     const policiesRef = ref(db, 'policies');
+    const openShiftsRef = ref(db, 'openShifts');
 
 
     let isMounted = true;
     let loadedCount = 0;
-    const totalListeners = 5;
+    const totalListeners = 6;
 
     const handleLoad = () => {
         loadedCount++;
@@ -87,6 +90,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       createUnsubscribe(branchesRef, setBranches, true),
       createUnsubscribe(safesRef, setSafes, true),
       createUnsubscribe(policiesRef, setPolicies, false),
+      createUnsubscribe(openShiftsRef, setOpenShifts, true),
     ];
     
     return () => {
@@ -104,7 +108,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, loading, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, openShifts, loading, error }}>
       {children}
     </FirebaseContext.Provider>
   );

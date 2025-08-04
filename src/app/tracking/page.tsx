@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -36,7 +37,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, Printer, Users, Activity } from 'lucide-react';
+import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, CompletedSession } from '@/lib/types';
@@ -48,6 +49,8 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { Receipt, type ReceiptProps } from '@/components/Receipt';
 import { useReactToPrint } from 'react-to-print';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -98,13 +101,19 @@ function TrackingContent() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const { toast } = useToast();
-  const { games, policies } = useFirebase();
+  const { games, policies, openShifts } = useFirebase();
   const { user } = useAuth();
   const receiptRef = useRef(null);
 
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
   });
+  
+  const hasActiveShift = useMemo(() => {
+    if (!user || !user.username) return false;
+    if (user.username === 'admin') return true;
+    return openShifts.some(shift => shift.cashierUsername === user.username);
+  }, [user, openShifts]);
 
   const totalVisitors = activeChildren.length + completedSessions.length;
 
@@ -251,75 +260,87 @@ function TrackingContent() {
       </div>
       <div className="grid gap-8 md:grid-cols-3">
         <div className="md:col-span-1">
-            <Card>
-            <CardHeader>
-                <CardTitle>تسجيل دخول طفل جديد</CardTitle>
-                <CardDescription>
-                أدخل تفاصيل الطفل وولي الأمر لبدء جلسة اللعب.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleCheckIn} className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="child-name">اسم الطفل</Label>
-                    <Input
-                    id="child-name"
-                    value={newChildName}
-                    onChange={(e) => setNewChildName(e.target.value)}
-                    placeholder="مثال: محمد"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="child-age">عمر الطفل</Label>
-                    <Input
-                    id="child-age"
-                    type="number"
-                    value={newChildAge}
-                    onChange={(e) => setNewChildAge(e.target.value)}
-                    placeholder="مثال: 5"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="parent-name">اسم ولي الأمر</Label>
-                    <Input
-                    id="parent-name"
-                    value={newChildParentName}
-                    onChange={(e) => setNewChildParentName(e.target.value)}
-                    placeholder="مثال: أحمد عبد الله"
-                    />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="phone-number">رقم الهاتف</Label>
-                    <Input
-                    id="phone-number"
-                    type="tel"
-                    value={newChildPhoneNumber}
-                    onChange={(e) => setNewChildPhoneNumber(e.target.value)}
-                    placeholder="مثال: 01234567890"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="game-select">اختر اللعبة</Label>
-                    <Select value={selectedGame} onValueChange={setSelectedGame}>
-                    <SelectTrigger id="game-select">
-                        <SelectValue placeholder="اختر لعبة..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {games.map((game) => (
-                        <SelectItem key={game.id} value={game.name}>
-                            {game.name}
-                        </SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
-                </div>
-                <Button type="submit" className="w-full">
-                    <PlayCircle className="me-2 h-4 w-4" />
-                    بدء اللعب
-                </Button>
-                </form>
-            </CardContent>
-            </Card>
+            {hasActiveShift ? (
+                <Card>
+                <CardHeader>
+                    <CardTitle>تسجيل دخول طفل جديد</CardTitle>
+                    <CardDescription>
+                    أدخل تفاصيل الطفل وولي الأمر لبدء جلسة اللعب.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleCheckIn} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="child-name">اسم الطفل</Label>
+                        <Input
+                        id="child-name"
+                        value={newChildName}
+                        onChange={(e) => setNewChildName(e.target.value)}
+                        placeholder="مثال: محمد"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="child-age">عمر الطفل</Label>
+                        <Input
+                        id="child-age"
+                        type="number"
+                        value={newChildAge}
+                        onChange={(e) => setNewChildAge(e.target.value)}
+                        placeholder="مثال: 5"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="parent-name">اسم ولي الأمر</Label>
+                        <Input
+                        id="parent-name"
+                        value={newChildParentName}
+                        onChange={(e) => setNewChildParentName(e.target.value)}
+                        placeholder="مثال: أحمد عبد الله"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="phone-number">رقم الهاتف</Label>
+                        <Input
+                        id="phone-number"
+                        type="tel"
+                        value={newChildPhoneNumber}
+                        onChange={(e) => setNewChildPhoneNumber(e.target.value)}
+                        placeholder="مثال: 01234567890"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="game-select">اختر اللعبة</Label>
+                        <Select value={selectedGame} onValueChange={setSelectedGame}>
+                        <SelectTrigger id="game-select">
+                            <SelectValue placeholder="اختر لعبة..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {games.map((game) => (
+                            <SelectItem key={game.id} value={game.name}>
+                                {game.name}
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                        </Select>
+                    </div>
+                    <Button type="submit" className="w-full">
+                        <PlayCircle className="me-2 h-4 w-4" />
+                        بدء اللعب
+                    </Button>
+                    </form>
+                </CardContent>
+                </Card>
+            ) : (
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
+                    <AlertDescription>
+                       لا يمكنك تسجيل دخول الأطفال لأنه لا توجد وردية مفتوحة لحسابك. يرجى الذهاب إلى
+                       <Link href="/shift-closing" className="font-bold underline px-1">إدارة الورديات</Link>
+                       لبدء وردية جديدة.
+                    </AlertDescription>
+                </Alert>
+            )}
         </div>
         <div className="md:col-span-2">
             <Card>
@@ -353,6 +374,7 @@ function TrackingContent() {
                             variant="destructive"
                             size="sm"
                             onClick={() => handleCheckOut(child)}
+                            disabled={!hasActiveShift}
                             >
                             <Square className="me-2 h-4 w-4" />
                             خروج

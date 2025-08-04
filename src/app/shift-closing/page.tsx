@@ -55,12 +55,12 @@ const openShiftSchema = z.object({
 
 type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
 
-function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>, newRecordId: string) => void, openShifts: OpenShift[] }) {
+function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>, newRecordId: string) => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expectedRevenue, setExpectedRevenue] = useState(0);
   const { toast } = useToast();
-  const { employees, safes } = useFirebase();
+  const { employees, safes, openShifts } = useFirebase();
   const { completedSessions } = useSession();
   const cashiers = employees.filter(emp => emp.role === 'كاشير');
 
@@ -309,9 +309,9 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
   );
 }
 
-function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: Omit<OpenShift, 'id'>) => void, openShifts: OpenShift[]}) {
+function OpenShiftForm({ onShiftOpen }: { onShiftOpen: (shift: Omit<OpenShift, 'id'>) => void}) {
     const { toast } = useToast();
-    const { employees } = useFirebase();
+    const { employees, openShifts } = useFirebase();
     const cashiers = employees.filter(e => e.role === 'كاشير');
 
     const form = useForm<OpenShiftFormValues>({
@@ -381,14 +381,16 @@ function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: Omit<
                         </Button>
                     </form>
                 </Form>
-                 <ActiveShiftsTable records={openShifts} />
+                 <ActiveShiftsTable />
             </CardContent>
         </Card>
     );
 }
 
-function ActiveShiftsTable({ records }: { records: OpenShift[] }) {
-    if (records.length === 0) {
+function ActiveShiftsTable() {
+    const { openShifts } = useFirebase();
+
+    if (openShifts.length === 0) {
         return (
             <div className="mt-6 text-center text-muted-foreground">
                 لا توجد ورديات مفتوحة حالياً.
@@ -407,7 +409,7 @@ function ActiveShiftsTable({ records }: { records: OpenShift[] }) {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {records.map((record) => (
+                    {openShifts.map((record) => (
                         <TableRow key={record.id}>
                             <TableCell>{record.cashierName}</TableCell>
                             <TableCell>{record.branchName}</TableCell>
@@ -482,7 +484,6 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
 
 function ShiftManagementContent() {
     const [shiftRecords, setShiftRecords] = useState<ShiftRecord[]>([]);
-    const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
     const { toast } = useToast();
     const { completedSessions, setCompletedSessions } = useSession(); // Import from context
 
@@ -495,7 +496,6 @@ function ShiftManagementContent() {
         });
 
         const recordsRef = ref(db, 'shiftRecords');
-        const openShiftsRef = ref(db, 'openShifts');
 
         const unsubRecords = onValue(recordsRef, (snapshot) => {
             const data = snapshot.val();
@@ -503,15 +503,8 @@ function ShiftManagementContent() {
             setShiftRecords(recordsArray);
         });
 
-        const unsubOpenShifts = onValue(openShiftsRef, (snapshot) => {
-            const data = snapshot.val();
-            const shiftsArray: OpenShift[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as any) })) : [];
-            setOpenShifts(shiftsArray);
-        });
-
         return () => {
             unsubRecords();
-            unsubOpenShifts();
             unsubCompleted();
         }
     }, [setCompletedSessions])
@@ -560,10 +553,10 @@ function ShiftManagementContent() {
                 <TabsTrigger value="close">إغلاق وردية</TabsTrigger>
             </TabsList>
             <TabsContent value="open" className='pt-4'>
-                <OpenShiftForm onShiftOpen={handleNewOpenShift} openShifts={openShifts}/>
+                <OpenShiftForm onShiftOpen={handleNewOpenShift}/>
             </TabsContent>
             <TabsContent value="close" className='pt-4'>
-                <ShiftClosingForm onShiftClose={handleNewShiftRecord} openShifts={openShifts} />
+                <ShiftClosingForm onShiftClose={handleNewShiftRecord} />
             </TabsContent>
         </Tabs>
         <ShiftHistoryTable records={shiftRecords} />
