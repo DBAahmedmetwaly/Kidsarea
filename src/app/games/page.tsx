@@ -24,6 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import AppSidebar from '@/components/layout/AppSidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 const games = [
   {
@@ -60,7 +62,7 @@ const games = [
   },
 ];
 
-export default function GamesPage() {
+function GamesContent() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
@@ -153,4 +155,17 @@ export default function GamesPage() {
       </Card>
     </div>
   );
+}
+
+export default function GamesPage() {
+    return (
+        <SidebarProvider>
+            <div className="flex min-h-screen">
+            <AppSidebar />
+            <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+                <GamesContent />
+            </main>
+            </div>
+        </SidebarProvider>
+    );
 }

@@ -36,6 +36,8 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer } from 'lucide-react';
+import AppSidebar from '@/components/layout/AppSidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 interface Child {
   id: number;
@@ -83,7 +85,7 @@ const TimeCounter = ({ startTime }: { startTime: number }) => {
   );
 };
 
-export default function TrackingPage() {
+function TrackingContent() {
   const [activeChildren, setActiveChildren] = useState<Child[]>([]);
   const [newChildName, setNewChildName] = useState('');
   const [newChildAge, setNewChildAge] = useState('');
@@ -285,4 +287,18 @@ export default function TrackingPage() {
       </Dialog>
     </div>
   );
+}
+
+
+export default function TrackingPage() {
+    return (
+        <SidebarProvider>
+            <div className="flex min-h-screen">
+            <AppSidebar />
+            <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+                <TrackingContent />
+            </main>
+            </div>
+        </SidebarProvider>
+    );
 }

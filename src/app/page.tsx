@@ -141,7 +141,7 @@ function DashboardContent() {
     );
 }
 
-export default function DashboardPage() {
+function WithSidebar() {
   return (
     <SidebarProvider>
         <div className="flex min-h-screen">
@@ -152,4 +152,9 @@ export default function DashboardPage() {
         </div>
     </SidebarProvider>
   );
+}
+
+
+export default function DashboardPage() {
+    return <WithSidebar />;
 }

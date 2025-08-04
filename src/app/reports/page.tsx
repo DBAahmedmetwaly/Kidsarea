@@ -8,6 +8,8 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import AppSidebar from '@/components/layout/AppSidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 const gameProfitData = [
   { name: 'الألعاب اللينة', profit: 4500 },
@@ -73,7 +75,7 @@ const branchRevenueChartConfig = {
     },
 } satisfies ChartConfig;
 
-export default function ReportsPage() {
+function ReportsContent() {
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-lg font-semibold md:text-2xl">التقارير</h1>
@@ -205,4 +207,17 @@ export default function ReportsPage() {
       </div>
     </div>
   );
+}
+
+export default function ReportsPage() {
+    return (
+        <SidebarProvider>
+            <div className="flex min-h-screen">
+            <AppSidebar />
+            <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+                <ReportsContent />
+            </main>
+            </div>
+        </SidebarProvider>
+    );
 }

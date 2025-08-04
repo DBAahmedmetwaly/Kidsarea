@@ -24,6 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import AppSidebar from '@/components/layout/AppSidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 const branches = [
   {
@@ -52,7 +54,7 @@ const branches = [
   },
 ];
 
-export default function BranchesPage() {
+function BranchesContent() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
@@ -132,4 +134,17 @@ export default function BranchesPage() {
       </Card>
     </div>
   );
+}
+
+export default function BranchesPage() {
+    return (
+        <SidebarProvider>
+            <div className="flex min-h-screen">
+            <AppSidebar />
+            <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+                <BranchesContent />
+            </main>
+            </div>
+        </SidebarProvider>
+    );
 }
