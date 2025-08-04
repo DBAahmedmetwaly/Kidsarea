@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -28,17 +29,147 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { games } from '@/lib/data';
+import { games as initialGames } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
+
+type Game = typeof initialGames[0] & { fractional_rate?: number };
+
+function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpenChange: (open: boolean) => void; onAddGame: (game: Game) => void; }) {
+    const { toast } = useToast();
+    const [name, setName] = useState('');
+    const [hourlyRate, setHourlyRate] = useState('');
+    const [fractionalRate, setFractionalRate] = useState('');
+    const [branch, setBranch] = useState('');
+    const [status, setStatus] = useState('Available');
+
+    const handleAddGame = () => {
+        if (!name || !hourlyRate || !fractionalRate || !branch || !status) {
+            toast({
+                title: "خطأ في الإدخال",
+                description: "يرجى تعبئة جميع الحقول.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        const newGame: Game = {
+            name,
+            hourly_rate: parseFloat(hourlyRate),
+            fractional_rate: parseFloat(fractionalRate),
+            branch,
+            status: status as 'Available' | 'Maintenance',
+            image: 'https://placehold.co/64x64.png',
+        };
+        onAddGame(newGame);
+        toast({
+            title: "تمت الإضافة بنجاح",
+            description: `تمت إضافة لعبة "${name}" إلى القائمة.`,
+        });
+        // Reset fields
+        setName('');
+        setHourlyRate('');
+        setFractionalRate('');
+        setBranch('');
+        setStatus('Available');
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>إضافة لعبة جديدة</DialogTitle>
+                    <DialogDescription>
+                        أدخل تفاصيل اللعبة الجديدة هنا. انقر على "إضافة" عند الانتهاء.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">
+                            الاسم
+                        </Label>
+                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="اسم اللعبة" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="hourly_rate" className="text-right">
+                            سعر/ساعة
+                        </Label>
+                        <Input id="hourly_rate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="fractional_rate" className="text-right">
+                            سعر/نصف ساعة
+                        </Label>
+                        <Input id="fractional_rate" type="number" value={fractionalRate} onChange={(e) => setFractionalRate(e.target.value)} className="col-span-3" placeholder="e.g. 50" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="branch" className="text-right">
+                            الفرع
+                        </Label>
+                        <Input id="branch" value={branch} onChange={(e) => setBranch(e.target.value)} className="col-span-3" placeholder="e.g. فرع الرياض" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="status" className="text-right">
+                            الحالة
+                        </Label>
+                         <Select value={status} onValueChange={setStatus}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="اختر الحالة" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Available">متاح</SelectItem>
+                                <SelectItem value="Maintenance">صيانة</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">
+                            إلغاء
+                        </Button>
+                    </DialogClose>
+                    <Button type="button" onClick={handleAddGame}>إضافة اللعبة</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function GamesContent() {
+    const [games, setGames] = useState<Game[]>(initialGames);
+    const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+
+    const handleAddGame = (newGame: Game) => {
+        setGames(prevGames => [...prevGames, newGame]);
+    };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الألعاب</h1>
         <div className="ms-auto flex items-center gap-2">
-          <Button size="sm" className="h-8 gap-1">
+          <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               إضافة لعبة
@@ -64,6 +195,9 @@ function GamesContent() {
                 <TableHead>الحالة</TableHead>
                 <TableHead className="hidden md:table-cell">
                   السعر/ساعة
+                </TableHead>
+                <TableHead className="hidden md:table-cell">
+                  السعر/نصف ساعة
                 </TableHead>
                 <TableHead className="hidden md:table-cell">
                   الفروع المتاحة
@@ -100,6 +234,9 @@ function GamesContent() {
                     {`ج.م${game.hourly_rate}`}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
+                    {`ج.م${game.fractional_rate || (game.hourly_rate / 2)}`}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {game.branch}
                   </TableCell>
                   <TableCell>
@@ -127,6 +264,7 @@ function GamesContent() {
           </Table>
         </CardContent>
       </Card>
+      <AddGameDialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen} onAddGame={handleAddGame} />
     </div>
   );
 }
