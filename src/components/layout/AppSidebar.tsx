@@ -201,11 +201,6 @@ export default function AppSidebar() {
       </div>
       <div className="md:hidden">
         <Sheet>
-          <SidebarTrigger asChild>
-            <Button variant="ghost" size="icon" className="fixed top-4 right-4 z-50">
-                <Gamepad2 />
-            </Button>
-          </SidebarTrigger>
           <SheetContent side="right" className="p-0 w-[250px]">
             <SidebarItems />
           </SheetContent>
