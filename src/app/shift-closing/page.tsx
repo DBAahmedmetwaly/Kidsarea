@@ -300,7 +300,7 @@ function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: Omit<
                                     <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="اختر كاشير لبدء ورديته..." />
-                                    </Trigger>
+                                    </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
                                     {availableCashiers.map(cashier => (
@@ -323,11 +323,13 @@ function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: Omit<
                  <ActiveShiftsTable records={openShifts} />
             </CardContent>
         </Card>
-    )
+    );
 }
 
 function ActiveShiftsTable({ records }: { records: OpenShift[] }) {
-    if (records.length === 0) return null;
+    if (records.length === 0) {
+        return null;
+    }
     return (
         <div className="mt-6">
             <h3 className="text-lg font-medium mb-2">الورديات المفتوحة حالياً</h3>
@@ -350,7 +352,7 @@ function ActiveShiftsTable({ records }: { records: OpenShift[] }) {
                 </TableBody>
             </Table>
         </div>
-    )
+    );
 }
 
 
