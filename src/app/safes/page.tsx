@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { MoreHorizontal, PlusCircle, Landmark } from 'lucide-react';
 import { ref, push, set, onValue, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import Link from 'next/link';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -126,21 +127,9 @@ function AddSafeDialog({ open, onOpenChange, onAddSafe }: { open: boolean; onOpe
 }
 
 function SafesContent() {
-    const { branches } = useFirebase();
-    const [safes, setSafes] = useState<Safe[]>([]);
+    const { safes } = useFirebase();
     const { toast } = useToast();
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
-
-    useEffect(() => {
-        const safesRef = ref(db, 'safes');
-        const unsubscribe = onValue(safesRef, (snapshot) => {
-            const data = snapshot.val();
-            const safesArray: Safe[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as Omit<Safe, 'id'>) })) : [];
-            setSafes(safesArray);
-        });
-
-        return () => unsubscribe();
-    }, []);
 
     const handleAddSafe = async (newSafe: Omit<Safe, 'id'>) => {
         try {
@@ -194,7 +183,7 @@ function SafesContent() {
         <CardHeader>
           <CardTitle>الخزائن</CardTitle>
           <CardDescription>
-            قائمة بجميع الخزائن وأرصدتها في كافة الفروع.
+            قائمة بجميع الخزائن وأرصدتها في كافة الفروع. انقر على اسم الخزينة لعرض سجل حركاتها.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -213,7 +202,9 @@ function SafesContent() {
               {safes.map((safe) => (
                 <TableRow key={safe.id}>
                   <TableCell className="font-medium">
-                    {safe.name}
+                     <Link href={`/safes/${safe.id}`} className="hover:underline text-primary">
+                        {safe.name}
+                     </Link>
                   </TableCell>
                    <TableCell>{safe.branchName}</TableCell>
                   <TableCell className="font-bold text-green-600">

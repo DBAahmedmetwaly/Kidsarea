@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFirebase } from '@/context/FirebaseContext';
-import type { ShiftRecord, OpenShift, Safe } from '@/lib/types';
+import type { ShiftRecord, OpenShift, Safe, SafeTransaction } from '@/lib/types';
 
 const closeShiftSchema = z.object({
   cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
@@ -55,24 +55,12 @@ const openShiftSchema = z.object({
 
 type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
 
-function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>) => void, openShifts: OpenShift[] }) {
+function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>, newRecordId: string) => void, openShifts: OpenShift[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { employees } = useFirebase();
-  const [safes, setSafes] = useState<Safe[]>([]);
+  const { employees, safes } = useFirebase();
   const cashiers = employees.filter(emp => emp.role === 'كاشير');
-
-  useEffect(() => {
-    const safesRef = ref(db, 'safes');
-    const unsubscribe = onValue(safesRef, (snapshot) => {
-        const data = snapshot.val();
-        const safesArray: Safe[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as Omit<Safe, 'id'>) })) : [];
-        setSafes(safesArray);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const form = useForm<CloseShiftFormValues>({
     resolver: zodResolver(closeShiftSchema),
@@ -93,15 +81,15 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
 
   useEffect(() => {
     if (selectedCashierUsername) {
-      const cashier = cashiers.find(c => c.username === selectedCashierUsername);
-      if (cashier) {
-        form.setValue('branchName', cashier.branch, { shouldValidate: true });
+      const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
+      if (openShift) {
+        form.setValue('branchName', openShift.branchName, { shouldValidate: true });
         form.setValue('safeId', ''); // Reset safe selection when cashier changes
       }
     } else {
         form.setValue('branchName', '');
     }
-  }, [selectedCashierUsername, form, cashiers]);
+  }, [selectedCashierUsername, form, openShifts]);
 
 
   async function onSubmit(values: CloseShiftFormValues) {
@@ -114,19 +102,23 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
         setLoading(false);
         return;
     }
-
+    
     const shiftDetails = `الوردية المسائية للكاشير ${cashier.name}. ملاحظات: ${values.notes || 'لا يوجد'}`;
     const response = await checkDiscrepancy({ ...values, expectedRevenue: values.expectedRevenue, actualRevenue: values.actualRevenue, shiftDetails, branchName: values.branchName });
     
     if (response.success && response.data) {
+        const recordsRef = ref(db, 'shiftRecords');
+        const newRecordRef = push(recordsRef);
+        const newRecordId = newRecordRef.key!;
+
         const newRecord: Omit<ShiftRecord, 'id'> = {
             ...values,
             cashierName: cashier.name,
-            date: new Date().toLocaleString('ar-EG'),
+            date: new Date().toISOString(),
             difference: values.actualRevenue - values.expectedRevenue,
             analysis: response.data,
         };
-        onShiftClose(newRecord);
+        onShiftClose(newRecord, newRecordId);
 
         // Update safe balance
         const safeRef = ref(db, `safes/${values.safeId}`);
@@ -135,6 +127,20 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
             const currentBalance = safeSnapshot.val().balance;
             await update(safeRef, { balance: currentBalance + values.actualRevenue });
         }
+
+        // Create a new safe transaction
+        const transactionRef = ref(db, 'safeTransactions');
+        const newTransactionRef = push(transactionRef);
+        const newTransaction: Omit<SafeTransaction, 'id'> = {
+            safeId: values.safeId,
+            shiftRecordId: newRecordId,
+            amount: values.actualRevenue,
+            type: 'deposit',
+            date: new Date().toISOString(),
+            cashierName: cashier.name,
+            notes: `إيداع من وردية: ${newRecordId}`,
+        };
+        await set(newTransactionRef, newTransaction);
 
 
         const openShiftToDelete = openShifts.find(s => s.cashierUsername === values.cashierUsername);
@@ -311,7 +317,7 @@ function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: Omit<
         },
     });
 
-    const availableCashiers = cashiers.filter(c => !openShifts.some(s => s.cashierUsername === c.username));
+    const availableCashiers = cashiers.filter(c => c.username && !openShifts.some(s => s.cashierUsername === c.username));
 
     function onSubmit(values: OpenShiftFormValues) {
         const cashier = cashiers.find(c => c.username === values.cashierUsername);
@@ -321,7 +327,7 @@ function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: Omit<
             cashierUsername: cashier.username,
             cashierName: cashier.name,
             branchName: cashier.branch,
-            startTime: new Date().toLocaleString('ar-EG'),
+            startTime: new Date().toISOString(),
         };
 
         onShiftOpen(newShift);
@@ -379,7 +385,11 @@ function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: Omit<
 
 function ActiveShiftsTable({ records }: { records: OpenShift[] }) {
     if (records.length === 0) {
-        return null;
+        return (
+            <div className="mt-6 text-center text-muted-foreground">
+                لا توجد ورديات مفتوحة حالياً.
+            </div>
+        );
     }
     return (
         <div className="mt-6">
@@ -397,7 +407,7 @@ function ActiveShiftsTable({ records }: { records: OpenShift[] }) {
                         <TableRow key={record.id}>
                             <TableCell>{record.cashierName}</TableCell>
                             <TableCell>{record.branchName}</TableCell>
-                            <TableCell>{record.startTime}</TableCell>
+                            <TableCell>{new Date(record.startTime).toLocaleString('ar-EG')}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -430,7 +440,7 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                         {records.length > 0 ? (
                             records.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{record.date}</TableCell>
+                                    <TableCell>{new Date(record.date).toLocaleString('ar-EG')}</TableCell>
                                     <TableCell>{record.cashierName}</TableCell>
                                     <TableCell>{record.branchName}</TableCell>
                                     <TableCell>{`ج.م ${record.actualRevenue.toFixed(2)}`}</TableCell>
@@ -493,11 +503,10 @@ function ShiftManagementContent() {
         }
     }, [])
 
-    const handleNewShiftRecord = async (record: Omit<ShiftRecord, 'id'>) => {
+    const handleNewShiftRecord = async (record: Omit<ShiftRecord, 'id'>, newRecordId: string) => {
        try {
-            const recordsRef = ref(db, 'shiftRecords');
-            const newRecordRef = push(recordsRef);
-            await set(newRecordRef, record);
+            const recordRef = ref(db, `shiftRecords/${newRecordId}`);
+            await set(recordRef, record);
         } catch(e) {
             console.error(e);
             toast({

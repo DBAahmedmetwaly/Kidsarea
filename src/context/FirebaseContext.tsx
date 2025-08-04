@@ -48,44 +48,41 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     const branchesRef = ref(db, 'branches');
     const safesRef = ref(db, 'safes');
 
+    let isMounted = true;
+    let loadedCount = 0;
+    const totalListeners = 4;
+
+    const handleLoad = () => {
+        loadedCount++;
+        if(loadedCount === totalListeners && isMounted){
+            setLoading(false);
+        }
+    }
+
+    const createUnsubscribe = (dbRef: any, setter: Dispatch<SetStateAction<any[]>>, type: new () => any[]) => {
+        return onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            const arr = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as object) })) : [];
+            if(isMounted) setter(arr as any[]);
+            handleLoad();
+        }, (err) => {
+            console.error(`Firebase ${dbRef} error:`, err);
+            if(isMounted) setError(err as Error);
+            handleLoad();
+        });
+    }
+
     const unsubscribes = [
-      onValue(gamesRef, (snapshot) => {
-        const data = snapshot.val();
-        const gamesArray: Game[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as Omit<Game, 'id'>) })) : [];
-        setGames(gamesArray);
-      }, (err) => {
-        console.error("Firebase games error:", err);
-        setError(err as Error);
-      }),
-      onValue(employeesRef, (snapshot) => {
-        const data = snapshot.val();
-        const employeesArray: Employee[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as Omit<Employee, 'id'>) })) : [];
-        setEmployees(employeesArray);
-      }, (err) => {
-        console.error("Firebase employees error:", err);
-        setError(err as Error);
-      }),
-      onValue(branchesRef, (snapshot) => {
-        const data = snapshot.val();
-        const branchesArray: Branch[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as Omit<Branch, 'id'>) })) : [];
-        setBranches(branchesArray);
-      }, (err) => {
-        console.error("Firebase branches error:", err);
-        setError(err as Error);
-      }),
-       onValue(safesRef, (snapshot) => {
-        const data = snapshot.val();
-        const safesArray: Safe[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as Omit<Safe, 'id'>) })) : [];
-        setSafes(safesArray);
-      }, (err) => {
-        console.error("Firebase safes error:", err);
-        setError(err as Error);
-      })
+      createUnsubscribe(gamesRef, setGames, Array as new () => Game[]),
+      createUnsubscribe(employeesRef, setEmployees, Array as new () => Employee[]),
+      createUnsubscribe(branchesRef, setBranches, Array as new () => Branch[]),
+      createUnsubscribe(safesRef, setSafes, Array as new () => Safe[]),
     ];
     
-    setLoading(false);
-
-    return () => unsubscribes.forEach(unsub => unsub());
+    return () => {
+        isMounted = false;
+        unsubscribes.forEach(unsub => unsub());
+    }
   }, []);
 
   if (loading) {
