@@ -1,6 +1,8 @@
 
+'use client';
+
+import { useState } from 'react';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import Image from 'next/image';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,19 +28,167 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+  } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { employees } from '@/lib/data';
+import { employees as initialEmployees } from '@/lib/data';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+
+type Employee = typeof initialEmployees[0];
+
+function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolean; onOpenChange: (open: boolean) => void; onAddEmployee: (employee: Employee) => void; }) {
+    const { toast } = useToast();
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [role, setRole] = useState('');
+    const [branch, setBranch] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [status, setStatus] = useState('Active');
+    
+    const handleAddEmployee = () => {
+        if (!name || !email || !role || !branch) {
+            toast({
+                title: "خطأ في الإدخال",
+                description: "يرجى تعبئة جميع الحقول الأساسية.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (role === 'كاشير' && (!username || !password)) {
+            toast({
+                title: "خطأ في الإدخال",
+                description: "يجب إدخال اسم المستخدم وكلمة المرور للكاشير.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        const newEmployee: Employee = {
+            name,
+            email,
+            role,
+            branch,
+            status: status as 'Active' | 'On Leave',
+            avatarUrl: 'https://placehold.co/40x40.png',
+            username: role === 'كاشير' ? username : undefined,
+            password: role === 'كاشير' ? password : undefined,
+        };
+        onAddEmployee(newEmployee);
+        toast({
+            title: "تمت الإضافة بنجاح",
+            description: `تمت إضافة الموظف "${name}" إلى القائمة.`,
+        });
+        // Reset fields
+        setName('');
+        setEmail('');
+        setRole('');
+        setBranch('');
+        setUsername('');
+        setPassword('');
+        setStatus('Active');
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>إضافة موظف جديد</DialogTitle>
+                    <DialogDescription>
+                        أدخل تفاصيل الموظف الجديد. انقر على "إضافة" عند الانتهاء.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">الاسم</Label>
+                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="اسم الموظف" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="email" className="text-right">الإيميل</Label>
+                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" placeholder="email@example.com" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="role" className="text-right">الدور</Label>
+                        <Select value={role} onValueChange={setRole}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="اختر الدور" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="مشرف">مشرف</SelectItem>
+                                <SelectItem value="كاشير">كاشير</SelectItem>
+                                <SelectItem value="مدير فرع">مدير فرع</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     {role === 'كاشير' && (
+                        <>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="username" className="text-right">اسم المستخدم</Label>
+                                <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="col-span-3" placeholder="username" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="password" className="text-right">كلمة المرور</Label>
+                                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" placeholder="••••••••" />
+                            </div>
+                        </>
+                    )}
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="branch" className="text-right">الفرع</Label>
+                        <Input id="branch" value={branch} onChange={(e) => setBranch(e.target.value)} className="col-span-3" placeholder="e.g. فرع الرياض" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="status" className="text-right">الحالة</Label>
+                         <Select value={status} onValueChange={setStatus}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="اختر الحالة" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Active">نشط</SelectItem>
+                                <SelectItem value="On Leave">في إجازة</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">إلغاء</Button>
+                    </DialogClose>
+                    <Button type="button" onClick={handleAddEmployee}>إضافة موظف</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 
 function EmployeesContent() {
+    const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+    const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+
+    const handleAddEmployee = (newEmployee: Employee) => {
+        setEmployees(prev => [...prev, newEmployee]);
+    };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الموظفين</h1>
         <div className="ms-auto flex items-center gap-2">
-          <Button size="sm" className="h-8 gap-1">
+          <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               إضافة موظف
@@ -123,6 +273,7 @@ function EmployeesContent() {
           </Table>
         </CardContent>
       </Card>
+      <AddEmployeeDialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen} onAddEmployee={handleAddEmployee} />
     </div>
   );
 }
