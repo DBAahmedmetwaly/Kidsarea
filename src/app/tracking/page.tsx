@@ -36,8 +36,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle } from 'lucide-react';
+import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, CompletedSession, Policies } from '@/lib/types';
@@ -134,7 +139,7 @@ function TrackingContent() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const { toast } = useToast();
-  const { games, policies, openShifts } = useFirebase();
+  const { games, policies, openShifts, employees } = useFirebase();
   const { user } = useAuth();
   const receiptRef = useRef(null);
 
@@ -263,26 +268,35 @@ function TrackingContent() {
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null); // Remove from active
         
-        setReceiptDetails({
-            childName: child.name,
-            parentName: child.parentName,
-            gameName: child.game,
-            checkInTime: new Date(child.checkInTime),
-            checkOutTime: new Date(checkOutTime),
-            duration: formatDuration(durationMs),
-            totalCost: totalCost,
-            durationCost: durationCost,
-            entryFee: entryFee,
-            cashierName: user?.username === 'admin' ? 'Admin' : (user as any)?.name || 'N/A'
-        });
-
-        setShowReceipt(true);
+        showReceiptForSession(completedSession);
     } catch(err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
     }
 
   };
+
+  const showReceiptForSession = (session: CompletedSession) => {
+    const cashier = employees.find(e => e.username === session.cashierUsername);
+    const cashierName = user?.username === 'admin' 
+        ? 'Admin' 
+        : cashier?.name || session.cashierUsername || 'N/A';
+
+    setReceiptDetails({
+        childName: session.name,
+        parentName: session.parentName,
+        gameName: session.game,
+        checkInTime: new Date(session.checkInTime),
+        checkOutTime: new Date(session.checkOutTime),
+        duration: formatDuration(session.durationMs),
+        totalCost: session.cost,
+        durationCost: session.durationCost,
+        entryFee: session.entryFee,
+        cashierName: cashierName
+    });
+
+    setShowReceipt(true);
+  }
   
   return (
     <div className="flex flex-col gap-8">
@@ -443,52 +457,66 @@ function TrackingContent() {
             </Card>
         </div>
       </div>
-      <Card>
-          <CardHeader>
-            <CardTitle>سجل الجلسات المنتهية</CardTitle>
-            <CardDescription>
-              عرض تفصيلي لجميع جلسات اللعب التي تم إجراؤها اليوم.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>اسم الطفل</TableHead>
-                  <TableHead>اسم ولي الأمر</TableHead>
-                  <TableHead>رقم الهاتف</TableHead>
-                  <TableHead>اللعبة</TableHead>
-                  <TableHead>مدة اللعب</TableHead>
-                  <TableHead>التكلفة</TableHead>
-                  <TableHead>وقت الخروج</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {completedSessions.length > 0 ? (
-                  completedSessions
-                  .sort((a,b) => b.checkOutTime - a.checkOutTime)
-                  .map((session) => (
-                    <TableRow key={session.id}>
-                      <TableCell className="font-medium">{session.name}</TableCell>
-                      <TableCell>{session.parentName}</TableCell>
-                      <TableCell>{session.phoneNumber}</TableCell>
-                      <TableCell>{session.game}</TableCell>
-                      <TableCell>{formatDuration(session.durationMs)}</TableCell>
-                      <TableCell>{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
-                      <TableCell>{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
+      <Collapsible defaultOpen>
+        <Card>
+            <CollapsibleTrigger asChild>
+                <CardHeader className="flex flex-row items-center justify-between cursor-pointer">
+                    <div>
+                        <CardTitle>سجل الجلسات المنتهية</CardTitle>
+                        <CardDescription>
+                        عرض تفصيلي لجميع جلسات اللعب التي تم إجراؤها اليوم.
+                        </CardDescription>
+                    </div>
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>اسم الطفل</TableHead>
+                      <TableHead>ولي الأمر</TableHead>
+                      <TableHead>اللعبة</TableHead>
+                      <TableHead>مدة اللعب</TableHead>
+                      <TableHead>التكلفة</TableHead>
+                      <TableHead>وقت الخروج</TableHead>
+                      <TableHead>إجراء</TableHead>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center">
-                      لا توجد جلسات منتهية حتى الآن.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
+                  </TableHeader>
+                  <TableBody>
+                    {completedSessions.length > 0 ? (
+                      completedSessions
+                      .sort((a,b) => b.checkOutTime - a.checkOutTime)
+                      .map((session) => (
+                        <TableRow key={session.id}>
+                          <TableCell className="font-medium">{session.name}</TableCell>
+                          <TableCell>{session.parentName}</TableCell>
+                          <TableCell>{session.game}</TableCell>
+                          <TableCell>{formatDuration(session.durationMs)}</TableCell>
+                          <TableCell>{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
+                          <TableCell>{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
+                          <TableCell>
+                              <Button variant="outline" size="sm" onClick={() => showReceiptForSession(session)}>
+                                  <Printer className="me-2 h-4 w-4" />
+                                  إعادة طباعة
+                              </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center">
+                          لا توجد جلسات منتهية حتى الآن.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+          </CollapsibleContent>
         </Card>
+      </Collapsible>
         <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
             <DialogContent className="max-w-sm">
             <DialogHeader>
@@ -497,11 +525,9 @@ function TrackingContent() {
                 تفاصيل جلسة اللعب للطفل {receiptDetails?.childName}.
                 </DialogDescription>
             </DialogHeader>
-            {receiptDetails && (
-                 <div ref={receiptRef}>
-                    <Receipt {...receiptDetails} />
-                 </div>
-            )}
+            <div ref={receiptRef}>
+                {receiptDetails && <Receipt {...receiptDetails} />}
+            </div>
             <DialogFooter className="sm:justify-between">
                 <Button type="button" variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
                 <Button type="button" onClick={handlePrint}>
@@ -528,5 +554,3 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
