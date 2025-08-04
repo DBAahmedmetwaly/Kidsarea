@@ -25,11 +25,17 @@ import {
   LogOut,
   Briefcase,
   Landmark,
+  Shield,
+  Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
+import { useEffect, useState } from 'react';
+import { ref, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
+import type { Employee } from '@/lib/types';
 
-const menuItems = [
+const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/tracking', label: 'تتبع الوقت', icon: Clock },
   { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
@@ -38,11 +44,41 @@ const menuItems = [
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
+  { href: '/discrepancy-check', label: 'فحص التباين', icon: Lightbulb },
+  { href: '/roles', label: 'الصلاحيات', icon: Shield },
 ];
+
+type Permissions = Record<string, boolean>;
+type RolePermissions = Record<Employee['role'], Permissions>;
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const [permissions, setPermissions] = useState<RolePermissions | null>(null);
+
+  useEffect(() => {
+    const rolesRef = ref(db, 'roles');
+    const unsubscribe = onValue(rolesRef, (snapshot) => {
+      const data = snapshot.val();
+      setPermissions(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const getVisibleMenuItems = () => {
+    if (!user) return [];
+    if (user.username === 'admin') return allMenuItems;
+    if (!permissions || !(user as Employee).role) return [];
+
+    const userRole = (user as Employee).role;
+    const userPermissions = permissions[userRole];
+
+    if (!userPermissions) return [];
+
+    return allMenuItems.filter(item => userPermissions[item.href]);
+  };
+
+  const menuItems = getVisibleMenuItems();
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
