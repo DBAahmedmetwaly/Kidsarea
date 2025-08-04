@@ -62,7 +62,7 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
     const [branch, setBranch] = useState('');
     const [status, setStatus] = useState('Available');
 
-    const handleAddGame = () => {
+    const handleAddGameClick = () => {
         if (!name || !hourlyRate || !fractionalRate || !branch || !status) {
             toast({
                 title: "خطأ في الإدخال",
@@ -149,7 +149,7 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
                             إلغاء
                         </Button>
                     </DialogClose>
-                    <Button type="button" onClick={handleAddGame}>إضافة اللعبة</Button>
+                    <Button type="button" onClick={handleAddGameClick}>إضافة اللعبة</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
