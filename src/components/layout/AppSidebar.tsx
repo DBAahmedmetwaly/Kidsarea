@@ -26,6 +26,7 @@ import {
   Landmark,
   Shield,
   FileCog,
+  Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -34,7 +35,6 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Employee } from '@/lib/types';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -50,6 +50,7 @@ const allMenuItems = [
 const settingsMenuItems = [
     { href: '/roles', label: 'الصلاحيات', icon: Shield },
     { href: '/policies', label: 'السياسات', icon: FileCog },
+    { href: '/data-management', label: 'إدارة البيانات', icon: Database },
 ]
 
 
@@ -139,8 +140,8 @@ function SidebarItems() {
             <div className="hidden md:block">
                 <SidebarTrigger />
             </div>
-            <div className="md:hidden">
-                <SidebarTrigger />
+             <div className="md:hidden">
+               <SidebarTrigger />
             </div>
         </div>
       </SidebarHeader>
@@ -201,6 +202,11 @@ export default function AppSidebar() {
       </div>
       <div className="md:hidden">
         <Sheet>
+          <SheetTrigger asChild>
+            <button className="fixed top-4 right-4 z-50 md:hidden p-2">
+                <Gamepad2 className="h-6 w-6 text-primary" />
+            </button>
+          </SheetTrigger>
           <SheetContent side="right" className="p-0 w-[250px]">
             <SidebarItems />
           </SheetContent>
