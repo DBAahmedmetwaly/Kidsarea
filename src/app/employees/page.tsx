@@ -2,9 +2,9 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { ref, push, set, remove } from 'firebase/database';
+import { ref, push, set, remove, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +50,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 
-function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolean; onOpenChange: (open: boolean) => void; onAddEmployee: (employee: Omit<Employee, 'id'>) => void; }) {
+function EmployeeFormDialog({
+    open,
+    onOpenChange,
+    onSubmit,
+    initialData,
+    isEditMode,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSubmit: (employee: Omit<Employee, 'id'> | Employee) => void;
+    initialData?: Employee | null;
+    isEditMode: boolean;
+}) {
     const { toast } = useToast();
     const { branches } = useFirebase();
     const [name, setName] = useState('');
@@ -60,7 +72,26 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
     const [password, setPassword] = useState('');
     const [status, setStatus] = useState<'Active' | 'On Leave'>('Active');
     
-    const handleAddEmployee = () => {
+    useEffect(() => {
+        if (isEditMode && initialData) {
+            setName(initialData.name);
+            setRole(initialData.role);
+            setBranch(initialData.branch);
+            setUsername(initialData.username || '');
+            setPassword(initialData.password || '');
+            setStatus(initialData.status);
+        } else {
+             setName('');
+            setRole('');
+            setBranch('');
+            setUsername('');
+            setPassword('');
+            setStatus('Active');
+        }
+    }, [initialData, isEditMode, open]);
+
+
+    const handleSubmit = () => {
         if (!name || !role || !branch) {
             toast({
                 title: "خطأ في الإدخال",
@@ -81,27 +112,17 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
             return;
         }
 
-        const newEmployee: Omit<Employee, 'id'> = {
+        const employeeData: Omit<Employee, 'id'> | Employee = {
+            ...(isEditMode && initialData ? { id: initialData.id } : {}),
             name,
             role,
             branch,
             status,
-            avatarUrl: 'https://placehold.co/40x40.png',
+            avatarUrl: initialData?.avatarUrl || 'https://placehold.co/40x40.png',
             username: requiresCredentials ? username : '',
             password: requiresCredentials ? password : '',
         };
-        onAddEmployee(newEmployee);
-        toast({
-            title: "تمت الإضافة بنجاح",
-            description: `تمت إضافة الموظف "${name}" إلى القائمة.`,
-        });
-        // Reset fields
-        setName('');
-        setRole('');
-        setBranch('');
-        setUsername('');
-        setPassword('');
-        setStatus('Active');
+        onSubmit(employeeData);
         onOpenChange(false);
     };
 
@@ -109,9 +130,9 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>إضافة موظف جديد</DialogTitle>
+                    <DialogTitle>{isEditMode ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'}</DialogTitle>
                     <DialogDescription>
-                        أدخل تفاصيل الموظف الجديد. انقر على "إضافة" عند الانتهاء.
+                       {isEditMode ? 'قم بتحديث تفاصيل الموظف.' : 'أدخل تفاصيل الموظف الجديد. انقر على "حفظ" عند الانتهاء.'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -174,7 +195,7 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
                     <DialogClose asChild>
                         <Button type="button" variant="secondary">إلغاء</Button>
                     </DialogClose>
-                    <Button type="button" onClick={handleAddEmployee}>إضافة موظف</Button>
+                    <Button type="button" onClick={handleSubmit}>{isEditMode ? 'حفظ التغييرات' : 'إضافة موظف'}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -186,12 +207,18 @@ function EmployeesContent() {
     const { employees } = useFirebase();
     const { toast } = useToast();
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+    const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
     const handleAddEmployee = async (newEmployee: Omit<Employee, 'id'>) => {
         try {
             const employeesRef = ref(db, 'employees');
             const newEmployeeRef = push(employeesRef);
             await set(newEmployeeRef, newEmployee);
+            toast({
+                title: "تمت الإضافة بنجاح",
+                description: `تمت إضافة الموظف "${newEmployee.name}" إلى القائمة.`,
+            });
         } catch(e) {
             console.error(e);
             toast({
@@ -202,6 +229,25 @@ function EmployeesContent() {
         }
     };
     
+    const handleEditEmployee = async (employeeToUpdate: Employee) => {
+        try {
+            const employeeRef = ref(db, `employees/${employeeToUpdate.id}`);
+            const { id, ...employeeData } = employeeToUpdate;
+            await update(employeeRef, employeeData);
+             toast({
+                title: "تم التعديل بنجاح",
+                description: `تم تحديث بيانات الموظف "${employeeToUpdate.name}".`,
+            });
+        } catch (e) {
+            console.error(e);
+            toast({
+                title: "خطأ في التعديل",
+                description: "لم يتم تحديث بيانات الموظف.",
+                variant: 'destructive',
+            });
+        }
+    };
+
     const handleDeleteEmployee = async (employeeId: string) => {
         try {
             await remove(ref(db, `employees/${employeeId}`));
@@ -217,6 +263,11 @@ function EmployeesContent() {
                 variant: 'destructive'
             })
         }
+    }
+    
+    const openEditDialog = (employee: Employee) => {
+        setSelectedEmployee(employee);
+        setEditDialogOpen(true);
     }
 
   return (
@@ -297,7 +348,7 @@ function EmployeesContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>تعديل</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(employee)}>تعديل</DropdownMenuItem>
                         <DropdownMenuItem>عرض الملف الشخصي</DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteEmployee(employee.id)}>
                           حذف
@@ -311,7 +362,19 @@ function EmployeesContent() {
           </Table>
         </CardContent>
       </Card>
-      <AddEmployeeDialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen} onAddEmployee={handleAddEmployee} />
+      <EmployeeFormDialog 
+        open={isAddDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onSubmit={handleAddEmployee}
+        isEditMode={false}
+      />
+      <EmployeeFormDialog 
+        open={isEditDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSubmit={handleEditEmployee}
+        initialData={selectedEmployee}
+        isEditMode={true}
+      />
     </div>
   );
 }
