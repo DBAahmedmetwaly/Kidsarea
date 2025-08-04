@@ -100,7 +100,7 @@ function TrackingContent() {
     cost: '',
   });
   const { toast } = useToast();
-  const { games } = useFirebase();
+  const { games, policies } = useFirebase();
   const { user } = useAuth();
 
   const totalVisitors = activeChildren.length + completedSessions.length;
@@ -136,6 +136,15 @@ function TrackingContent() {
         variant: 'destructive',
       });
       return;
+    }
+
+    if (policies && policies.maxCapacity && activeChildren.length >= policies.maxCapacity) {
+        toast({
+            title: 'تم الوصول للحد الأقصى',
+            description: `لا يمكن إضافة المزيد من الأطفال. السعة القصوى هي ${policies.maxCapacity} طفل.`,
+            variant: 'destructive',
+        });
+        return;
     }
 
     if (!user || !user.username) {
@@ -223,7 +232,7 @@ function TrackingContent() {
           title="الأطفال النشطون حاليًا"
           value={activeChildren.length.toString()}
           icon={Activity}
-          description="عدد الأطفال الموجودين في منطقة اللعب الآن."
+          description={policies?.maxCapacity ? `من أصل ${policies.maxCapacity}` : "عدد الأطفال الموجودين في منطقة اللعب الآن."}
         />
         <StatCard
           title="إجمالي زوار اليوم"

@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch, Safe } from '@/lib/types';
+import type { Game, Employee, Branch, Safe, Policies } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
 interface FirebaseContextType {
@@ -20,6 +20,7 @@ interface FirebaseContextType {
   employees: Employee[];
   branches: Branch[];
   safes: Safe[];
+  policies: Policies | null;
   loading: boolean;
   error: Error | null;
 }
@@ -39,6 +40,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [safes, setSafes] = useState<Safe[]>([]);
+  const [policies, setPolicies] = useState<Policies | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -47,10 +49,12 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     const employeesRef = ref(db, 'employees');
     const branchesRef = ref(db, 'branches');
     const safesRef = ref(db, 'safes');
+    const policiesRef = ref(db, 'policies');
+
 
     let isMounted = true;
     let loadedCount = 0;
-    const totalListeners = 4;
+    const totalListeners = 5;
 
     const handleLoad = () => {
         loadedCount++;
@@ -59,24 +63,30 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const createUnsubscribe = (dbRef: any, setter: Dispatch<SetStateAction<any[]>>, type: new () => any[]) => {
+    const createUnsubscribe = (dbRef: any, setter: Dispatch<SetStateAction<any>>, isArray: boolean) => {
         return onValue(dbRef, (snapshot) => {
             const data = snapshot.val();
-            const arr = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as object) })) : [];
-            if(isMounted) setter(arr as any[]);
+            let processedData = isArray ? [] : null;
+            if (data) {
+                processedData = isArray 
+                    ? Object.entries(data).map(([id, value]) => ({ id, ...(value as object) })) 
+                    : data;
+            }
+            if(isMounted) setter(processedData);
             handleLoad();
         }, (err) => {
-            console.error(`Firebase ${dbRef} error:`, err);
+            console.error(`Firebase ${dbRef.key} error:`, err);
             if(isMounted) setError(err as Error);
             handleLoad();
         });
     }
 
     const unsubscribes = [
-      createUnsubscribe(gamesRef, setGames, Array as new () => Game[]),
-      createUnsubscribe(employeesRef, setEmployees, Array as new () => Employee[]),
-      createUnsubscribe(branchesRef, setBranches, Array as new () => Branch[]),
-      createUnsubscribe(safesRef, setSafes, Array as new () => Safe[]),
+      createUnsubscribe(gamesRef, setGames, true),
+      createUnsubscribe(employeesRef, setEmployees, true),
+      createUnsubscribe(branchesRef, setBranches, true),
+      createUnsubscribe(safesRef, setSafes, true),
+      createUnsubscribe(policiesRef, setPolicies, false),
     ];
     
     return () => {
@@ -94,7 +104,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, loading, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, loading, error }}>
       {children}
     </FirebaseContext.Provider>
   );

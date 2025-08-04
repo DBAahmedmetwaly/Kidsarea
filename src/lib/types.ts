@@ -85,3 +85,15 @@ export interface SafeTransaction {
     cashierName: string;
     notes?: string;
 }
+
+export interface PricingPolicy {
+    gameId: string;
+    weekdayRate: number;
+    weekendRate: number;
+}
+
+export interface Policies {
+    maxCapacity: number;
+    enableWeekendPricing: boolean;
+    pricingPolicies: PricingPolicy[];
+}
