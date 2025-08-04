@@ -2,8 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
-import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import AuthProvider from '@/components/AuthProvider';
 
 export const metadata: Metadata = {
   title: 'FunTrack Manager',
@@ -30,14 +29,9 @@ export default function RootLayout({
           'min-h-screen bg-background font-body antialiased'
         )}
       >
-        <SidebarProvider>
-            <div className="flex min-h-screen">
-              <AppSidebar />
-              <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-                {children}
-              </main>
-            </div>
-        </SidebarProvider>
+        <AuthProvider>
+            {children}
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

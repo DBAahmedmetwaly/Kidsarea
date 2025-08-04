@@ -21,8 +21,10 @@ import {
   Settings,
   LifeBuoy,
   BarChart3,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/AuthProvider';
 
 const menuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -36,6 +38,7 @@ const menuItems = [
 
 export default function AppSidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
@@ -89,6 +92,12 @@ export default function AppSidebar() {
                         <Settings />
                         <span>الإعدادات</span>
                       </Link>
+                  </SidebarMenuButton>
+              </SidebarMenuItem>
+               <SidebarMenuItem>
+                  <SidebarMenuButton onClick={logout} tooltip={{children: 'تسجيل الخروج'}}>
+                        <LogOut />
+                        <span>تسجيل الخروج</span>
                   </SidebarMenuButton>
               </SidebarMenuItem>
           </SidebarMenu>
