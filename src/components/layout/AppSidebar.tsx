@@ -58,28 +58,48 @@ type RolePermissions = Record<Employee['role'], Permissions>;
 
 // Firebase keys cannot contain '.', '#', '$', '/', '[', or ']'
 const encodeKey = (key: string) => key.replace(/\//g, '__slash__');
+const decodeKey = (key: string) => key.replace(/__slash__/g, '/');
 
 
-export default function AppSidebar() {
+function SidebarItems() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
 
   useEffect(() => {
     if (!user || user.username === 'admin') {
-        // Admin has all permissions, no need to fetch from DB
-        const allPermissions: Permissions = [...allMenuItems, ...settingsMenuItems].reduce((acc, item) => {
-            acc[encodeKey(item.href)] = true;
-            return acc;
-        }, {} as Permissions);
-        setPermissions({ 'مدير فرع': allPermissions, 'كاشير': allPermissions, 'مشرف': allPermissions });
-        return;
+      const allPermissions: Permissions = [...allMenuItems, ...settingsMenuItems].reduce((acc, item) => {
+        acc[item.href] = true;
+        return acc;
+      }, {} as Permissions);
+      const fullPermissions: RolePermissions = {
+        'مدير فرع': allPermissions,
+        'كاشير': allPermissions,
+        'مشرف': allPermissions,
+      };
+      setPermissions(fullPermissions);
+      return;
     }
 
     const rolesRef = ref(db, 'roles');
     const unsubscribe = onValue(rolesRef, (snapshot) => {
-      const data = snapshot.val();
-      setPermissions(data);
+        const data = snapshot.val();
+        if (data) {
+            const decodedPermissions: Partial<RolePermissions> = {};
+            for (const role in data) {
+                if (Object.prototype.hasOwnProperty.call(data, role)) {
+                    const rolePermissions = data[role as Employee['role']];
+                    const decodedRolePermissions: Permissions = {};
+                    for (const encodedKey in rolePermissions) {
+                        if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
+                           decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
+                        }
+                    }
+                    decodedPermissions[role as Employee['role']] = decodedRolePermissions;
+                }
+            }
+            setPermissions(decodedPermissions as RolePermissions);
+        }
     });
     return () => unsubscribe();
   }, [user]);
@@ -89,13 +109,11 @@ export default function AppSidebar() {
     if (user.username === 'admin') return [...allMenuItems, ...settingsMenuItems];
     
     const employee = user as Employee;
-    if (!permissions || !employee.role) return [];
+    if (!permissions || !employee.role || !permissions[employee.role]) return [];
 
     const userPermissions = permissions[employee.role];
-
-    if (!userPermissions) return [];
     
-    return [...allMenuItems, ...settingsMenuItems].filter(item => userPermissions[encodeKey(item.href)]);
+    return [...allMenuItems, ...settingsMenuItems].filter(item => userPermissions[item.href]);
   };
 
   const menuItems = getVisibleMenuItems();
@@ -105,7 +123,7 @@ export default function AppSidebar() {
     return pathname.startsWith(path);
   };
 
-  const SidebarContentRender = () => (
+  return (
     <>
       <SidebarHeader className="justify-between">
          <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
@@ -165,26 +183,27 @@ export default function AppSidebar() {
       </SidebarFooter>
     </>
   );
+}
 
+
+export default function AppSidebar() {
   return (
     <>
-        <div className="hidden md:block">
-            <Sidebar side="right" collapsible="icon">
-                <SidebarContentRender />
-            </Sidebar>
-        </div>
-        <div className="md:hidden">
-             <Sheet>
-                 <SidebarTrigger asChild>
-                    <Button variant="ghost" size="icon" className="fixed top-4 right-4 z-50">
-                        <Gamepad2 />
-                    </Button>
-                 </SidebarTrigger>
-                 <SheetContent side="right" className="p-0 w-[250px]">
-                    <SidebarContentRender />
-                 </SheetContent>
-            </Sheet>
-        </div>
+      <div className="hidden md:block">
+        <Sidebar side="right" collapsible="icon">
+          <SidebarItems />
+        </Sidebar>
+      </div>
+      <div className="md:hidden">
+        <Sheet>
+          <SidebarTrigger variant="ghost" size="icon" className="fixed top-4 right-4 z-50">
+            <Gamepad2 />
+          </SidebarTrigger>
+          <SheetContent side="right" className="p-0 w-[250px]">
+            <SidebarItems />
+          </SheetContent>
+        </Sheet>
+      </div>
     </>
   );
 }
