@@ -25,7 +25,6 @@ import {
   Briefcase,
   Landmark,
   Shield,
-  Lightbulb,
   FileCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -34,7 +33,8 @@ import { useEffect, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Employee } from '@/lib/types';
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -58,7 +58,6 @@ type RolePermissions = Record<Employee['role'], Permissions>;
 
 // Firebase keys cannot contain '.', '#', '$', '/', '[', or ']'
 const encodeKey = (key: string) => key.replace(/\//g, '__slash__');
-const decodeKey = (key: string) => key.replace(/__slash__/g, '/');
 
 
 export default function AppSidebar() {
@@ -67,22 +66,32 @@ export default function AppSidebar() {
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
 
   useEffect(() => {
+    if (!user || user.username === 'admin') {
+        // Admin has all permissions, no need to fetch from DB
+        const allPermissions: Permissions = [...allMenuItems, ...settingsMenuItems].reduce((acc, item) => {
+            acc[encodeKey(item.href)] = true;
+            return acc;
+        }, {} as Permissions);
+        setPermissions({ 'مدير فرع': allPermissions, 'كاشير': allPermissions, 'مشرف': allPermissions });
+        return;
+    }
+
     const rolesRef = ref(db, 'roles');
     const unsubscribe = onValue(rolesRef, (snapshot) => {
       const data = snapshot.val();
-      // No need to decode here as we will check against encoded keys
       setPermissions(data);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const getVisibleMenuItems = () => {
     if (!user) return [];
     if (user.username === 'admin') return [...allMenuItems, ...settingsMenuItems];
-    if (!permissions || !(user as Employee).role) return [];
+    
+    const employee = user as Employee;
+    if (!permissions || !employee.role) return [];
 
-    const userRole = (user as Employee).role;
-    const userPermissions = permissions[userRole];
+    const userPermissions = permissions[employee.role];
 
     if (!userPermissions) return [];
     
@@ -132,16 +141,20 @@ export default function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-2">
           <SidebarMenu>
-             {menuItems.filter(item => settingsMenuItems.some(s => s.href === item.href)).map((item) => (
-                <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={{children: item.label, side: 'left'}}>
-                        <Link href={item.href}>
-                            <item.icon />
-                            <span>{item.label}</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-             ))}
+             {menuItems.filter(item => settingsMenuItems.some(s => s.href === item.href)).length > 0 && (
+                 <>
+                    {menuItems.filter(item => settingsMenuItems.some(s => s.href === item.href)).map((item) => (
+                        <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={{children: item.label, side: 'left'}}>
+                                <Link href={item.href}>
+                                    <item.icon />
+                                    <span>{item.label}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    ))}
+                 </>
+             )}
                <SidebarMenuItem>
                   <SidebarMenuButton onClick={logout} tooltip={{children: 'تسجيل الخروج', side: 'left'}}>
                         <LogOut />
