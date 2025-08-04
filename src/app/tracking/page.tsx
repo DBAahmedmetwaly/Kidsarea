@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -46,6 +46,8 @@ import { StatCard } from '@/components/StatCard';
 import { ref, set, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
+import { Receipt, type ReceiptProps } from '@/components/Receipt';
+import { useReactToPrint } from 'react-to-print';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -94,14 +96,15 @@ function TrackingContent() {
   const [newChildPhoneNumber, setNewChildPhoneNumber] = useState('');
   const [selectedGame, setSelectedGame] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
-  const [receiptDetails, setReceiptDetails] = useState({
-    name: '',
-    duration: '',
-    cost: '',
-  });
+  const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const { toast } = useToast();
   const { games, policies } = useFirebase();
   const { user } = useAuth();
+  const receiptRef = useRef(null);
+
+  const handlePrint = useReactToPrint({
+      content: () => receiptRef.current,
+  });
 
   const totalVisitors = activeChildren.length + completedSessions.length;
 
@@ -206,9 +209,14 @@ function TrackingContent() {
         await set(ref(db, `sessions/active/${child.id}`), null); // Remove from active
         
         setReceiptDetails({
-            name: child.name,
+            childName: child.name,
+            parentName: child.parentName,
+            gameName: child.game,
+            checkInTime: new Date(child.checkInTime),
+            checkOutTime: new Date(checkOutTime),
             duration: formatDuration(durationMs),
-            cost: `ج.م ${cost.toFixed(2)}`,
+            cost: cost,
+            cashierName: user?.username === 'admin' ? 'Admin' : (user as any)?.name || 'N/A'
         });
 
         setShowReceipt(true);
@@ -409,37 +417,28 @@ function TrackingContent() {
             </Table>
           </CardContent>
         </Card>
-      <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>إيصال الدفع</DialogTitle>
-            <DialogDescription>
-              تفاصيل جلسة اللعب للطفل {receiptDetails.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">اسم الطفل</span>
-              <span className="font-medium">{receiptDetails.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">مدة اللعب</span>
-              <span className="font-medium">{receiptDetails.duration}</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold">
-              <span>المبلغ الإجمالي</span>
-              <span>{receiptDetails.cost}</span>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
-            <Button>
-              <Printer className="me-2 h-4 w-4" />
-              طباعة الإيصال
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
+            <DialogContent className="max-w-sm">
+            <DialogHeader>
+                <DialogTitle>إيصال الدفع</DialogTitle>
+                <DialogDescription>
+                تفاصيل جلسة اللعب للطفل {receiptDetails?.childName}.
+                </DialogDescription>
+            </DialogHeader>
+            {receiptDetails && (
+                 <div ref={receiptRef}>
+                    <Receipt {...receiptDetails} />
+                 </div>
+            )}
+            <DialogFooter className="sm:justify-between">
+                <Button variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
+                <Button onClick={handlePrint}>
+                <Printer className="me-2 h-4 w-4" />
+                طباعة الإيصال
+                </Button>
+            </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
