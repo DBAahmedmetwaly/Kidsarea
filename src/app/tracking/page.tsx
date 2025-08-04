@@ -43,8 +43,16 @@ interface Child {
   id: number;
   name: string;
   age: number;
+  parentName: string;
+  phoneNumber: string;
   game: string;
   checkInTime: number;
+}
+
+interface CompletedSession extends Child {
+    checkOutTime: number;
+    durationMs: number;
+    cost: number;
 }
 
 const games = [
@@ -85,10 +93,20 @@ const TimeCounter = ({ startTime }: { startTime: number }) => {
   );
 };
 
+function formatDuration(durationMs: number) {
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    return `${hours} ساعة و ${minutes} دقيقة`;
+}
+
 function TrackingContent() {
   const [activeChildren, setActiveChildren] = useState<Child[]>([]);
+  const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
   const [newChildName, setNewChildName] = useState('');
   const [newChildAge, setNewChildAge] = useState('');
+  const [newChildParentName, setNewChildParentName] = useState('');
+  const [newChildPhoneNumber, setNewChildPhoneNumber] = useState('');
   const [selectedGame, setSelectedGame] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptDetails, setReceiptDetails] = useState({
@@ -100,7 +118,7 @@ function TrackingContent() {
 
   const handleCheckIn = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newChildName || !newChildAge || !selectedGame) {
+    if (!newChildName || !newChildAge || !selectedGame || !newChildParentName || !newChildPhoneNumber) {
       toast({
         title: 'خطأ',
         description: 'الرجاء تعبئة جميع الحقول لتسجيل الدخول.',
@@ -113,6 +131,8 @@ function TrackingContent() {
       id: Date.now(),
       name: newChildName,
       age: parseInt(newChildAge),
+      parentName: newChildParentName,
+      phoneNumber: newChildPhoneNumber,
       game: selectedGame,
       checkInTime: Date.now(),
     };
@@ -120,6 +140,8 @@ function TrackingContent() {
     setActiveChildren([...activeChildren, newChild]);
     setNewChildName('');
     setNewChildAge('');
+    setNewChildParentName('');
+    setNewChildPhoneNumber('');
     setSelectedGame('');
     toast({
       title: 'تم تسجيل الدخول بنجاح',
@@ -135,80 +157,156 @@ function TrackingContent() {
     const gameDetails = games.find((g) => g.name === child.game);
     const cost = durationHours * (gameDetails?.rate || 0);
 
-    const totalSeconds = Math.floor(durationMs / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const completedSession: CompletedSession = {
+        ...child,
+        checkOutTime,
+        durationMs,
+        cost,
+    };
+    
+    setCompletedSessions([completedSession, ...completedSessions]);
+    setActiveChildren(activeChildren.filter((c) => c.id !== child.id));
 
     setReceiptDetails({
       name: child.name,
-      duration: `${hours} ساعة و ${minutes} دقيقة`,
+      duration: formatDuration(durationMs),
       cost: `ج.م ${cost.toFixed(2)}`,
     });
 
     setShowReceipt(true);
-    setActiveChildren(activeChildren.filter((c) => c.id !== child.id));
   };
   
   return (
-    <div className="grid gap-8 md:grid-cols-3">
-      <div className="md:col-span-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>تسجيل دخول طفل جديد</CardTitle>
-            <CardDescription>
-              أدخل تفاصيل الطفل لبدء جلسة اللعب.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCheckIn} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="child-name">اسم الطفل</Label>
-                <Input
-                  id="child-name"
-                  value={newChildName}
-                  onChange={(e) => setNewChildName(e.target.value)}
-                  placeholder="مثال: محمد"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="child-age">عمر الطفل</Label>
-                <Input
-                  id="child-age"
-                  type="number"
-                  value={newChildAge}
-                  onChange={(e) => setNewChildAge(e.target.value)}
-                  placeholder="مثال: 5"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="game-select">اختر اللعبة</Label>
-                <Select value={selectedGame} onValueChange={setSelectedGame}>
-                  <SelectTrigger id="game-select">
-                    <SelectValue placeholder="اختر لعبة..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {games.map((game) => (
-                      <SelectItem key={game.name} value={game.name}>
-                        {game.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" className="w-full">
-                <PlayCircle className="me-2 h-4 w-4" />
-                بدء اللعب
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+    <div className="flex flex-col gap-8">
+      <div className="grid gap-8 md:grid-cols-3">
+        <div className="md:col-span-1">
+            <Card>
+            <CardHeader>
+                <CardTitle>تسجيل دخول طفل جديد</CardTitle>
+                <CardDescription>
+                أدخل تفاصيل الطفل وولي الأمر لبدء جلسة اللعب.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleCheckIn} className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="child-name">اسم الطفل</Label>
+                    <Input
+                    id="child-name"
+                    value={newChildName}
+                    onChange={(e) => setNewChildName(e.target.value)}
+                    placeholder="مثال: محمد"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="child-age">عمر الطفل</Label>
+                    <Input
+                    id="child-age"
+                    type="number"
+                    value={newChildAge}
+                    onChange={(e) => setNewChildAge(e.target.value)}
+                    placeholder="مثال: 5"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="parent-name">اسم ولي الأمر</Label>
+                    <Input
+                    id="parent-name"
+                    value={newChildParentName}
+                    onChange={(e) => setNewChildParentName(e.target.value)}
+                    placeholder="مثال: أحمد عبد الله"
+                    />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="phone-number">رقم الهاتف</Label>
+                    <Input
+                    id="phone-number"
+                    type="tel"
+                    value={newChildPhoneNumber}
+                    onChange={(e) => setNewChildPhoneNumber(e.target.value)}
+                    placeholder="مثال: 01234567890"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="game-select">اختر اللعبة</Label>
+                    <Select value={selectedGame} onValueChange={setSelectedGame}>
+                    <SelectTrigger id="game-select">
+                        <SelectValue placeholder="اختر لعبة..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {games.map((game) => (
+                        <SelectItem key={game.name} value={game.name}>
+                            {game.name}
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <Button type="submit" className="w-full">
+                    <PlayCircle className="me-2 h-4 w-4" />
+                    بدء اللعب
+                </Button>
+                </form>
+            </CardContent>
+            </Card>
+        </div>
+        <div className="md:col-span-2">
+            <Card>
+            <CardHeader>
+                <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+                <CardDescription>
+                قائمة بالأطفال الذين يلعبون حاليًا.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>اسم الطفل</TableHead>
+                    <TableHead>اللعبة</TableHead>
+                    <TableHead>مدة اللعب</TableHead>
+                    <TableHead>إجراء</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {activeChildren.length > 0 ? (
+                    activeChildren.map((child) => (
+                        <TableRow key={child.id}>
+                        <TableCell className="font-medium">{child.name}</TableCell>
+                        <TableCell>{child.game}</TableCell>
+                        <TableCell>
+                            <TimeCounter startTime={child.checkInTime} />
+                        </TableCell>
+                        <TableCell>
+                            <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleCheckOut(child)}
+                            >
+                            <Square className="me-2 h-4 w-4" />
+                            خروج
+                            </Button>
+                        </TableCell>
+                        </TableRow>
+                    ))
+                    ) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center">
+                        لا يوجد أطفال نشطون حاليًا.
+                        </TableCell>
+                    </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+            </CardContent>
+            </Card>
+        </div>
       </div>
-      <div className="md:col-span-2">
-        <Card>
+      <Card>
           <CardHeader>
-            <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+            <CardTitle>سجل الجلسات المنتهية</CardTitle>
             <CardDescription>
-              قائمة بالأطفال الذين يلعبون حاليًا.
+              عرض تفصيلي لجميع جلسات اللعب التي تم إجراؤها.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -216,36 +314,31 @@ function TrackingContent() {
               <TableHeader>
                 <TableRow>
                   <TableHead>اسم الطفل</TableHead>
+                  <TableHead>اسم ولي الأمر</TableHead>
+                  <TableHead>رقم الهاتف</TableHead>
                   <TableHead>اللعبة</TableHead>
                   <TableHead>مدة اللعب</TableHead>
-                  <TableHead>إجراء</TableHead>
+                  <TableHead>التكلفة</TableHead>
+                  <TableHead>وقت الخروج</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {activeChildren.length > 0 ? (
-                  activeChildren.map((child) => (
-                    <TableRow key={child.id}>
-                      <TableCell className="font-medium">{child.name}</TableCell>
-                      <TableCell>{child.game}</TableCell>
-                      <TableCell>
-                        <TimeCounter startTime={child.checkInTime} />
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleCheckOut(child)}
-                        >
-                          <Square className="me-2 h-4 w-4" />
-                          خروج
-                        </Button>
-                      </TableCell>
+                {completedSessions.length > 0 ? (
+                  completedSessions.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell className="font-medium">{session.name}</TableCell>
+                      <TableCell>{session.parentName}</TableCell>
+                      <TableCell>{session.phoneNumber}</TableCell>
+                      <TableCell>{session.game}</TableCell>
+                      <TableCell>{formatDuration(session.durationMs)}</TableCell>
+                      <TableCell>{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
+                      <TableCell>{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center">
-                      لا يوجد أطفال نشطون حاليًا.
+                    <TableCell colSpan={7} className="text-center">
+                      لا توجد جلسات منتهية حتى الآن.
                     </TableCell>
                   </TableRow>
                 )}
@@ -253,7 +346,6 @@ function TrackingContent() {
             </Table>
           </CardContent>
         </Card>
-      </div>
       <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
         <DialogContent>
           <DialogHeader>
@@ -302,3 +394,5 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
+
+    
