@@ -141,7 +141,7 @@ function TrackingContent() {
   const { toast } = useToast();
   const { games, policies, openShifts, employees } = useFirebase();
   const { user } = useAuth();
-  const receiptRef = useRef(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
@@ -459,19 +459,22 @@ function TrackingContent() {
       </div>
        <Card>
         <Collapsible defaultOpen>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="flex flex-row items-center justify-between cursor-pointer">
-              <div>
-                <CardTitle>سجل الجلسات المنتهية</CardTitle>
-                <CardDescription>
-                  عرض تفصيلي لجميع جلسات اللعب التي تم إجراؤها اليوم.
-                </CardDescription>
-              </div>
-              <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-          </CollapsibleTrigger>
+            <div className="flex items-center justify-between px-6 pt-6">
+                 <div>
+                    <CardTitle>سجل الجلسات المنتهية</CardTitle>
+                    <CardDescription>
+                    عرض تفصيلي لجميع جلسات اللعب التي تم إجراؤها اليوم.
+                    </CardDescription>
+                </div>
+                <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                        <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                        <span className="sr-only">Toggle</span>
+                    </Button>
+                </CollapsibleTrigger>
+            </div>
           <CollapsibleContent>
-            <CardContent>
+            <CardContent className="pt-6">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -545,8 +548,8 @@ function TrackingContent() {
             <DialogFooter className="sm:justify-between">
                 <Button type="button" variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
                 <Button type="button" onClick={handlePrint}>
-                <Printer className="me-2 h-4 w-4" />
-                طباعة الإيصال
+                    <Printer className="me-2 h-4 w-4" />
+                    طباعة الإيصال
                 </Button>
             </DialogFooter>
             </DialogContent>
@@ -568,3 +571,5 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
+
+    

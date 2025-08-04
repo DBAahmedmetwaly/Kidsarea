@@ -2,6 +2,7 @@
 'use client';
 
 import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle } from 'lucide-react';
+import React from 'react';
 
 export interface ReceiptProps {
   childName: string;
@@ -16,7 +17,7 @@ export interface ReceiptProps {
   cashierName: string;
 }
 
-export function Receipt({
+export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
   childName,
   parentName,
   gameName,
@@ -27,10 +28,10 @@ export function Receipt({
   durationCost,
   entryFee,
   cashierName,
-}: ReceiptProps) {
+}, ref) => {
   const receiptId = `R-${checkOutTime.getTime().toString().slice(-6)}`;
   return (
-    <div className="bg-light-blue-50 p-6 rounded-lg border-2 border-dashed border-primary printable-area font-sans">
+    <div ref={ref} className="bg-light-blue-50 p-6 rounded-lg border-2 border-dashed border-primary printable-area font-sans">
       <div className="text-center mb-6">
         <div className="flex justify-center items-center gap-2">
             <Gamepad2 className="w-10 h-10 text-accent" />
@@ -92,4 +93,8 @@ export function Receipt({
        </div>
     </div>
   );
-}
+});
+
+Receipt.displayName = 'Receipt';
+
+    
