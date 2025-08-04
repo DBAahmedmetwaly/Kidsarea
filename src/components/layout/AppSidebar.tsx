@@ -135,8 +135,13 @@ function SidebarItems() {
               FunTrack
             </span>
         </Link>
-         <div className="md:hidden">
-            <SidebarTrigger />
+         <div className="flex items-center">
+            <div className="hidden md:block">
+                <SidebarTrigger />
+            </div>
+            <div className="md:hidden">
+                <SidebarTrigger />
+            </div>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2">
@@ -196,8 +201,10 @@ export default function AppSidebar() {
       </div>
       <div className="md:hidden">
         <Sheet>
-          <SidebarTrigger variant="ghost" size="icon" className="fixed top-4 right-4 z-50">
-            <Gamepad2 />
+          <SidebarTrigger asChild>
+            <Button variant="ghost" size="icon" className="fixed top-4 right-4 z-50">
+                <Gamepad2 />
+            </Button>
           </SidebarTrigger>
           <SheetContent side="right" className="p-0 w-[250px]">
             <SidebarItems />
