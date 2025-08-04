@@ -8,6 +8,7 @@ export interface Child {
   phoneNumber: string;
   game: string;
   checkInTime: number;
+  cashierUsername: string; // Added to track who checked the child in
 }
 
 export interface CompletedSession extends Child {

@@ -45,6 +45,7 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
 import { ref, set, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/components/AuthProvider';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -100,6 +101,7 @@ function TrackingContent() {
   });
   const { toast } = useToast();
   const { games } = useFirebase();
+  const { user } = useAuth();
 
   const totalVisitors = activeChildren.length + completedSessions.length;
 
@@ -136,6 +138,16 @@ function TrackingContent() {
       return;
     }
 
+    if (!user || !user.username) {
+        toast({
+            title: 'خطأ',
+            description: 'لا يمكن تسجيل الدخول. لم يتم تحديد الكاشير الحالي.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+
     const childId = Date.now();
     const newChild: Child = {
       id: childId,
@@ -145,6 +157,7 @@ function TrackingContent() {
       phoneNumber: newChildPhoneNumber,
       game: selectedGame,
       checkInTime: Date.now(),
+      cashierUsername: user.username,
     };
 
     try {

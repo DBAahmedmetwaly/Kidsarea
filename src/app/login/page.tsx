@@ -36,8 +36,15 @@ export default function LoginPage() {
         (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع') && emp.username === username && emp.password === password
     );
 
-    if (user || (username === 'admin' && password === '123456')) {
-        login();
+    if (user) {
+        login(user);
+        toast({
+        title: 'تم تسجيل الدخول بنجاح',
+        description: `مرحباً بعودتك، ${user.name}!`,
+        });
+        router.push('/');
+    } else if (username === 'admin' && password === '123456') {
+        login({ username: 'admin' });
         toast({
         title: 'تم تسجيل الدخول بنجاح',
         description: 'مرحباً بعودتك!',

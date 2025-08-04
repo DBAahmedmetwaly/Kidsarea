@@ -36,13 +36,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFirebase } from '@/context/FirebaseContext';
-import type { ShiftRecord, OpenShift, Safe, SafeTransaction } from '@/lib/types';
+import { useSession } from '@/context/SessionContext';
+import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession } from '@/lib/types';
 
 const closeShiftSchema = z.object({
   cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
   branchName: z.string().min(1, 'اسم الفرع مطلوب'),
   safeId: z.string().min(1, 'يجب اختيار الخزينة'),
-  expectedRevenue: z.coerce.number().min(0, 'يجب أن يكون مبلغًا موجبًا'),
   actualRevenue: z.coerce.number().min(0, 'يجب أن يكون مبلغًا موجبًا'),
   notes: z.string().optional(),
 });
@@ -58,8 +58,10 @@ type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
 function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>, newRecordId: string) => void, openShifts: OpenShift[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expectedRevenue, setExpectedRevenue] = useState(0);
   const { toast } = useToast();
   const { employees, safes } = useFirebase();
+  const { completedSessions } = useSession();
   const cashiers = employees.filter(emp => emp.role === 'كاشير');
 
   const form = useForm<CloseShiftFormValues>({
@@ -68,7 +70,6 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
       cashierUsername: '',
       branchName: '',
       safeId: '',
-      expectedRevenue: undefined,
       actualRevenue: undefined,
       notes: '',
     },
@@ -85,11 +86,19 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
       if (openShift) {
         form.setValue('branchName', openShift.branchName, { shouldValidate: true });
         form.setValue('safeId', ''); // Reset safe selection when cashier changes
+        
+        // Calculate expected revenue
+        const shiftStartTime = new Date(openShift.startTime).getTime();
+        const revenue = completedSessions
+          .filter(session => session.cashierUsername === selectedCashierUsername && session.checkOutTime >= shiftStartTime)
+          .reduce((total, session) => total + session.cost, 0);
+        setExpectedRevenue(revenue);
       }
     } else {
         form.setValue('branchName', '');
+        setExpectedRevenue(0);
     }
-  }, [selectedCashierUsername, form, openShifts]);
+  }, [selectedCashierUsername, form, openShifts, completedSessions]);
 
 
   async function onSubmit(values: CloseShiftFormValues) {
@@ -104,7 +113,7 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
     }
     
     const shiftDetails = `الوردية المسائية للكاشير ${cashier.name}. ملاحظات: ${values.notes || 'لا يوجد'}`;
-    const response = await checkDiscrepancy({ ...values, expectedRevenue: values.expectedRevenue, actualRevenue: values.actualRevenue, shiftDetails, branchName: values.branchName });
+    const response = await checkDiscrepancy({ ...values, expectedRevenue: expectedRevenue, actualRevenue: values.actualRevenue, shiftDetails, branchName: values.branchName });
     
     if (response.success && response.data) {
         const recordsRef = ref(db, 'shiftRecords');
@@ -114,8 +123,9 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
         const newRecord: Omit<ShiftRecord, 'id'> = {
             ...values,
             cashierName: cashier.name,
+            expectedRevenue: expectedRevenue,
             date: new Date().toISOString(),
-            difference: values.actualRevenue - values.expectedRevenue,
+            difference: values.actualRevenue - expectedRevenue,
             analysis: response.data,
         };
         onShiftClose(newRecord, newRecordId);
@@ -233,19 +243,13 @@ function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record:
                     )}
                     />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                    control={form.control}
-                    name="expectedRevenue"
-                    render={({ field }) => (
-                        <FormItem>
+                    <FormItem>
                         <FormLabel>الإيرادات المتوقعة (ج.م)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="1500" {...field} />
+                            <Input type="number" value={expectedRevenue.toFixed(2)} readOnly className="font-bold text-green-600" />
                         </FormControl>
                         <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                    </FormItem>
                     <FormField
                     control={form.control}
                     name="actualRevenue"
@@ -480,8 +484,16 @@ function ShiftManagementContent() {
     const [shiftRecords, setShiftRecords] = useState<ShiftRecord[]>([]);
     const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
     const { toast } = useToast();
+    const { completedSessions, setCompletedSessions } = useSession(); // Import from context
 
     useEffect(() => {
+        // Sync completed sessions for revenue calculation
+        const completedRef = ref(db, 'sessions/completed');
+        const unsubCompleted = onValue(completedRef, (snapshot) => {
+            const data = snapshot.val();
+            setCompletedSessions(data ? Object.values(data) as CompletedSession[] : []);
+        });
+
         const recordsRef = ref(db, 'shiftRecords');
         const openShiftsRef = ref(db, 'openShifts');
 
@@ -500,8 +512,9 @@ function ShiftManagementContent() {
         return () => {
             unsubRecords();
             unsubOpenShifts();
+            unsubCompleted();
         }
-    }, [])
+    }, [setCompletedSessions])
 
     const handleNewShiftRecord = async (record: Omit<ShiftRecord, 'id'>, newRecordId: string) => {
        try {

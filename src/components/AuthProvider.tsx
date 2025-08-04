@@ -10,10 +10,12 @@ import {
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import type { Employee } from '@/lib/types';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: () => void;
+  user: Employee | { username: 'admin' } | null;
+  login: (user: Employee | { username: 'admin' }) => void;
   logout: () => void;
 }
 
@@ -29,6 +31,7 @@ export function useAuth() {
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<AuthContextType['user']>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -37,28 +40,43 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     // This effect should run only on the client
     if (typeof window !== 'undefined') {
         const checkAuth = () => {
-        const authStatus = localStorage.getItem('isAuthenticated') === 'true';
-        setIsAuthenticated(authStatus);
-        setLoading(false);
+            try {
+                const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+                const userData = localStorage.getItem('user');
+                const parsedUser = userData ? JSON.parse(userData) : null;
 
-        if (!authStatus && pathname !== '/login') {
-            router.push('/login');
-        } else if (authStatus && pathname === '/login') {
-            router.push('/');
-        }
+                setIsAuthenticated(authStatus);
+                setUser(parsedUser);
+                setLoading(false);
+
+                if (!authStatus && pathname !== '/login') {
+                    router.push('/login');
+                } else if (authStatus && pathname === '/login') {
+                    router.push('/');
+                }
+            } catch (error) {
+                console.error("Failed to parse user data from localStorage", error);
+                // Clear corrupted data
+                logout();
+                setLoading(false);
+            }
         };
         checkAuth();
     }
   }, [pathname, router]);
 
-  const login = () => {
+  const login = (userData: AuthContextType['user']) => {
     localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
+    setUser(userData);
   };
 
   const logout = () => {
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('user');
     setIsAuthenticated(false);
+    setUser(null);
     router.push('/login');
   };
 
@@ -82,7 +100,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   // Render children only if authenticated or on the login page.
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
