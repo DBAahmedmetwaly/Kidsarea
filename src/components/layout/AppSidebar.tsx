@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -22,6 +23,7 @@ import {
   LifeBuoy,
   BarChart3,
   LogOut,
+  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -29,6 +31,7 @@ import { useAuth } from '@/components/AuthProvider';
 const menuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/tracking', label: 'تتبع الوقت', icon: Clock },
+  { href: '/shift-closing', label: 'إقفال الوردية', icon: Archive },
   { href: '/discrepancy-check', label: 'فحص التباين', icon: ShieldAlert },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
   { href: '/branches', label: 'الفروع', icon: Building2 },
