@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { ChartConfig } from '@/components/ui/chart';
 import {
   ChartContainer,
@@ -24,30 +24,14 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, eachDayOfInterval, isWithinInterval } from 'date-fns';
+import { ar } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
+import { useSession } from '@/context/SessionContext';
+import { useFirebase } from '@/context/FirebaseContext';
+import type { CompletedSession } from '@/lib/types';
 
-
-const revenueData = [
-  { day: 'الاثنين', revenue: 1250 },
-  { day: 'الثلاثاء', revenue: 1500 },
-  { day: 'الأربعاء', revenue: 1750 },
-  { day: 'الخميس', revenue: 2200 },
-  { day: 'الجمعة', revenue: 3500 },
-  { day: 'السبت', revenue: 4000 },
-  { day: 'الأحد', revenue: 3000 },
-];
-
-const visitorsData = [
-  { day: 'الاثنين', visitors: 80 },
-  { day: 'الثلاثاء', visitors: 95 },
-  { day: 'الأربعاء', visitors: 110 },
-  { day: 'الخميس', visitors: 130 },
-  { day: 'الجمعة', visitors: 200 },
-  { day: 'السبت', visitors: 250 },
-  { day: 'الأحد', visitors: 180 },
-];
 
 const revenueChartConfig = {
   revenue: {
@@ -64,10 +48,79 @@ const visitorsChartConfig = {
 } satisfies ChartConfig;
 
 function DashboardContent() {
+    const { completedSessions, activeChildren } = useSession();
+    const { branches, employees, games } = useFirebase();
+
+    const [selectedBranch, setSelectedBranch] = useState('all');
     const [date, setDate] = useState<DateRange | undefined>({
-        from: new Date(2024, 0, 20),
-        to: new Date(2024, 0, 20),
+        from: subDays(new Date(), 6),
+        to: new Date(),
     });
+
+    const filteredData = useMemo(() => {
+        const branchGames = selectedBranch === 'all' 
+            ? games.map(g => g.name) 
+            : games.filter(g => g.branch === selectedBranch).map(g => g.name);
+
+        const range = date?.from && date.to ? { start: startOfDay(date.from), end: endOfDay(date.to) } : null;
+
+        const sessions = completedSessions.filter(session => {
+            const isBranchMatch = branchGames.includes(session.game);
+            if (!range) return isBranchMatch;
+            const sessionDate = new Date(session.checkOutTime);
+            return isBranchMatch && isWithinInterval(sessionDate, range);
+        });
+
+        const active = activeChildren.filter(child => branchGames.includes(child.game));
+        
+        return { sessions, active };
+
+    }, [completedSessions, activeChildren, games, selectedBranch, date]);
+
+    const stats = useMemo(() => {
+        const totalRevenue = filteredData.sessions.reduce((acc, s) => acc + s.cost, 0);
+        const totalVisitors = filteredData.sessions.length + filteredData.active.length;
+        const activeNow = filteredData.active.length;
+        
+        const todayRange = { start: startOfDay(new Date()), end: endOfDay(new Date()) };
+        const revenueToday = completedSessions
+            .filter(s => {
+                 const isBranchMatch = selectedBranch === 'all' || games.find(g => g.name === s.game)?.branch === selectedBranch;
+                 return isBranchMatch && isWithinInterval(new Date(s.checkOutTime), todayRange);
+            })
+            .reduce((acc, s) => acc + s.cost, 0);
+
+        return { totalRevenue, totalVisitors, activeNow, revenueToday };
+    }, [filteredData, completedSessions, selectedBranch, games]);
+
+    const weeklyChartData = useMemo(() => {
+        const last7Days = eachDayOfInterval({
+            start: subDays(new Date(), 6),
+            end: new Date(),
+        });
+
+        const branchGames = selectedBranch === 'all' 
+            ? games.map(g => g.name) 
+            : games.filter(g => g.branch === selectedBranch).map(g => g.name);
+
+        return last7Days.map(day => {
+            const dayStart = startOfDay(day);
+            const dayEnd = endOfDay(day);
+            const dayInterval = { start: dayStart, end: dayEnd };
+            
+            const daySessions = completedSessions.filter(session => {
+                 const isBranchMatch = branchGames.includes(session.game);
+                 return isBranchMatch && isWithinInterval(new Date(session.checkOutTime), dayInterval);
+            });
+
+            return {
+                date: format(day, 'eeee', { locale: ar }),
+                revenue: daySessions.reduce((sum, s) => sum + s.cost, 0),
+                visitors: daySessions.length,
+            };
+        });
+
+    }, [completedSessions, selectedBranch, games]);
 
     return (
         <div className="flex flex-col gap-8">
@@ -77,16 +130,15 @@ function DashboardContent() {
                 </div>
                 <h1 className="text-lg font-semibold md:text-2xl">لوحة التحكم</h1>
                 <div className="ms-auto flex items-center gap-2 w-full sm:w-auto">
-                    <Select defaultValue="all">
+                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
                         <SelectTrigger className="w-full sm:w-[180px]">
                             <SelectValue placeholder="اختر الفرع" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">كل الفروع</SelectItem>
-                            <SelectItem value="riyadh">فرع الرياض بارك</SelectItem>
-                            <SelectItem value="jeddah">فرع جدة مول</SelectItem>
-                            <SelectItem value="dammam">فرع الدمام سيتي سنتر</SelectItem>
-                            <SelectItem value="makkah">فرع مكة هيلتون</SelectItem>
+                            {branches.map(branch => (
+                                <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                      <Popover>
@@ -103,11 +155,11 @@ function DashboardContent() {
                             {date?.from ? (
                             date.to ? (
                                 <>
-                                {format(date.from, "LLL dd, y")} -{" "}
-                                {format(date.to, "LLL dd, y")}
+                                {format(date.from, "PPP", { locale: ar })} -{" "}
+                                {format(date.to, "PPP", { locale: ar })}
                                 </>
                             ) : (
-                                format(date.from, "LLL dd, y")
+                                format(date.from, "PPP", { locale: ar })
                             )
                             ) : (
                             <span>اختر فترة</span>
@@ -122,6 +174,7 @@ function DashboardContent() {
                             selected={date}
                             onSelect={setDate}
                             numberOfMonths={2}
+                            locale={ar}
                         />
                         </PopoverContent>
                     </Popover>
@@ -130,27 +183,27 @@ function DashboardContent() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
                 title="إجمالي الإيرادات"
-                value="ج.م 14,200"
+                value={`ج.م ${stats.totalRevenue.toFixed(2)}`}
                 icon={DollarSign}
-                description="+20.1% من الشهر الماضي"
+                description={date?.from && date?.to ? `في الفترة المحددة` : ''}
             />
             <StatCard
                 title="إجمالي الزوار"
-                value="+2,350"
+                value={`${stats.totalVisitors}`}
                 icon={Users}
-                description="+180.1% من الشهر الماضي"
+                description={date?.from && date?.to ? `في الفترة المحددة` : ''}
             />
             <StatCard
                 title="الأطفال النشطون حاليًا"
-                value="12"
+                value={`${stats.activeNow}`}
                 icon={Activity}
                 description="في جميع الفروع"
             />
             <StatCard
                 title="إيرادات اليوم"
-                value="ج.م 850"
+                value={`ج.م ${stats.revenueToday.toFixed(2)}`}
                 icon={Wallet}
-                description="+19% من الأمس"
+                description="يشمل جميع الفروع"
             />
             </div>
 
@@ -161,10 +214,10 @@ function DashboardContent() {
                 </CardHeader>
                 <CardContent>
                 <ChartContainer config={revenueChartConfig} className="h-64 w-full">
-                    <BarChart accessibilityLayer data={revenueData} dir="ltr">
+                    <BarChart accessibilityLayer data={weeklyChartData} dir="ltr">
                     <CartesianGrid vertical={false} />
                     <XAxis
-                        dataKey="day"
+                        dataKey="date"
                         tickLine={false}
                         tickMargin={10}
                         axisLine={false}
@@ -191,10 +244,10 @@ function DashboardContent() {
                 </CardHeader>
                 <CardContent>
                 <ChartContainer config={visitorsChartConfig} className="h-64 w-full">
-                    <BarChart accessibilityLayer data={visitorsData} dir="ltr">
+                    <BarChart accessibilityLayer data={weeklyChartData} dir="ltr">
                     <CartesianGrid vertical={false} />
                     <XAxis
-                        dataKey="day"
+                        dataKey="date"
                         tickLine={false}
                         tickMargin={10}
                         axisLine={false}
