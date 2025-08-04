@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ref, get, remove } from 'firebase/database';
+import { ref, get, remove, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Database, Download, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Database, Download, Trash2, AlertTriangle, Loader2, Upload } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,11 +28,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
 
 function DataManagementContent() {
   const { toast } = useToast();
   const [loadingBackup, setLoadingBackup] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
+  const [loadingRestore, setLoadingRestore] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleBackup = async () => {
     setLoadingBackup(true);
@@ -73,6 +76,58 @@ function DataManagementContent() {
       setLoadingBackup(false);
     }
   };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files[0]) {
+            setSelectedFile(event.target.files[0]);
+        }
+    };
+
+    const handleRestoreData = async () => {
+        if (!selectedFile) {
+            toast({
+                title: 'لم يتم اختيار ملف',
+                description: 'يرجى اختيار ملف نسخة احتياطية أولاً.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setLoadingRestore(true);
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const content = e.target?.result;
+                if (typeof content !== 'string') throw new Error("File content is not readable");
+                const data = JSON.parse(content);
+                const dbRef = ref(db);
+                await set(dbRef, data);
+                toast({
+                    title: 'تمت الاستعادة بنجاح',
+                    description: 'تم استعادة جميع البيانات من ملف النسخة الاحتياطية.',
+                });
+            } catch (error) {
+                console.error('Failed to restore data:', error);
+                toast({
+                    title: 'خطأ في الاستعادة',
+                    description: 'فشل في استعادة البيانات. تأكد من أن الملف صحيح.',
+                    variant: 'destructive',
+                });
+            } finally {
+                setLoadingRestore(false);
+                setSelectedFile(null);
+            }
+        };
+        reader.onerror = () => {
+             toast({
+                title: 'خطأ في قراءة الملف',
+                description: 'لا يمكن قراءة الملف المختار.',
+                variant: 'destructive',
+            });
+            setLoadingRestore(false);
+        }
+        reader.readAsText(selectedFile);
+    };
 
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
@@ -136,45 +191,91 @@ function DataManagementContent() {
             الإجراءات في هذا القسم لا يمكن التراجع عنها. يرجى توخي الحذر الشديد.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-            <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>حذف جميع البيانات</AlertTitle>
-                <AlertDescription>
-                    سيؤدي هذا الإجراء إلى حذف جميع البيانات في قاعدة البيانات بشكل نهائي، بما في ذلك الألعاب والموظفين والجلسات والسجلات المالية. لا يمكن استعادة البيانات بعد حذفها إلا من خلال ملف نسخة احتياطية.
-                </AlertDescription>
-            </Alert>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={loadingDelete}>
-                 {loadingDelete ? (
-                    <>
-                        <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                        جاري الحذف...
-                    </>
-                ) : (
-                    <>
-                        <Trash2 className="me-2 h-4 w-4" />
-                        حذف جميع البيانات نهائياً
-                    </>
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
-                <AlertDialogDescription>
-                  هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بياناتك بشكل دائم. هل تريد المتابعة؟
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAllData} className="bg-destructive hover:bg-destructive/90">
-                  نعم، أحذف كل شيء
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        <CardContent className="space-y-6">
+            <div>
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>استعادة البيانات من نسخة احتياطية</AlertTitle>
+                    <AlertDescription>
+                       سيؤدي هذا الإجراء إلى استبدال جميع البيانات الحالية في قاعدة البيانات بالبيانات الموجودة في ملف النسخة الاحتياطية الذي تحدده.
+                    </AlertDescription>
+                </Alert>
+                <div className="flex items-center gap-2 mt-4">
+                     <Input type="file" accept=".json" onChange={handleFileChange} className="max-w-xs" />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="secondary" disabled={!selectedFile || loadingRestore}>
+                             {loadingRestore ? (
+                                <>
+                                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                                    جاري الاستعادة...
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="me-2 h-4 w-4" />
+                                    استعادة البيانات
+                                </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              هذا الإجراء سيقوم بحذف جميع البيانات الحالية واستبدالها بالبيانات من الملف الذي اخترته. لا يمكن التراجع عن هذا الإجراء.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleRestoreData}>
+                              نعم، قم بالاستعادة
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                </div>
+            </div>
+
+            <div>
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>حذف جميع البيانات</AlertTitle>
+                    <AlertDescription>
+                        سيؤدي هذا الإجراء إلى حذف جميع البيانات في قاعدة البيانات بشكل نهائي، بما في ذلك الألعاب والموظفين والجلسات والسجلات المالية. لا يمكن استعادة البيانات بعد حذفها إلا من خلال ملف نسخة احتياطية.
+                    </AlertDescription>
+                </Alert>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={loadingDelete} className="mt-4">
+                     {loadingDelete ? (
+                        <>
+                            <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                            جاري الحذف...
+                        </>
+                    ) : (
+                        <>
+                            <Trash2 className="me-2 h-4 w-4" />
+                            حذف جميع البيانات نهائياً
+                        </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بياناتك بشكل دائم. هل تريد المتابعة؟
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteAllData} className="bg-destructive hover:bg-destructive/90">
+                      نعم، أحذف كل شيء
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
         </CardContent>
       </Card>
     </div>
