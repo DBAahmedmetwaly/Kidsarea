@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useSession } from '@/context/SessionContext';
-import { games as gameData } from '@/lib/data';
+import { useFirebase } from '@/context/FirebaseContext';
 import { useMemo } from 'react';
 
 const employeeIncomeData = [
@@ -74,12 +74,13 @@ const branchRevenueChartConfig = {
 
 function ReportsContent() {
     const { completedSessions } = useSession();
+    const { games } = useFirebase();
 
     const gameProfitData = useMemo(() => {
         const profitByGame: { [key: string]: number } = {};
 
         // Initialize with all games having 0 profit
-        gameData.forEach(game => {
+        games.forEach(game => {
             profitByGame[game.name] = 0;
         });
 
@@ -93,7 +94,7 @@ function ReportsContent() {
             name,
             profit,
         }));
-    }, [completedSessions]);
+    }, [completedSessions, games]);
 
 
   return (

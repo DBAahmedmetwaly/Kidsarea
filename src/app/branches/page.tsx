@@ -1,3 +1,5 @@
+
+'use client';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -26,35 +28,11 @@ import {
 } from '@/components/ui/table';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-
-const branches = [
-  {
-    name: 'فرع الرياض بارك',
-    manager: 'أحمد الصالح',
-    employees: 25,
-    status: 'Active',
-  },
-  {
-    name: 'فرع جدة مول',
-    manager: 'فاطمة الغامدي',
-    employees: 32,
-    status: 'Active',
-  },
-  {
-    name: 'فرع الدمام سيتي سنتر',
-    manager: 'خالد المطيري',
-    employees: 18,
-    status: 'Inactive',
-  },
-  {
-    name: 'فرع مكة هيلتون',
-    manager: 'سارة عبد الله',
-    employees: 45,
-    status: 'Active',
-  },
-];
+import { useFirebase } from '@/context/FirebaseContext';
 
 function BranchesContent() {
+  const { branches } = useFirebase();
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
@@ -94,7 +72,7 @@ function BranchesContent() {
             </TableHeader>
             <TableBody>
               {branches.map((branch) => (
-                <TableRow key={branch.name}>
+                <TableRow key={branch.id}>
                   <TableCell className="font-medium">{branch.name}</TableCell>
                   <TableCell>
                     <Badge variant={branch.status === 'Active' ? 'default' : 'secondary'} className={branch.status === 'Active' ? 'bg-green-500 text-white' : ''}>

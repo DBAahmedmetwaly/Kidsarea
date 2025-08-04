@@ -21,7 +21,7 @@ import {
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useSession } from '@/context/SessionContext';
-import { games } from '@/lib/data';
+import { useFirebase } from '@/context/FirebaseContext';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
@@ -37,6 +37,7 @@ function GameDetailsContent() {
   const params = useParams();
   const gameName = decodeURIComponent(params.gameName as string);
   const { completedSessions } = useSession();
+  const { games } = useFirebase();
 
   const game = games.find((g) => g.name === gameName);
   const gameSessions = completedSessions.filter(

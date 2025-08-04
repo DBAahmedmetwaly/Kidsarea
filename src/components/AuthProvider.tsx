@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -33,18 +34,21 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const checkAuth = () => {
-      const authStatus = localStorage.getItem('isAuthenticated') === 'true';
-      setIsAuthenticated(authStatus);
-      setLoading(false);
+    // This effect should run only on the client
+    if (typeof window !== 'undefined') {
+        const checkAuth = () => {
+        const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+        setIsAuthenticated(authStatus);
+        setLoading(false);
 
-      if (!authStatus && pathname !== '/login') {
-        router.push('/login');
-      } else if (authStatus && pathname === '/login') {
-        router.push('/');
-      }
-    };
-    checkAuth();
+        if (!authStatus && pathname !== '/login') {
+            router.push('/login');
+        } else if (authStatus && pathname === '/login') {
+            router.push('/');
+        }
+        };
+        checkAuth();
+    }
   }, [pathname, router]);
 
   const login = () => {
@@ -67,10 +71,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   if (!isAuthenticated && pathname !== '/login') {
-    return null; // Don't render anything while redirecting
+    // While loading, or if not authenticated on a protected route, show a loader or nothing.
+    // This prevents flashing the page content before redirecting.
+    return (
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      );
   }
 
-
+  // Render children only if authenticated or on the login page.
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
       {children}

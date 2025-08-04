@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { ref, push, set, onValue, remove } from 'firebase/database';
+import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -25,7 +27,6 @@ import type { RevenueDiscrepancyOutput } from '@/ai/flows/revenue-discrepancy-de
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
-import { employees } from '@/lib/data';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
@@ -34,6 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useFirebase } from '@/context/FirebaseContext';
+import type { ShiftRecord, OpenShift } from '@/lib/types';
 
 const closeShiftSchema = z.object({
   cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
@@ -51,28 +54,12 @@ const openShiftSchema = z.object({
 
 type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
 
-
-interface ShiftRecord extends Omit<CloseShiftFormValues, 'cashierUsername'> {
-  id: number;
-  cashierName: string;
-  date: string;
-  difference: number;
-  analysis: RevenueDiscrepancyOutput | null;
-}
-
-interface OpenShift {
-    cashierUsername: string;
-    cashierName: string;
-    branchName: string;
-    startTime: string;
-}
-
-const cashiers = employees.filter(emp => emp.role === 'كاشير');
-
-function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShiftClose: (record: ShiftRecord) => void, openShifts: OpenShift[], setOpenShifts: React.Dispatch<React.SetStateAction<OpenShift[]>> }) {
+function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>) => void, openShifts: OpenShift[], setOpenShifts: React.Dispatch<React.SetStateAction<OpenShift[]>> }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { employees } = useFirebase();
+  const cashiers = employees.filter(emp => emp.role === 'كاشير');
 
   const form = useForm<CloseShiftFormValues>({
     resolver: zodResolver(closeShiftSchema),
@@ -96,7 +83,7 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
     } else {
         form.setValue('branchName', '');
     }
-  }, [selectedCashierUsername, form]);
+  }, [selectedCashierUsername, form, cashiers]);
 
 
   async function onSubmit(values: CloseShiftFormValues) {
@@ -114,19 +101,19 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
     const response = await checkDiscrepancy({ ...values, expectedRevenue: values.expectedRevenue, actualRevenue: values.actualRevenue, shiftDetails, branchName: values.branchName });
     
     if (response.success && response.data) {
-        const newRecord: ShiftRecord = {
-            branchName: values.branchName,
-            expectedRevenue: values.expectedRevenue,
-            actualRevenue: values.actualRevenue,
-            notes: values.notes,
-            id: Date.now(),
+        const newRecord: Omit<ShiftRecord, 'id'> = {
+            ...values,
             cashierName: cashier.name,
             date: new Date().toLocaleString('ar-EG'),
             difference: values.actualRevenue - values.expectedRevenue,
             analysis: response.data,
         };
         onShiftClose(newRecord);
-        setOpenShifts(shifts => shifts.filter(s => s.cashierUsername !== values.cashierUsername));
+
+        const openShiftToDelete = openShifts.find(s => s.cashierUsername === values.cashierUsername);
+        if (openShiftToDelete) {
+          await remove(ref(db, `openShifts/${openShiftToDelete.id}`));
+        }
 
         toast({
             title: 'تم إغلاق الوردية بنجاح',
@@ -164,7 +151,7 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
                                 </FormControl>
                                 <SelectContent>
                                 {openShifts.map(shift => (
-                                    <SelectItem key={shift.cashierUsername} value={shift.cashierUsername}>
+                                    <SelectItem key={shift.id} value={shift.cashierUsername}>
                                         {shift.cashierName}
                                     </SelectItem>
                                 ))}
@@ -261,8 +248,11 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
   );
 }
 
-function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: OpenShift) => void, openShifts: OpenShift[]}) {
+function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: Omit<OpenShift, 'id'>) => void, openShifts: OpenShift[]}) {
     const { toast } = useToast();
+    const { employees } = useFirebase();
+    const cashiers = employees.filter(e => e.role === 'كاشير');
+
     const form = useForm<OpenShiftFormValues>({
         resolver: zodResolver(openShiftSchema),
         defaultValues: {
@@ -274,10 +264,10 @@ function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: OpenS
 
     function onSubmit(values: OpenShiftFormValues) {
         const cashier = cashiers.find(c => c.username === values.cashierUsername);
-        if (!cashier) return;
+        if (!cashier || !cashier.username) return;
 
-        const newShift: OpenShift = {
-            cashierUsername: cashier.username!,
+        const newShift: Omit<OpenShift, 'id'> = {
+            cashierUsername: cashier.username,
             cashierName: cashier.name,
             branchName: cashier.branch,
             startTime: new Date().toLocaleString('ar-EG'),
@@ -310,11 +300,11 @@ function OpenShiftForm({ onShiftOpen, openShifts }: { onShiftOpen: (shift: OpenS
                                     <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="اختر كاشير لبدء ورديته..." />
-                                    </SelectTrigger>
+                                    </Trigger>
                                     </FormControl>
                                     <SelectContent>
                                     {availableCashiers.map(cashier => (
-                                        <SelectItem key={cashier.username} value={cashier.username!}>
+                                        <SelectItem key={cashier.id} value={cashier.username!}>
                                             {cashier.name}
                                         </SelectItem>
                                     ))}
@@ -351,7 +341,7 @@ function ActiveShiftsTable({ records }: { records: OpenShift[] }) {
                 </TableHeader>
                 <TableBody>
                     {records.map((record) => (
-                        <TableRow key={record.cashierUsername}>
+                        <TableRow key={record.id}>
                             <TableCell>{record.cashierName}</TableCell>
                             <TableCell>{record.branchName}</TableCell>
                             <TableCell>{record.startTime}</TableCell>
@@ -426,14 +416,58 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
 function ShiftManagementContent() {
     const [shiftRecords, setShiftRecords] = useState<ShiftRecord[]>([]);
     const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
+    const { toast } = useToast();
 
+    useEffect(() => {
+        const recordsRef = ref(db, 'shiftRecords');
+        const openShiftsRef = ref(db, 'openShifts');
 
-    const handleNewShiftRecord = (record: ShiftRecord) => {
-        setShiftRecords([record, ...shiftRecords]);
+        const unsubRecords = onValue(recordsRef, (snapshot) => {
+            const data = snapshot.val();
+            const recordsArray: ShiftRecord[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as any) })).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
+            setShiftRecords(recordsArray);
+        });
+
+        const unsubOpenShifts = onValue(openShiftsRef, (snapshot) => {
+            const data = snapshot.val();
+            const shiftsArray: OpenShift[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as any) })) : [];
+            setOpenShifts(shiftsArray);
+        });
+
+        return () => {
+            unsubRecords();
+            unsubOpenShifts();
+        }
+    }, [])
+
+    const handleNewShiftRecord = async (record: Omit<ShiftRecord, 'id'>) => {
+       try {
+            const recordsRef = ref(db, 'shiftRecords');
+            const newRecordRef = push(recordsRef);
+            await set(newRecordRef, record);
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: "خطأ",
+                description: "لم يتم حفظ سجل الوردية",
+                variant: 'destructive'
+            })
+        }
     }
 
-    const handleNewOpenShift = (shift: OpenShift) => {
-        setOpenShifts([shift, ...openShifts]);
+    const handleNewOpenShift = async (shift: Omit<OpenShift, 'id'>) => {
+        try {
+            const openShiftsRef = ref(db, 'openShifts');
+            const newShiftRef = push(openShiftsRef);
+            await set(newShiftRef, shift);
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: "خطأ",
+                description: "لم يتم فتح الوردية",
+                variant: 'destructive'
+            })
+        }
     }
 
   return (

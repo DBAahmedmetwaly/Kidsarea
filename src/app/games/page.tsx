@@ -49,18 +49,19 @@ import {
 } from '@/components/ui/select';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { games as initialGames } from '@/lib/data';
+import type { Game } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase } from '@/context/FirebaseContext';
+import { ref, push, set, remove } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
-type Game = typeof initialGames[0] & { fractional_rate?: number };
-
-function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpenChange: (open: boolean) => void; onAddGame: (game: Game) => void; }) {
+function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpenChange: (open: boolean) => void; onAddGame: (game: Omit<Game, 'id'>) => void; }) {
     const { toast } = useToast();
     const [name, setName] = useState('');
     const [hourlyRate, setHourlyRate] = useState('');
     const [fractionalRate, setFractionalRate] = useState('');
     const [branch, setBranch] = useState('');
-    const [status, setStatus] = useState('Available');
+    const [status, setStatus] = useState<'Available' | 'Maintenance'>('Available');
 
     const handleAddGameClick = () => {
         if (!name || !hourlyRate || !fractionalRate || !branch || !status) {
@@ -72,12 +73,12 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
             return;
         }
 
-        const newGame: Game = {
+        const newGame: Omit<Game, 'id'> = {
             name,
             hourly_rate: parseFloat(hourlyRate),
             fractional_rate: parseFloat(fractionalRate),
             branch,
-            status: status as 'Available' | 'Maintenance',
+            status,
             image: 'https://placehold.co/64x64.png',
         };
         onAddGame(newGame);
@@ -132,7 +133,7 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
                         <Label htmlFor="status" className="text-right">
                             الحالة
                         </Label>
-                         <Select value={status} onValueChange={setStatus}>
+                         <Select value={status} onValueChange={(value) => setStatus(value as any)}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="اختر الحالة" />
                             </SelectTrigger>
@@ -157,12 +158,41 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
 }
 
 function GamesContent() {
-    const [games, setGames] = useState<Game[]>(initialGames);
+    const { games } = useFirebase();
+    const { toast } = useToast();
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
 
-    const handleAddGame = (newGame: Game) => {
-        setGames(prevGames => [...prevGames, newGame]);
+    const handleAddGame = async (newGame: Omit<Game, 'id'>) => {
+        try {
+            const gamesRef = ref(db, 'games');
+            const newGameRef = push(gamesRef);
+            await set(newGameRef, newGame);
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: "خطأ",
+                description: "لم يتم إضافة اللعبة",
+                variant: 'destructive'
+            })
+        }
     };
+    
+    const handleDeleteGame = async (gameId: string) => {
+        try {
+            await remove(ref(db, `games/${gameId}`));
+            toast({
+                title: "نجاح",
+                description: "تم حذف اللعبة بنجاح",
+            })
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: "خطأ",
+                description: "لم يتم حذف اللعبة",
+                variant: 'destructive'
+            })
+        }
+    }
 
   return (
     <div className="flex flex-col gap-4">
@@ -209,7 +239,7 @@ function GamesContent() {
             </TableHeader>
             <TableBody>
               {games.map((game) => (
-                <TableRow key={game.name}>
+                <TableRow key={game.id}>
                   <TableCell className="hidden sm:table-cell">
                      <Image
                       alt="صورة اللعبة"
@@ -254,7 +284,7 @@ function GamesContent() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                         <DropdownMenuItem>تعديل</DropdownMenuItem>
-                        <DropdownMenuItem>حذف</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeleteGame(game.id)}>حذف</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

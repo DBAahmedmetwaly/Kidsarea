@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import AuthProvider from '@/components/AuthProvider';
 import { SessionProvider } from '@/context/SessionContext';
+import { FirebaseProvider } from '@/context/FirebaseContext';
 
 export const metadata: Metadata = {
   title: 'FunTrack Manager',
@@ -32,9 +33,11 @@ export default function RootLayout({
         )}
       >
         <AuthProvider>
-          <SessionProvider>
-            {children}
-          </SessionProvider>
+          <FirebaseProvider>
+            <SessionProvider>
+              {children}
+            </SessionProvider>
+          </FirebaseProvider>
         </AuthProvider>
         <Toaster />
       </body>

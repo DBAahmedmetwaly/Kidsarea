@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Gamepad2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/AuthProvider';
-import { employees } from '@/lib/data';
+import { useFirebase } from '@/context/FirebaseContext';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -26,33 +26,31 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { login } = useAuth();
+  const { employees, loading: firebaseLoading } = useFirebase();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-        const user = employees.find(
-            (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع') && emp.username === username && emp.password === password
-        );
+    const user = employees.find(
+        (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع') && emp.username === username && emp.password === password
+    );
 
-        if (user || (username === 'admin' && password === '123456')) {
-            login();
-            toast({
-            title: 'تم تسجيل الدخول بنجاح',
-            description: 'مرحباً بعودتك!',
-            });
-            router.push('/');
-        } else {
-            toast({
-            title: 'فشل تسجيل الدخول',
-            description: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
-            variant: 'destructive',
-            });
-        }
-        setLoading(false);
-    }, 1000);
+    if (user || (username === 'admin' && password === '123456')) {
+        login();
+        toast({
+        title: 'تم تسجيل الدخول بنجاح',
+        description: 'مرحباً بعودتك!',
+        });
+        router.push('/');
+    } else {
+        toast({
+        title: 'فشل تسجيل الدخول',
+        description: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
+        variant: 'destructive',
+        });
+    }
+    setLoading(false);
   };
 
   return (
@@ -93,8 +91,8 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="w-full" disabled={loading || firebaseLoading}>
+              {loading || firebaseLoading ? (
                 <>
                   <Loader2 className="me-2 h-4 w-4 animate-spin" />
                   جاري تسجيل الدخول...

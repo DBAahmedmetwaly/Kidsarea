@@ -3,6 +3,8 @@
 
 import { useState } from 'react';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { ref, push, set, remove } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,23 +42,22 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { employees as initialEmployees } from '@/lib/data';
+import type { Employee } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase } from '@/context/FirebaseContext';
 
-type Employee = typeof initialEmployees[0];
-
-function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolean; onOpenChange: (open: boolean) => void; onAddEmployee: (employee: Employee) => void; }) {
+function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolean; onOpenChange: (open: boolean) => void; onAddEmployee: (employee: Omit<Employee, 'id'>) => void; }) {
     const { toast } = useToast();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [role, setRole] = useState('');
+    const [role, setRole] = useState<'مشرف' | 'كاشير' | 'مدير فرع' | ''>('');
     const [branch, setBranch] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [status, setStatus] = useState('Active');
+    const [status, setStatus] = useState<'Active' | 'On Leave'>('Active');
     
     const handleAddEmployee = () => {
         if (!name || !email || !role || !branch) {
@@ -79,15 +80,15 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
             return;
         }
 
-        const newEmployee: Employee = {
+        const newEmployee: Omit<Employee, 'id'> = {
             name,
             email,
             role,
             branch,
-            status: status as 'Active' | 'On Leave',
+            status,
             avatarUrl: 'https://placehold.co/40x40.png',
-            username: requiresCredentials ? username : undefined,
-            password: requiresCredentials ? password : undefined,
+            username: requiresCredentials ? username : '',
+            password: requiresCredentials ? password : '',
         };
         onAddEmployee(newEmployee);
         toast({
@@ -125,7 +126,7 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="role" className="text-right">الدور</Label>
-                        <Select value={role} onValueChange={setRole}>
+                        <Select value={role} onValueChange={(value) => setRole(value as any)}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="اختر الدور" />
                             </SelectTrigger>
@@ -154,7 +155,7 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="status" className="text-right">الحالة</Label>
-                         <Select value={status} onValueChange={setStatus}>
+                         <Select value={status} onValueChange={(value) => setStatus(value as any)}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="اختر الحالة" />
                             </SelectTrigger>
@@ -178,12 +179,41 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
 
 
 function EmployeesContent() {
-    const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+    const { employees } = useFirebase();
+    const { toast } = useToast();
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
 
-    const handleAddEmployee = (newEmployee: Employee) => {
-        setEmployees(prev => [...prev, newEmployee]);
+    const handleAddEmployee = async (newEmployee: Omit<Employee, 'id'>) => {
+        try {
+            const employeesRef = ref(db, 'employees');
+            const newEmployeeRef = push(employeesRef);
+            await set(newEmployeeRef, newEmployee);
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: "خطأ",
+                description: "لم يتم إضافة الموظف",
+                variant: 'destructive'
+            })
+        }
     };
+    
+    const handleDeleteEmployee = async (employeeId: string) => {
+        try {
+            await remove(ref(db, `employees/${employeeId}`));
+            toast({
+                title: "نجاح",
+                description: "تم حذف الموظف بنجاح",
+            })
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: "خطأ",
+                description: "لم يتم حذف الموظف",
+                variant: 'destructive'
+            })
+        }
+    }
 
   return (
     <div className="flex flex-col gap-4">
@@ -224,7 +254,7 @@ function EmployeesContent() {
             </TableHeader>
             <TableBody>
               {employees.map((employee) => (
-                <TableRow key={employee.email}>
+                <TableRow key={employee.id}>
                   <TableCell className="hidden sm:table-cell">
                     <Avatar>
                         <AvatarImage src={employee.avatarUrl} alt={employee.name} data-ai-hint="person portrait" />
@@ -263,7 +293,7 @@ function EmployeesContent() {
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                         <DropdownMenuItem>تعديل</DropdownMenuItem>
                         <DropdownMenuItem>عرض الملف الشخصي</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
+                        <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteEmployee(employee.id)}>
                           حذف
                         </DropdownMenuItem>
                       </DropdownMenuContent>

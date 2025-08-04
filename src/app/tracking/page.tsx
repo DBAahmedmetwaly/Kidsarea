@@ -41,8 +41,10 @@ import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import type { Child, CompletedSession } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
-import { games } from '@/lib/data';
+import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
+import { ref, set, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -97,10 +99,33 @@ function TrackingContent() {
     cost: '',
   });
   const { toast } = useToast();
+  const { games } = useFirebase();
 
   const totalVisitors = activeChildren.length + completedSessions.length;
 
-  const handleCheckIn = (e: React.FormEvent) => {
+  // Sync with Firebase
+  useEffect(() => {
+      const activeRef = ref(db, 'sessions/active');
+      const completedRef = ref(db, 'sessions/completed');
+
+      const unsubscribeActive = onValue(activeRef, (snapshot) => {
+          const data = snapshot.val();
+          setActiveChildren(data ? Object.values(data) : []);
+      });
+
+      const unsubscribeCompleted = onValue(completedRef, (snapshot) => {
+          const data = snapshot.val();
+          setCompletedSessions(data ? Object.values(data) : []);
+      });
+
+      return () => {
+          unsubscribeActive();
+          unsubscribeCompleted();
+      }
+  }, [setActiveChildren, setCompletedSessions]);
+
+
+  const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newChildName || !newChildAge || !selectedGame || !newChildParentName || !newChildPhoneNumber) {
       toast({
@@ -111,8 +136,9 @@ function TrackingContent() {
       return;
     }
 
+    const childId = Date.now();
     const newChild: Child = {
-      id: Date.now(),
+      id: childId,
       name: newChildName,
       age: parseInt(newChildAge),
       parentName: newChildParentName,
@@ -121,19 +147,24 @@ function TrackingContent() {
       checkInTime: Date.now(),
     };
 
-    setActiveChildren([...activeChildren, newChild]);
-    setNewChildName('');
-    setNewChildAge('');
-    setNewChildParentName('');
-    setNewChildPhoneNumber('');
-    setSelectedGame('');
-    toast({
-      title: 'تم تسجيل الدخول بنجاح',
-      description: `تم تسجيل دخول الطفل ${newChild.name}.`,
-    });
+    try {
+        await set(ref(db, `sessions/active/${childId}`), newChild);
+        setNewChildName('');
+        setNewChildAge('');
+        setNewChildParentName('');
+        setNewChildPhoneNumber('');
+        setSelectedGame('');
+        toast({
+        title: 'تم تسجيل الدخول بنجاح',
+        description: `تم تسجيل دخول الطفل ${newChild.name}.`,
+        });
+    } catch(err) {
+        console.error(err);
+        toast({ title: 'خطأ في تسجيل الدخول', variant: 'destructive'})
+    }
   };
 
-  const handleCheckOut = (child: Child) => {
+  const handleCheckOut = async (child: Child) => {
     const checkOutTime = Date.now();
     const durationMs = checkOutTime - child.checkInTime;
     const durationHours = durationMs / (1000 * 60 * 60);
@@ -148,16 +179,22 @@ function TrackingContent() {
         cost,
     };
     
-    setCompletedSessions([completedSession, ...completedSessions]);
-    setActiveChildren(activeChildren.filter((c) => c.id !== child.id));
+    try {
+        await set(ref(db, `sessions/completed/${child.id}`), completedSession);
+        await set(ref(db, `sessions/active/${child.id}`), null); // Remove from active
+        
+        setReceiptDetails({
+            name: child.name,
+            duration: formatDuration(durationMs),
+            cost: `ج.م ${cost.toFixed(2)}`,
+        });
 
-    setReceiptDetails({
-      name: child.name,
-      duration: formatDuration(durationMs),
-      cost: `ج.م ${cost.toFixed(2)}`,
-    });
+        setShowReceipt(true);
+    } catch(err) {
+        console.error(err);
+        toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
+    }
 
-    setShowReceipt(true);
   };
   
   return (
@@ -233,7 +270,7 @@ function TrackingContent() {
                     </SelectTrigger>
                     <SelectContent>
                         {games.map((game) => (
-                        <SelectItem key={game.name} value={game.name}>
+                        <SelectItem key={game.id} value={game.name}>
                             {game.name}
                         </SelectItem>
                         ))}
