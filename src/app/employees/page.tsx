@@ -68,10 +68,12 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
             return;
         }
 
-        if (role === 'كاشير' && (!username || !password)) {
+        const requiresCredentials = role === 'كاشير' || role === 'مدير فرع';
+
+        if (requiresCredentials && (!username || !password)) {
             toast({
                 title: "خطأ في الإدخال",
-                description: "يجب إدخال اسم المستخدم وكلمة المرور للكاشير.",
+                description: "يجب إدخال اسم المستخدم وكلمة المرور لهذا الدور.",
                 variant: "destructive",
             });
             return;
@@ -84,8 +86,8 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
             branch,
             status: status as 'Active' | 'On Leave',
             avatarUrl: 'https://placehold.co/40x40.png',
-            username: role === 'كاشير' ? username : undefined,
-            password: role === 'كاشير' ? password : undefined,
+            username: requiresCredentials ? username : undefined,
+            password: requiresCredentials ? password : undefined,
         };
         onAddEmployee(newEmployee);
         toast({
@@ -134,7 +136,7 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
                             </SelectContent>
                         </Select>
                     </div>
-                     {role === 'كاشير' && (
+                     {(role === 'كاشير' || role === 'مدير فرع') && (
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="username" className="text-right">اسم المستخدم</Label>

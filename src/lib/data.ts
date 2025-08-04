@@ -70,5 +70,7 @@ export const employees = [
     branch: 'فرع الدمام سيتي سنتر',
     status: 'Active',
     avatarUrl: 'https://placehold.co/40x40.png',
+    username: 'nouram',
+    password: 'password3'
   },
 ];

@@ -33,11 +33,11 @@ export default function LoginPage() {
 
     // Simulate API call
     setTimeout(() => {
-        const cashier = employees.find(
-            (emp) => emp.role === 'كاشير' && emp.username === username && emp.password === password
+        const user = employees.find(
+            (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع') && emp.username === username && emp.password === password
         );
 
-        if (cashier || (username === 'admin' && password === '123456')) {
+        if (user || (username === 'admin' && password === '123456')) {
             login();
             toast({
             title: 'تم تسجيل الدخول بنجاح',
@@ -74,7 +74,7 @@ export default function LoginPage() {
               <Input
                 id="username"
                 type="text"
-                placeholder="admin or cashier username"
+                placeholder="admin or employee username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
