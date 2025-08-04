@@ -36,12 +36,13 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, Printer } from 'lucide-react';
+import { PlayCircle, Square, Printer, Users, Activity } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import type { Child, CompletedSession } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { games } from '@/lib/data';
+import { StatCard } from '@/components/StatCard';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -96,6 +97,8 @@ function TrackingContent() {
     cost: '',
   });
   const { toast } = useToast();
+
+  const totalVisitors = activeChildren.length + completedSessions.length;
 
   const handleCheckIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +162,20 @@ function TrackingContent() {
   
   return (
     <div className="flex flex-col gap-8">
+       <div className="grid gap-4 md:grid-cols-2">
+        <StatCard
+          title="الأطفال النشطون حاليًا"
+          value={activeChildren.length.toString()}
+          icon={Activity}
+          description="عدد الأطفال الموجودين في منطقة اللعب الآن."
+        />
+        <StatCard
+          title="إجمالي زوار اليوم"
+          value={totalVisitors.toString()}
+          icon={Users}
+          description="مجموع الأطفال الذين دخلوا اليوم."
+        />
+      </div>
       <div className="grid gap-8 md:grid-cols-3">
         <div className="md:col-span-1">
             <Card>
