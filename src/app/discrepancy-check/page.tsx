@@ -5,8 +5,8 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 
 function DiscrepancyCheckContent() {
   return (
-    <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">فحص تباين الإيرادات بالذكاء الاصطناعي</h1>
+    <div className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold">فحص تباين الإيرادات بالذكاء الاصطناعي</h1>
         <Card>
             <CardHeader>
                 <CardTitle>أداة تحليل التباين</CardTitle>
@@ -15,7 +15,9 @@ function DiscrepancyCheckContent() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <DiscrepancyChecker />
+                <div className="max-w-2xl">
+                  <DiscrepancyChecker />
+                </div>
             </CardContent>
         </Card>
     </div>
