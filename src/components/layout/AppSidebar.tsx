@@ -50,12 +50,12 @@ export default function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" side="right" className="border-l">
+    <Sidebar side="right" collapsible="icon">
       <SidebarHeader className="justify-between">
         <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
             <Gamepad2 className="h-6 w-6 text-accent" />
             <span className={cn(
-                "duration-200",
+                "duration-200 text-sidebar-foreground",
                 "group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8"
             )}>
               FunTrack
@@ -72,7 +72,7 @@ export default function AppSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={isActive(item.href)}
-                tooltip={{ children: item.label }}
+                tooltip={{ children: item.label, side: 'left' }}
               >
                 <Link href={item.href}>
                   <item.icon />
@@ -86,7 +86,7 @@ export default function AppSidebar() {
       <SidebarFooter className="p-2">
           <SidebarMenu>
               <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip={{children: 'الدعم'}}>
+                  <SidebarMenuButton asChild tooltip={{children: 'الدعم', side: 'left'}}>
                       <Link href="#">
                         <LifeBuoy />
                         <span>الدعم</span>
@@ -94,7 +94,7 @@ export default function AppSidebar() {
                   </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip={{children: 'الإعدادات'}}>
+                  <SidebarMenuButton asChild tooltip={{children: 'الإعدادات', side: 'left'}}>
                       <Link href="#">
                         <Settings />
                         <span>الإعدادات</span>
@@ -102,7 +102,7 @@ export default function AppSidebar() {
                   </SidebarMenuButton>
               </SidebarMenuItem>
                <SidebarMenuItem>
-                  <SidebarMenuButton onClick={logout} tooltip={{children: 'تسجيل الخروج'}}>
+                  <SidebarMenuButton onClick={logout} tooltip={{children: 'تسجيل الخروج', side: 'left'}}>
                         <LogOut />
                         <span>تسجيل الخروج</span>
                   </SidebarMenuButton>
