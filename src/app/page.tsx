@@ -1,5 +1,7 @@
+
 'use client';
 
+import { useState } from 'react';
 import type { ChartConfig } from '@/components/ui/chart';
 import {
   ChartContainer,
@@ -8,10 +10,24 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, Users, Activity, Wallet } from 'lucide-react';
+import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+import { cn } from '@/lib/utils';
+
 
 const revenueData = [
   { day: 'الاثنين', revenue: 1250 },
@@ -48,8 +64,66 @@ const visitorsChartConfig = {
 } satisfies ChartConfig;
 
 function DashboardContent() {
+    const [date, setDate] = useState<DateRange | undefined>({
+        from: new Date(2024, 0, 20),
+        to: new Date(2024, 0, 20),
+    });
+
     return (
         <div className="flex flex-col gap-8">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                <h1 className="text-lg font-semibold md:text-2xl">لوحة التحكم</h1>
+                <div className="ms-auto flex items-center gap-2 w-full sm:w-auto">
+                    <Select defaultValue="all">
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="اختر الفرع" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">كل الفروع</SelectItem>
+                            <SelectItem value="riyadh">فرع الرياض بارك</SelectItem>
+                            <SelectItem value="jeddah">فرع جدة مول</SelectItem>
+                            <SelectItem value="dammam">فرع الدمام سيتي سنتر</SelectItem>
+                            <SelectItem value="makkah">فرع مكة هيلتون</SelectItem>
+                        </SelectContent>
+                    </Select>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            id="date"
+                            variant={"outline"}
+                            className={cn(
+                                "w-full sm:w-[300px] justify-start text-left font-normal",
+                                !date && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="me-2 h-4 w-4" />
+                            {date?.from ? (
+                            date.to ? (
+                                <>
+                                {format(date.from, "LLL dd, y")} -{" "}
+                                {format(date.to, "LLL dd, y")}
+                                </>
+                            ) : (
+                                format(date.from, "LLL dd, y")
+                            )
+                            ) : (
+                            <span>اختر فترة</span>
+                            )}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={date?.from}
+                            selected={date}
+                            onSelect={setDate}
+                            numberOfMonths={2}
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
                 title="إجمالي الإيرادات"
