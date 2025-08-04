@@ -56,6 +56,7 @@ export interface ShiftRecord {
   date: string;
   difference: number;
   analysis: any; // Consider creating a specific type for analysis output
+  safeId?: string;
 }
 
 export interface OpenShift {
@@ -64,4 +65,11 @@ export interface OpenShift {
     cashierName: string;
     branchName: string;
     startTime: string;
+}
+
+export interface Safe {
+    id: string;
+    name: string;
+    branchName: string;
+    balance: number;
 }

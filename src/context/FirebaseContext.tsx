@@ -12,13 +12,14 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch } from '@/lib/types';
+import type { Game, Employee, Branch, Safe } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
 interface FirebaseContextType {
   games: Game[];
   employees: Employee[];
   branches: Branch[];
+  safes: Safe[];
   loading: boolean;
   error: Error | null;
 }
@@ -37,6 +38,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [games, setGames] = useState<Game[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [safes, setSafes] = useState<Safe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -44,6 +46,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     const gamesRef = ref(db, 'games');
     const employeesRef = ref(db, 'employees');
     const branchesRef = ref(db, 'branches');
+    const safesRef = ref(db, 'safes');
 
     const unsubscribes = [
       onValue(gamesRef, (snapshot) => {
@@ -69,6 +72,14 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       }, (err) => {
         console.error("Firebase branches error:", err);
         setError(err as Error);
+      }),
+       onValue(safesRef, (snapshot) => {
+        const data = snapshot.val();
+        const safesArray: Safe[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as Omit<Safe, 'id'>) })) : [];
+        setSafes(safesArray);
+      }, (err) => {
+        console.error("Firebase safes error:", err);
+        setError(err as Error);
       })
     ];
     
@@ -86,7 +97,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, loading, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, loading, error }}>
       {children}
     </FirebaseContext.Provider>
   );

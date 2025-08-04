@@ -23,6 +23,7 @@ import {
   BarChart3,
   LogOut,
   Briefcase,
+  Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -35,6 +36,7 @@ const menuItems = [
   { href: '/branches', label: 'الفروع', icon: Building2 },
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
+  { href: '/safes', label: 'الخزائن', icon: Landmark },
 ];
 
 export default function AppSidebar() {

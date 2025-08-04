@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ref, push, set, onValue, remove } from 'firebase/database';
+import { ref, push, set, onValue, remove, get, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,11 +36,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFirebase } from '@/context/FirebaseContext';
-import type { ShiftRecord, OpenShift } from '@/lib/types';
+import type { ShiftRecord, OpenShift, Safe } from '@/lib/types';
 
 const closeShiftSchema = z.object({
   cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
   branchName: z.string().min(1, 'اسم الفرع مطلوب'),
+  safeId: z.string().min(1, 'يجب اختيار الخزينة'),
   expectedRevenue: z.coerce.number().min(0, 'يجب أن يكون مبلغًا موجبًا'),
   actualRevenue: z.coerce.number().min(0, 'يجب أن يكون مبلغًا موجبًا'),
   notes: z.string().optional(),
@@ -54,18 +55,31 @@ const openShiftSchema = z.object({
 
 type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
 
-function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>) => void, openShifts: OpenShift[], setOpenShifts: React.Dispatch<React.SetStateAction<OpenShift[]>> }) {
+function ShiftClosingForm({ onShiftClose, openShifts }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>) => void, openShifts: OpenShift[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { employees } = useFirebase();
+  const [safes, setSafes] = useState<Safe[]>([]);
   const cashiers = employees.filter(emp => emp.role === 'كاشير');
+
+  useEffect(() => {
+    const safesRef = ref(db, 'safes');
+    const unsubscribe = onValue(safesRef, (snapshot) => {
+        const data = snapshot.val();
+        const safesArray: Safe[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as Omit<Safe, 'id'>) })) : [];
+        setSafes(safesArray);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const form = useForm<CloseShiftFormValues>({
     resolver: zodResolver(closeShiftSchema),
     defaultValues: {
       cashierUsername: '',
       branchName: '',
+      safeId: '',
       expectedRevenue: undefined,
       actualRevenue: undefined,
       notes: '',
@@ -73,12 +87,16 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
   });
 
   const selectedCashierUsername = form.watch('cashierUsername');
+  const selectedBranchName = form.watch('branchName');
+
+  const filteredSafes = safes.filter(s => s.branchName === selectedBranchName);
 
   useEffect(() => {
     if (selectedCashierUsername) {
       const cashier = cashiers.find(c => c.username === selectedCashierUsername);
       if (cashier) {
         form.setValue('branchName', cashier.branch, { shouldValidate: true });
+        form.setValue('safeId', ''); // Reset safe selection when cashier changes
       }
     } else {
         form.setValue('branchName', '');
@@ -110,6 +128,15 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
         };
         onShiftClose(newRecord);
 
+        // Update safe balance
+        const safeRef = ref(db, `safes/${values.safeId}`);
+        const safeSnapshot = await get(safeRef);
+        if (safeSnapshot.exists()) {
+            const currentBalance = safeSnapshot.val().balance;
+            await update(safeRef, { balance: currentBalance + values.actualRevenue });
+        }
+
+
         const openShiftToDelete = openShifts.find(s => s.cashierUsername === values.cashierUsername);
         if (openShiftToDelete) {
           await remove(ref(db, `openShifts/${openShiftToDelete.id}`));
@@ -117,7 +144,7 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
 
         toast({
             title: 'تم إغلاق الوردية بنجاح',
-            description: 'تم تسجيل بيانات الوردية وإضافتها للسجل.',
+            description: 'تم تسجيل بيانات الوردية وإضافة المبلغ إلى الخزينة.',
         });
         form.reset();
     } else {
@@ -131,7 +158,7 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
     <Card>
         <CardHeader>
             <CardTitle>إغلاق وردية الكاشير</CardTitle>
-            <CardDescription>أدخل بيانات الوردية لإتمام عملية الإغلاق واستلام النقدية.</CardDescription>
+            <CardDescription>أدخل بيانات الوردية لإتمام عملية الإغلاق وترحيل النقدية إلى الخزينة.</CardDescription>
         </CardHeader>
         <CardContent>
             <Form {...form}>
@@ -175,6 +202,30 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
                         )}
                         />
                 </div>
+                 <FormField
+                    control={form.control}
+                    name="safeId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>اختر الخزينة للترحيل</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={!selectedBranchName}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={selectedBranchName ? "اختر خزينة..." : "اختر الكاشير أولاً"} />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {filteredSafes.map(safe => (
+                                <SelectItem key={safe.id} value={safe.id}>
+                                    {safe.name}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                     control={form.control}
@@ -229,7 +280,7 @@ function ShiftClosingForm({ onShiftClose, openShifts, setOpenShifts }: { onShift
                     ) : (
                     <>
                      <LogOut className="me-2 h-4 w-4" />
-                    إغلاق الوردية واستلام النقدية
+                    إغلاق الوردية وترحيل النقدية
                     </>
                     )}
                 </Button>
@@ -487,7 +538,7 @@ function ShiftManagementContent() {
                 <OpenShiftForm onShiftOpen={handleNewOpenShift} openShifts={openShifts}/>
             </TabsContent>
             <TabsContent value="close" className='pt-4'>
-                <ShiftClosingForm onShiftClose={handleNewShiftRecord} openShifts={openShifts} setOpenShifts={setOpenShifts} />
+                <ShiftClosingForm onShiftClose={handleNewShiftRecord} openShifts={openShifts} />
             </TabsContent>
         </Tabs>
         <ShiftHistoryTable records={shiftRecords} />
