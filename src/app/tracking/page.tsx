@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -38,28 +39,9 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-
-interface Child {
-  id: number;
-  name: string;
-  age: number;
-  parentName: string;
-  phoneNumber: string;
-  game: string;
-  checkInTime: number;
-}
-
-interface CompletedSession extends Child {
-    checkOutTime: number;
-    durationMs: number;
-    cost: number;
-}
-
-const games = [
-  { name: 'منطقة الألعاب اللينة', rate: 50 },
-  { name: 'حلبة الترامبولين', rate: 75 },
-  { name: 'جدار التسلق', rate: 60 },
-];
+import type { Child, CompletedSession } from '@/lib/types';
+import { useSession } from '@/context/SessionContext';
+import { games } from '@/lib/data';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -101,8 +83,7 @@ function formatDuration(durationMs: number) {
 }
 
 function TrackingContent() {
-  const [activeChildren, setActiveChildren] = useState<Child[]>([]);
-  const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
+  const { activeChildren, setActiveChildren, completedSessions, setCompletedSessions } = useSession();
   const [newChildName, setNewChildName] = useState('');
   const [newChildAge, setNewChildAge] = useState('');
   const [newChildParentName, setNewChildParentName] = useState('');
@@ -155,7 +136,7 @@ function TrackingContent() {
     const durationHours = durationMs / (1000 * 60 * 60);
 
     const gameDetails = games.find((g) => g.name === child.game);
-    const cost = durationHours * (gameDetails?.rate || 0);
+    const cost = durationHours * (gameDetails?.hourly_rate || 0);
 
     const completedSession: CompletedSession = {
         ...child,
@@ -394,5 +375,3 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
-
-    

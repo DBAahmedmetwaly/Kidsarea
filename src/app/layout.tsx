@@ -1,8 +1,10 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import AuthProvider from '@/components/AuthProvider';
+import { SessionProvider } from '@/context/SessionContext';
 
 export const metadata: Metadata = {
   title: 'FunTrack Manager',
@@ -30,7 +32,9 @@ export default function RootLayout({
         )}
       >
         <AuthProvider>
+          <SessionProvider>
             {children}
+          </SessionProvider>
         </AuthProvider>
         <Toaster />
       </body>

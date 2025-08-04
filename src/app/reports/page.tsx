@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ChartConfig } from '@/components/ui/chart';
@@ -10,13 +11,9 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Tooltip } 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-
-const gameProfitData = [
-  { name: 'الألعاب اللينة', profit: 4500 },
-  { name: 'الترامبولين', profit: 7800 },
-  { name: 'جدار التسلق', profit: 5600 },
-  { name: 'لعبة الليزر', profit: 9200 },
-];
+import { useSession } from '@/context/SessionContext';
+import { games as gameData } from '@/lib/data';
+import { useMemo } from 'react';
 
 const employeeIncomeData = [
     { name: 'عبدالله الأحمد', income: 3200 },
@@ -76,6 +73,29 @@ const branchRevenueChartConfig = {
 } satisfies ChartConfig;
 
 function ReportsContent() {
+    const { completedSessions } = useSession();
+
+    const gameProfitData = useMemo(() => {
+        const profitByGame: { [key: string]: number } = {};
+
+        // Initialize with all games having 0 profit
+        gameData.forEach(game => {
+            profitByGame[game.name] = 0;
+        });
+
+        completedSessions.forEach(session => {
+            if (profitByGame[session.game] !== undefined) {
+                profitByGame[session.game] += session.cost;
+            }
+        });
+        
+        return Object.entries(profitByGame).map(([name, profit]) => ({
+            name,
+            profit,
+        }));
+    }, [completedSessions]);
+
+
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-lg font-semibold md:text-2xl">التقارير</h1>
@@ -83,7 +103,7 @@ function ReportsContent() {
         <Card>
           <CardHeader>
             <CardTitle>تقرير أرباح الألعاب</CardTitle>
-            <CardDescription>عرض إجمالي الأرباح لكل لعبة خلال فترة محددة.</CardDescription>
+            <CardDescription>عرض إجمالي الأرباح لكل لعبة بناءً على الجلسات المسجلة.</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={gameProfitChartConfig} className="h-72 w-full">
@@ -100,11 +120,11 @@ function ReportsContent() {
                   tickLine={false}
                   axisLine={false}
                   tickMargin={10}
-                  tickFormatter={(value) => `ج.م${value / 1000}k`}
+                  tickFormatter={(value) => `ج.م${value.toFixed(0)}`}
                 />
                 <ChartTooltip
                   cursor={false}
-                  content={<ChartTooltipContent indicator="dot" />}
+                  content={<ChartTooltipContent indicator="dot" formatter={(value) => `ج.م ${Number(value).toFixed(2)}`} />}
                 />
                 <Bar dataKey="profit" fill="var(--color-profit)" radius={4} />
               </BarChart>

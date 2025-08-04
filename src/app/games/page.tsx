@@ -1,5 +1,9 @@
+
+'use client';
+
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,41 +30,7 @@ import {
 } from '@/components/ui/table';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-
-const games = [
-  {
-    name: 'منطقة الألعاب اللينة',
-    hourly_rate: 50,
-    fractional_rate: 15,
-    branch: 'جميع الفروع',
-    image: 'https://placehold.co/64x64.png',
-    status: 'Available',
-  },
-  {
-    name: 'حلبة الترامبولين',
-    hourly_rate: 75,
-    fractional_rate: 20,
-    branch: 'فرع الرياض بارك',
-    image: 'https://placehold.co/64x64.png',
-    status: 'Maintenance',
-  },
-  {
-    name: 'جدار التسلق',
-    hourly_rate: 60,
-    fractional_rate: 18,
-    branch: 'فرعي الرياض وجدة',
-    image: 'https://placehold.co/64x64.png',
-    status: 'Available',
-  },
-  {
-    name: 'لعبة الليزر',
-    hourly_rate: 100,
-    fractional_rate: 30,
-    branch: 'فرع جدة مول فقط',
-    image: 'https://placehold.co/64x64.png',
-    status: 'Available',
-  },
-];
+import { games } from '@/lib/data';
 
 function GamesContent() {
   return (
@@ -107,7 +77,7 @@ function GamesContent() {
               {games.map((game) => (
                 <TableRow key={game.name}>
                   <TableCell className="hidden sm:table-cell">
-                    <Image
+                     <Image
                       alt="صورة اللعبة"
                       className="aspect-square rounded-md object-cover"
                       height="64"
@@ -116,7 +86,11 @@ function GamesContent() {
                       data-ai-hint="kids playground"
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{game.name}</TableCell>
+                  <TableCell className="font-medium">
+                     <Link href={`/games/${encodeURIComponent(game.name)}`} className="hover:underline">
+                        {game.name}
+                     </Link>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={game.status === 'Available' ? 'default' : 'destructive'} className={game.status === 'Available' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}>
                       {game.status === 'Available' ? 'متاح' : 'صيانة'}
