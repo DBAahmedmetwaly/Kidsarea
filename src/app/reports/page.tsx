@@ -6,7 +6,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const gameProfitData = [
@@ -23,6 +23,28 @@ const employeeIncomeData = [
     { name: 'نورة الشمري', income: 4100 },
 ];
 
+const peakHoursData = [
+  { hour: '10 AM', visitors: 15 },
+  { hour: '11 AM', visitors: 25 },
+  { hour: '12 PM', visitors: 40 },
+  { hour: '1 PM', visitors: 35 },
+  { hour: '2 PM', visitors: 50 },
+  { hour: '3 PM', visitors: 65 },
+  { hour: '4 PM', visitors: 80 },
+  { hour: '5 PM', visitors: 90 },
+  { hour: '6 PM', visitors: 110 },
+  { hour: '7 PM', visitors: 100 },
+  { hour: '8 PM', visitors: 75 },
+  { hour: '9 PM', visitors: 50 },
+];
+
+const branchRevenueData = [
+  { name: 'فرع الرياض بارك', revenue: 45000 },
+  { name: 'فرع جدة مول', revenue: 62000 },
+  { name: 'فرع الدمام سيتي سنتر', revenue: 38000 },
+  { name: 'فرع مكة هيلتون', revenue: 75000 },
+];
+
 const gameProfitChartConfig = {
   profit: {
     label: 'الربح',
@@ -35,7 +57,21 @@ const employeeIncomeChartConfig = {
       label: 'صافي الدخل',
       color: 'hsl(var(--chart-2))',
     },
-  } satisfies ChartConfig;
+} satisfies ChartConfig;
+
+const peakHoursChartConfig = {
+    visitors: {
+        label: 'الزوار',
+        color: 'hsl(var(--chart-3))',
+    },
+} satisfies ChartConfig;
+
+const branchRevenueChartConfig = {
+    revenue: {
+        label: 'الإيرادات',
+        color: 'hsl(var(--chart-4))',
+    },
+} satisfies ChartConfig;
 
 export default function ReportsPage() {
   return (
@@ -105,6 +141,67 @@ export default function ReportsPage() {
             </ChartContainer>
           </CardContent>
         </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>تقرير أوقات الذروة</CardTitle>
+                <CardDescription>تحليل عدد الزوار على مدار ساعات اليوم لتحديد أوقات الذروة.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ChartContainer config={peakHoursChartConfig} className="h-72 w-full">
+                    <LineChart accessibilityLayer data={peakHoursData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }} dir="ltr">
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                            dataKey="hour"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                        />
+                        <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                            tickFormatter={(value) => `${value}`}
+                        />
+                        <Tooltip content={<ChartTooltipContent indicator='dot' />} />
+                        <Line type="monotone" dataKey="visitors" stroke="var(--color-visitors)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ChartContainer>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>تقرير إيرادات الفروع</CardTitle>
+                <CardDescription>مقارنة إجمالي الإيرادات بين جميع الفروع.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ChartContainer config={branchRevenueChartConfig} className="h-72 w-full">
+                    <BarChart accessibilityLayer data={branchRevenueData} dir="ltr">
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                            dataKey="name"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            tickFormatter={(value) => value.replace('فرع ', '').slice(0,10)}
+                        />
+                        <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={10}
+                            tickFormatter={(value) => `ج.م${value / 1000}k`}
+                        />
+                        <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent indicator="dot" />}
+                        />
+                        <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
+                    </BarChart>
+                </ChartContainer>
+            </CardContent>
+        </Card>
+
       </div>
     </div>
   );
