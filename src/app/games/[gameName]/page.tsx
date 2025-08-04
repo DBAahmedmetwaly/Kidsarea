@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +62,9 @@ function GameDetailsContent() {
   return (
     <div className="flex flex-col gap-8">
         <div className="flex items-center gap-4">
+             <div className="md:hidden">
+                <SidebarTrigger />
+            </div>
             <Image
                 alt={game.name}
                 className="aspect-square rounded-md object-cover"
@@ -133,7 +136,7 @@ function GameDetailsContent() {
 export default function GameDetailsPage() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen w-full">
         <AppSidebar />
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
           <GameDetailsContent />

@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -72,6 +72,9 @@ function DashboardContent() {
     return (
         <div className="flex flex-col gap-8">
             <div className="flex flex-col sm:flex-row items-center gap-4">
+                 <div className="md:hidden">
+                    <SidebarTrigger />
+                </div>
                 <h1 className="text-lg font-semibold md:text-2xl">لوحة التحكم</h1>
                 <div className="ms-auto flex items-center gap-2 w-full sm:w-auto">
                     <Select defaultValue="all">
@@ -218,7 +221,7 @@ function DashboardContent() {
 function WithSidebar() {
   return (
     <SidebarProvider>
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen w-full">
           <AppSidebar />
           <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             <DashboardContent />

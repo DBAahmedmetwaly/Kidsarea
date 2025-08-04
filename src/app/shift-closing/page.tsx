@@ -25,7 +25,7 @@ import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase } f
 import { checkDiscrepancy } from '@/app/actions';
 import type { RevenueDiscrepancyOutput } from '@/ai/flows/revenue-discrepancy-detection';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -526,6 +526,9 @@ function ShiftManagementContent() {
   return (
     <div className="flex flex-col gap-8">
         <div className='flex items-center gap-4'>
+             <div className="md:hidden">
+                <SidebarTrigger />
+            </div>
             <Briefcase className="h-8 w-8 text-primary" />
             <h1 className="text-lg font-semibold md:text-2xl">إدارة الورديات</h1>
         </div>
@@ -550,7 +553,7 @@ function ShiftManagementContent() {
 export default function ShiftManagementPage() {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen">
+            <div className="flex min-h-screen w-full">
                 <AppSidebar />
                 <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
                     <ShiftManagementContent />

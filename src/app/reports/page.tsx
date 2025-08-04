@@ -10,7 +10,7 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useMemo } from 'react';
@@ -99,7 +99,12 @@ function ReportsContent() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-lg font-semibold md:text-2xl">التقارير</h1>
+      <div className="flex items-center gap-4">
+        <div className="md:hidden">
+            <SidebarTrigger />
+        </div>
+        <h1 className="text-lg font-semibold md:text-2xl">التقارير</h1>
+      </div>
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -233,7 +238,7 @@ function ReportsContent() {
 export default function ReportsPage() {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen">
+            <div className="flex min-h-screen w-full">
             <AppSidebar />
             <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
                 <ReportsContent />

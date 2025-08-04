@@ -38,7 +38,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer, Users, Activity } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, CompletedSession } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
@@ -199,6 +199,12 @@ function TrackingContent() {
   
   return (
     <div className="flex flex-col gap-8">
+        <div className="flex items-center gap-4">
+             <div className="md:hidden">
+                <SidebarTrigger />
+            </div>
+            <h1 className="text-2xl font-bold">تتبع الأطفال</h1>
+        </div>
        <div className="grid gap-4 md:grid-cols-2">
         <StatCard
           title="الأطفال النشطون حاليًا"
@@ -420,7 +426,7 @@ function TrackingContent() {
 export default function TrackingPage() {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen">
+            <div className="flex min-h-screen w-full">
             <AppSidebar />
             <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
                 <TrackingContent />

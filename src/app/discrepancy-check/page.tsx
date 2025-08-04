@@ -1,12 +1,18 @@
+
 import { DiscrepancyChecker } from '@/components/DiscrepancyChecker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 
 function DiscrepancyCheckContent() {
   return (
     <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold">فحص تباين الإيرادات بالذكاء الاصطناعي</h1>
+        <div className="flex items-center gap-4">
+             <div className="md:hidden">
+                <SidebarTrigger />
+            </div>
+            <h1 className="text-2xl font-bold">فحص تباين الإيرادات بالذكاء الاصطناعي</h1>
+        </div>
         <Card>
             <CardHeader>
                 <CardTitle>أداة تحليل التباين</CardTitle>
@@ -27,7 +33,7 @@ function DiscrepancyCheckContent() {
 export default function DiscrepancyCheckPage() {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen">
+            <div className="flex min-h-screen w-full">
             <AppSidebar />
             <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
                 <DiscrepancyCheckContent />

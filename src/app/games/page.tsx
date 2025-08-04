@@ -48,7 +48,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Game } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
@@ -197,6 +197,9 @@ function GamesContent() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
+         <div className="md:hidden">
+            <SidebarTrigger />
+        </div>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الألعاب</h1>
         <div className="ms-auto flex items-center gap-2">
           <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
@@ -302,7 +305,7 @@ function GamesContent() {
 export default function GamesPage() {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen">
+            <div className="flex min-h-screen w-full">
             <AppSidebar />
             <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
                 <GamesContent />

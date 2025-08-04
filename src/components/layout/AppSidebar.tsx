@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import {
   Building2,
@@ -50,7 +51,7 @@ export default function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" side="right" className="border-l">
-      <SidebarHeader>
+      <SidebarHeader className="justify-between">
         <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
             <Gamepad2 className="h-6 w-6 text-accent" />
             <span className={cn(
@@ -60,6 +61,9 @@ export default function AppSidebar() {
               FunTrack
             </span>
         </Link>
+         <div className="md:hidden">
+            <SidebarTrigger />
+        </div>
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>

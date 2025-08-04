@@ -40,7 +40,7 @@ import {
     DialogClose,
   } from '@/components/ui/dialog';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Safe } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -177,6 +177,9 @@ function SafesContent() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
+        <div className="md:hidden">
+            <SidebarTrigger />
+        </div>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الخزائن</h1>
         <div className="ms-auto flex items-center gap-2">
           <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
@@ -251,7 +254,7 @@ function SafesContent() {
 export default function SafesPage() {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen">
+            <div className="flex min-h-screen w-full">
             <AppSidebar />
             <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
                 <SafesContent />
