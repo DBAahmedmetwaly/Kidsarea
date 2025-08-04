@@ -51,6 +51,7 @@ import { useFirebase } from '@/context/FirebaseContext';
 
 function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolean; onOpenChange: (open: boolean) => void; onAddEmployee: (employee: Omit<Employee, 'id'>) => void; }) {
     const { toast } = useToast();
+    const { branches } = useFirebase();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [role, setRole] = useState<'مشرف' | 'كاشير' | 'مدير فرع' | ''>('');
@@ -151,7 +152,16 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
                     )}
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="branch" className="text-right">الفرع</Label>
-                        <Input id="branch" value={branch} onChange={(e) => setBranch(e.target.value)} className="col-span-3" placeholder="e.g. فرع الرياض" />
+                        <Select value={branch} onValueChange={setBranch}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="اختر الفرع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {branches.map(b => (
+                                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="status" className="text-right">الحالة</Label>
