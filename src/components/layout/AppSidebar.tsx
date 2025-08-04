@@ -26,6 +26,7 @@ import {
   Landmark,
   Shield,
   Lightbulb,
+  FileCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -44,8 +45,13 @@ const allMenuItems = [
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
-  { href: '/roles', label: 'الصلاحيات', icon: Shield },
 ];
+
+const settingsMenuItems = [
+    { href: '/roles', label: 'الصلاحيات', icon: Shield },
+    { href: '/policies', label: 'السياسات', icon: FileCog },
+]
+
 
 type Permissions = Record<string, boolean>;
 type RolePermissions = Record<Employee['role'], Permissions>;
@@ -72,7 +78,7 @@ export default function AppSidebar() {
 
   const getVisibleMenuItems = () => {
     if (!user) return [];
-    if (user.username === 'admin') return allMenuItems;
+    if (user.username === 'admin') return [...allMenuItems, ...settingsMenuItems];
     if (!permissions || !(user as Employee).role) return [];
 
     const userRole = (user as Employee).role;
@@ -80,7 +86,7 @@ export default function AppSidebar() {
 
     if (!userPermissions) return [];
     
-    return allMenuItems.filter(item => userPermissions[encodeKey(item.href)]);
+    return [...allMenuItems, ...settingsMenuItems].filter(item => userPermissions[encodeKey(item.href)]);
   };
 
   const menuItems = getVisibleMenuItems();
@@ -90,10 +96,10 @@ export default function AppSidebar() {
     return pathname.startsWith(path);
   };
 
-  const SidebarItems = () => (
+  const SidebarContentRender = () => (
     <>
       <SidebarHeader className="justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
+         <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
             <Gamepad2 className="h-6 w-6 text-accent" />
             <span className={cn(
                 "duration-200 text-sidebar-foreground",
@@ -108,7 +114,7 @@ export default function AppSidebar() {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {menuItems.map((item) => (
+          {menuItems.filter(item => !settingsMenuItems.some(s => s.href === item.href)).map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
@@ -126,14 +132,16 @@ export default function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-2">
           <SidebarMenu>
-              <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip={{children: 'الإعدادات', side: 'left'}}>
-                      <Link href="/roles">
-                        <Settings />
-                        <span>الإعدادات</span>
-                      </Link>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
+             {menuItems.filter(item => settingsMenuItems.some(s => s.href === item.href)).map((item) => (
+                <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={{children: item.label, side: 'left'}}>
+                        <Link href={item.href}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+             ))}
                <SidebarMenuItem>
                   <SidebarMenuButton onClick={logout} tooltip={{children: 'تسجيل الخروج', side: 'left'}}>
                         <LogOut />
@@ -146,8 +154,24 @@ export default function AppSidebar() {
   );
 
   return (
-    <Sidebar side="right" collapsible="icon">
-        <SidebarItems />
-    </Sidebar>
+    <>
+        <div className="hidden md:block">
+            <Sidebar side="right" collapsible="icon">
+                <SidebarContentRender />
+            </Sidebar>
+        </div>
+        <div className="md:hidden">
+             <Sheet>
+                 <SidebarTrigger asChild>
+                    <Button variant="ghost" size="icon" className="fixed top-4 right-4 z-50">
+                        <Gamepad2 />
+                    </Button>
+                 </SidebarTrigger>
+                 <SheetContent side="right" className="p-0 w-[250px]">
+                    <SidebarContentRender />
+                 </SheetContent>
+            </Sheet>
+        </div>
+    </>
   );
 }

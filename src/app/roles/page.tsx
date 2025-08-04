@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield } from 'lucide-react';
+import { Shield, FileCog } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ALL_SCREENS = [
@@ -23,8 +23,8 @@ const ALL_SCREENS = [
   { href: '/employees', label: 'الموظفين' },
   { href: '/games', label: 'الألعاب' },
   { href: '/safes', label: 'الخزائن' },
-  { href: '/discrepancy-check', label: 'فحص التباين' },
   { href: '/roles', label: 'الصلاحيات' },
+  { href: '/policies', label: 'السياسات' },
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -95,7 +95,7 @@ function RolesContent() {
     try {
       const rolesRef = ref(db, 'roles');
       // Encode keys for Firebase
-      const encodedPermissions: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
+      const encodedPermissions: Partial<RolePermissions> = {};
         for (const role in permissions) {
             if (Object.prototype.hasOwnProperty.call(permissions, role)) {
                 const rolePermissions = permissions[role as Role];

@@ -1,0 +1,295 @@
+
+'use client';
+
+import { useState } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { db } from '@/lib/firebase';
+import { ref, update, onValue } from 'firebase/database';
+import { useFirebase } from '@/context/FirebaseContext';
+import AppSidebar from '@/components/layout/AppSidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { Settings, Trash, PlusCircle } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { useEffect } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const pricingPolicySchema = z.object({
+  gameId: z.string().min(1, 'يجب اختيار اللعبة'),
+  weekdayRate: z.coerce.number().min(0, 'السعر يجب أن يكون رقمًا موجبًا'),
+  weekendRate: z.coerce.number().min(0, 'السعر يجب أن يكون رقمًا موجبًا'),
+});
+
+const policiesSchema = z.object({
+  maxCapacity: z.coerce.number().int().min(0, 'السعة يجب أن تكون رقمًا صحيحًا موجبًا'),
+  enableWeekendPricing: z.boolean(),
+  pricingPolicies: z.array(pricingPolicySchema),
+});
+
+type PoliciesFormValues = z.infer<typeof policiesSchema>;
+
+function PoliciesContent() {
+  const { games } = useFirebase();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+
+  const form = useForm<PoliciesFormValues>({
+    resolver: zodResolver(policiesSchema),
+    defaultValues: {
+      maxCapacity: 50,
+      enableWeekendPricing: false,
+      pricingPolicies: [],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'pricingPolicies',
+  });
+
+  useEffect(() => {
+    const policiesRef = ref(db, 'policies');
+    const unsubscribe = onValue(policiesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        form.reset({
+            maxCapacity: data.maxCapacity || 50,
+            enableWeekendPricing: data.enableWeekendPricing || false,
+            pricingPolicies: data.pricingPolicies || [],
+        });
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [form]);
+
+
+  async function onSubmit(values: PoliciesFormValues) {
+    try {
+      const policiesRef = ref(db, 'policies');
+      await update(policiesRef, values);
+      toast({
+        title: 'تم الحفظ بنجاح',
+        description: 'تم تحديث سياسات النظام بنجاح.',
+      });
+    } catch (error) {
+      console.error('Failed to save policies:', error);
+      toast({
+        title: 'خطأ',
+        description: 'فشل حفظ السياسات. يرجى المحاولة مرة أخرى.',
+        variant: 'destructive',
+      });
+    }
+  }
+
+  if (loading) {
+      return (
+          <div className="space-y-6">
+              <Skeleton className="h-10 w-1/4" />
+              <Card>
+                  <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+                  <CardContent><Skeleton className="h-20 w-full" /></CardContent>
+              </Card>
+               <Card>
+                  <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+                  <CardContent><Skeleton className="h-40 w-full" /></CardContent>
+              </Card>
+          </div>
+      )
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex items-center gap-4">
+        <div className="md:hidden">
+          <SidebarTrigger />
+        </div>
+        <Settings className="h-8 w-8 text-primary" />
+        <h1 className="text-lg font-semibold md:text-2xl">إدارة السياسات</h1>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>سياسة السعة الاستيعابية</CardTitle>
+              <CardDescription>
+                حدد الحد الأقصى لعدد الأطفال المسموح به في منطقة اللعب في نفس الوقت.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="maxCapacity"
+                render={({ field }) => (
+                  <FormItem className="max-w-sm">
+                    <FormLabel>الحد الأقصى للأطفال</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="50" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>سياسات التسعير</CardTitle>
+              <CardDescription>
+                قم بتفعيل وتخصيص أسعار مختلفة للألعاب خلال أيام الأسبوع وعطلات نهاية الأسبوع.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <FormField
+                control={form.control}
+                name="enableWeekendPricing"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        تفعيل تسعيرة نهاية الأسبوع
+                      </FormLabel>
+                      <CardDescription>
+                        هل تريد تطبيق أسعار مختلفة في عطلة نهاية الأسبوع (الجمعة والسبت)؟
+                      </CardDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('enableWeekendPricing') && (
+                <div className="space-y-4">
+                    <h3 className="text-md font-medium">قواعد التسعير المخصصة</h3>
+                  {fields.map((item, index) => (
+                    <div key={item.id} className="flex items-end gap-4 p-4 border rounded-lg">
+                      <FormField
+                        control={form.control}
+                        name={`pricingPolicies.${index}.gameId`}
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>اللعبة</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="اختر لعبة..." />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {games.map((game) => (
+                                  <SelectItem key={game.id} value={game.id}>
+                                    {game.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`pricingPolicies.${index}.weekdayRate`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>سعر الساعة (أيام الأسبوع)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="100" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`pricingPolicies.${index}.weekendRate`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>سعر الساعة (نهاية الأسبوع)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="120" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                   <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => append({ gameId: '', weekdayRate: 0, weekendRate: 0 })}
+                  >
+                    <PlusCircle className="me-2 h-4 w-4" />
+                    إضافة قاعدة تسعير جديدة
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Button type="submit" className="w-full md:w-auto" disabled={loading}>
+            حفظ التغييرات
+          </Button>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
+export default function PoliciesPage() {
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+          <PoliciesContent />
+        </main>
+      </div>
+    </SidebarProvider>
+  );
+}
