@@ -51,6 +51,10 @@ const allMenuItems = [
 type Permissions = Record<string, boolean>;
 type RolePermissions = Record<Employee['role'], Permissions>;
 
+// Firebase keys cannot contain '.', '#', '$', '/', '[', or ']'
+const encodeKey = (key: string) => key.replace(/\//g, '__slash__');
+const decodeKey = (key: string) => key.replace(/__slash__/g, '/');
+
 export default function AppSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
@@ -60,6 +64,7 @@ export default function AppSidebar() {
     const rolesRef = ref(db, 'roles');
     const unsubscribe = onValue(rolesRef, (snapshot) => {
       const data = snapshot.val();
+      // No need to decode here as we will check against encoded keys
       setPermissions(data);
     });
     return () => unsubscribe();
@@ -74,8 +79,8 @@ export default function AppSidebar() {
     const userPermissions = permissions[userRole];
 
     if (!userPermissions) return [];
-
-    return allMenuItems.filter(item => userPermissions[item.href]);
+    
+    return allMenuItems.filter(item => userPermissions[encodeKey(item.href)]);
   };
 
   const menuItems = getVisibleMenuItems();

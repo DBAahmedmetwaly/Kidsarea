@@ -33,6 +33,10 @@ const ROLES: Role[] = ['مدير فرع', 'كاشير', 'مشرف'];
 type Permissions = Record<string, boolean>;
 type RolePermissions = Record<Role, Permissions>;
 
+// Firebase keys cannot contain '.', '#', '$', '/', '[', or ']'
+const encodeKey = (key: string) => key.replace(/\//g, '__slash__');
+const decodeKey = (key: string) => key.replace(/__slash__/g, '/');
+
 function RolesContent() {
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
   const [selectedRole, setSelectedRole] = useState<Role>('مدير فرع');
@@ -44,7 +48,21 @@ function RolesContent() {
     const unsubscribe = onValue(rolesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        setPermissions(data);
+        // Decode keys from Firebase
+        const decodedPermissions: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
+        for (const role in data) {
+            if (Object.prototype.hasOwnProperty.call(data, role)) {
+                const rolePermissions = data[role as Role];
+                const decodedRolePermissions: Permissions = {};
+                for (const encodedKey in rolePermissions) {
+                    if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
+                       decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
+                    }
+                }
+                decodedPermissions[role as Role] = decodedRolePermissions;
+            }
+        }
+        setPermissions(decodedPermissions);
       } else {
         // Initialize with default permissions if none exist
         const defaultPermissions: RolePermissions = {
@@ -76,7 +94,22 @@ function RolesContent() {
     if (!permissions) return;
     try {
       const rolesRef = ref(db, 'roles');
-      await update(rolesRef, permissions);
+      // Encode keys for Firebase
+      const encodedPermissions: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
+        for (const role in permissions) {
+            if (Object.prototype.hasOwnProperty.call(permissions, role)) {
+                const rolePermissions = permissions[role as Role];
+                const encodedRolePermissions: Permissions = {};
+                for (const key in rolePermissions) {
+                    if (Object.prototype.hasOwnProperty.call(rolePermissions, key)) {
+                       encodedRolePermissions[encodeKey(key)] = rolePermissions[key];
+                    }
+                }
+                encodedPermissions[role as Role] = encodedRolePermissions;
+            }
+        }
+      
+      await update(rolesRef, encodedPermissions);
       toast({
         title: 'تم الحفظ بنجاح',
         description: `تم تحديث صلاحيات دور "${selectedRole}".`,
