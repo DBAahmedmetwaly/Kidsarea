@@ -22,7 +22,7 @@ import {
   LifeBuoy,
   BarChart3,
   LogOut,
-  Archive,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -30,7 +30,7 @@ import { useAuth } from '@/components/AuthProvider';
 const menuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/tracking', label: 'تتبع الوقت', icon: Clock },
-  { href: '/shift-closing', label: 'إقفال الوردية', icon: Archive },
+  { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
   { href: '/branches', label: 'الفروع', icon: Building2 },
   { href: '/employees', label: 'الموظفين', icon: Users },
