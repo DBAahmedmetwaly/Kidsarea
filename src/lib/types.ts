@@ -29,7 +29,6 @@ export interface Game {
 export interface Employee {
     id: string;
     name: string;
-    email: string;
     role: 'مشرف' | 'كاشير' | 'مدير فرع';
     branch: string;
     status: 'Active' | 'On Leave';

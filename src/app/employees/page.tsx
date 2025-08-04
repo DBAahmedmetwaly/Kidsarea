@@ -53,7 +53,6 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
     const { toast } = useToast();
     const { branches } = useFirebase();
     const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
     const [role, setRole] = useState<'مشرف' | 'كاشير' | 'مدير فرع' | ''>('');
     const [branch, setBranch] = useState('');
     const [username, setUsername] = useState('');
@@ -61,7 +60,7 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
     const [status, setStatus] = useState<'Active' | 'On Leave'>('Active');
     
     const handleAddEmployee = () => {
-        if (!name || !email || !role || !branch) {
+        if (!name || !role || !branch) {
             toast({
                 title: "خطأ في الإدخال",
                 description: "يرجى تعبئة جميع الحقول الأساسية.",
@@ -83,7 +82,6 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
 
         const newEmployee: Omit<Employee, 'id'> = {
             name,
-            email,
             role,
             branch,
             status,
@@ -98,7 +96,6 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
         });
         // Reset fields
         setName('');
-        setEmail('');
         setRole('');
         setBranch('');
         setUsername('');
@@ -120,10 +117,6 @@ function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: { open: boolea
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="name" className="text-right">الاسم</Label>
                         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="اسم الموظف" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="email" className="text-right">الإيميل</Label>
-                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" placeholder="email@example.com" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="role" className="text-right">الدور</Label>
@@ -272,8 +265,7 @@ function EmployeesContent() {
                     </Avatar>
                   </TableCell>
                   <TableCell className="font-medium">
-                    <div>{employee.name}</div>
-                    <div className="text-sm text-muted-foreground">{employee.email}</div>
+                    {employee.name}
                   </TableCell>
                   <TableCell>{employee.role}</TableCell>
                   <TableCell className="hidden md:table-cell">
