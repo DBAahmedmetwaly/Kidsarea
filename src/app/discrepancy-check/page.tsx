@@ -15,7 +15,7 @@ function DiscrepancyCheckContent() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="max-w-2xl">
+                <div className="w-full">
                   <DiscrepancyChecker />
                 </div>
             </CardContent>
