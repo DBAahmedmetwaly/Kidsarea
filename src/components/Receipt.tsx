@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Gamepad2, Smile, Clock, User, Calendar, Hash } from 'lucide-react';
+import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle } from 'lucide-react';
 
 export interface ReceiptProps {
   childName: string;
@@ -10,7 +10,9 @@ export interface ReceiptProps {
   checkInTime: Date;
   checkOutTime: Date;
   duration: string;
-  cost: number;
+  totalCost: number;
+  durationCost?: number;
+  entryFee?: number;
   cashierName: string;
 }
 
@@ -21,7 +23,9 @@ export function Receipt({
   checkInTime,
   checkOutTime,
   duration,
-  cost,
+  totalCost,
+  durationCost,
+  entryFee,
   cashierName,
 }: ReceiptProps) {
   const receiptId = `R-${checkOutTime.getTime().toString().slice(-6)}`;
@@ -62,9 +66,22 @@ export function Receipt({
           <span className="font-medium">{duration}</span>
         </div>
         <hr className="border-dashed" />
+        <div className="space-y-2">
+            <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-2"><Tag size={16} /> تكلفة اللعب</span>
+                <span className="font-medium">{`ج.م ${(durationCost ?? totalCost).toFixed(2)}`}</span>
+            </div>
+            {entryFee && entryFee > 0 && (
+                 <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground flex items-center gap-2"><PlusCircle size={16} /> رسوم دخول</span>
+                    <span className="font-medium">{`ج.م ${entryFee.toFixed(2)}`}</span>
+                </div>
+            )}
+        </div>
+        <hr className="border-dashed" />
         <div className="flex justify-between items-center text-xl font-bold bg-blue-100 p-3 rounded-lg">
           <span className="text-primary">الإجمالي</span>
-          <span className="text-primary">{`ج.م ${cost.toFixed(2)}`}</span>
+          <span className="text-primary">{`ج.م ${totalCost.toFixed(2)}`}</span>
         </div>
       </div>
 

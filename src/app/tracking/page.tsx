@@ -40,7 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, CompletedSession } from '@/lib/types';
+import type { Child, CompletedSession, Policies } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
@@ -90,6 +90,39 @@ function formatDuration(durationMs: number) {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     return `${hours} ساعة و ${minutes} دقيقة`;
 }
+
+function calculateCost(durationMs: number, hourlyRate: number, policies: Policies | null) {
+    const durationHours = durationMs / (1000 * 60 * 60);
+    let roundedHours = durationHours;
+
+    if (policies?.roundingPolicy && policies.roundingPolicy !== 'none') {
+        const minutes = durationHours * 60;
+        switch(policies.roundingPolicy) {
+            case 'quarter-hour':
+                roundedHours = Math.ceil(minutes / 15) * 15 / 60;
+                break;
+            case 'half-hour':
+                roundedHours = Math.ceil(minutes / 30) * 30 / 60;
+                break;
+            case 'hour':
+                roundedHours = Math.ceil(minutes / 60);
+                break;
+        }
+    }
+    
+    // Ensure at least fractional rate is charged if applicable
+    const baseCost = roundedHours * hourlyRate;
+    
+    // This is a simplified logic. A more complex one might check if duration is less than 30mins etc.
+    // For now we assume fractional_rate is not used with rounding policies.
+    const durationCost = baseCost;
+
+    const entryFee = policies?.entryFee || 0;
+    const totalCost = durationCost + entryFee;
+
+    return { totalCost, durationCost, entryFee };
+}
+
 
 function TrackingContent() {
   const { activeChildren, setActiveChildren, completedSessions, setCompletedSessions } = useSession();
@@ -201,16 +234,20 @@ function TrackingContent() {
   const handleCheckOut = async (child: Child) => {
     const checkOutTime = Date.now();
     const durationMs = checkOutTime - child.checkInTime;
-    const durationHours = durationMs / (1000 * 60 * 60);
 
     const gameDetails = games.find((g) => g.name === child.game);
-    const cost = durationHours * (gameDetails?.hourly_rate || 0);
+    // TODO: Add logic for weekend pricing
+    const hourlyRate = gameDetails?.hourly_rate || 0;
+    
+    const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
 
     const completedSession: CompletedSession = {
         ...child,
         checkOutTime,
         durationMs,
-        cost,
+        cost: totalCost,
+        durationCost: durationCost,
+        entryFee: entryFee,
     };
     
     try {
@@ -224,7 +261,9 @@ function TrackingContent() {
             checkInTime: new Date(child.checkInTime),
             checkOutTime: new Date(checkOutTime),
             duration: formatDuration(durationMs),
-            cost: cost,
+            totalCost: totalCost,
+            durationCost: durationCost,
+            entryFee: entryFee,
             cashierName: user?.username === 'admin' ? 'Admin' : (user as any)?.name || 'N/A'
         });
 

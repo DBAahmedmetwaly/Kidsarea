@@ -14,7 +14,9 @@ export interface Child {
 export interface CompletedSession extends Child {
     checkOutTime: number;
     durationMs: number;
-    cost: number;
+    cost: number; // Total cost
+    durationCost?: number;
+    entryFee?: number;
 }
 
 export interface Game {
@@ -96,4 +98,6 @@ export interface Policies {
     maxCapacity: number;
     enableWeekendPricing: boolean;
     pricingPolicies: PricingPolicy[];
+    roundingPolicy: 'hour' | 'half-hour' | 'quarter-hour' | 'none';
+    entryFee: number;
 }

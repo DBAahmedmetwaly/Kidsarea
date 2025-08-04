@@ -21,6 +21,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -48,6 +49,8 @@ const pricingPolicySchema = z.object({
 
 const policiesSchema = z.object({
   maxCapacity: z.coerce.number().int().min(0, 'السعة يجب أن تكون رقمًا صحيحًا موجبًا'),
+  entryFee: z.coerce.number().min(0, 'رسوم الدخول يجب أن تكون رقمًا موجبًا'),
+  roundingPolicy: z.enum(['none', 'quarter-hour', 'half-hour', 'hour']),
   enableWeekendPricing: z.boolean(),
   pricingPolicies: z.array(pricingPolicySchema),
 });
@@ -63,6 +66,8 @@ function PoliciesContent() {
     resolver: zodResolver(policiesSchema),
     defaultValues: {
       maxCapacity: 50,
+      entryFee: 0,
+      roundingPolicy: 'none',
       enableWeekendPricing: false,
       pricingPolicies: [],
     },
@@ -80,6 +85,8 @@ function PoliciesContent() {
       if (data) {
         form.reset({
             maxCapacity: data.maxCapacity || 50,
+            entryFee: data.entryFee || 0,
+            roundingPolicy: data.roundingPolicy || 'none',
             enableWeekendPricing: data.enableWeekendPricing || false,
             pricingPolicies: data.pricingPolicies || [],
         });
@@ -139,21 +146,37 @@ function PoliciesContent() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>سياسة السعة الاستيعابية</CardTitle>
+              <CardTitle>السياسات العامة</CardTitle>
               <CardDescription>
-                حدد الحد الأقصى لعدد الأطفال المسموح به في منطقة اللعب في نفس الوقت.
+                حدد السياسات العامة لمنطقة اللعب مثل السعة الاستيعابية ورسوم الدخول.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="grid md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="maxCapacity"
                 render={({ field }) => (
-                  <FormItem className="max-w-sm">
+                  <FormItem>
                     <FormLabel>الحد الأقصى للأطفال</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="50" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="entryFee"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>رسوم دخول ثابتة (ج.م)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="0" {...field} />
+                    </FormControl>
+                     <FormDescription>
+                        مبلغ يضاف تلقائياً لكل فاتورة. أدخل 0 لإلغائه.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -169,6 +192,32 @@ function PoliciesContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+                <FormField
+                    control={form.control}
+                    name="roundingPolicy"
+                    render={({ field }) => (
+                    <FormItem className="max-w-sm">
+                        <FormLabel>سياسة تقريب الوقت</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="اختر سياسة..." />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="none">بدون تقريب (حساب دقيق)</SelectItem>
+                                <SelectItem value="quarter-hour">تقريب لأقرب ربع ساعة</SelectItem>
+                                <SelectItem value="half-hour">تقريب لأقرب نصف ساعة</SelectItem>
+                                <SelectItem value="hour">تقريب لأقرب ساعة</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormDescription>
+                           كيفية حساب الوقت الإضافي بعد الساعة الأولى.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
                 <FormField
                 control={form.control}
                 name="enableWeekendPricing"
