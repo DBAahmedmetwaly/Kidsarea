@@ -148,7 +148,16 @@ function TrackingContent() {
     return openShifts.some(shift => shift.cashierUsername === user.username);
   }, [user, openShifts]);
 
-  const totalVisitors = activeChildren.length + completedSessions.length;
+  const totalVisitorsToday = useMemo(() => {
+      const todayStart = new Date();
+      todayStart.setHours(0,0,0,0);
+      
+      const activeToday = activeChildren.filter(c => c.checkInTime >= todayStart.getTime());
+      const completedToday = completedSessions.filter(c => c.checkOutTime >= todayStart.getTime());
+      
+      const allIds = new Set([...activeToday.map(c => c.id), ...completedToday.map(c => c.id)]);
+      return allIds.size;
+  }, [activeChildren, completedSessions]);
 
   // Sync with Firebase
   useEffect(() => {
@@ -292,7 +301,7 @@ function TrackingContent() {
         />
         <StatCard
           title="إجمالي زوار اليوم"
-          value={totalVisitors.toString()}
+          value={totalVisitorsToday.toString()}
           icon={Users}
           description="مجموع الأطفال الذين دخلوا اليوم."
         />
@@ -354,7 +363,7 @@ function TrackingContent() {
                             <SelectValue placeholder="اختر لعبة..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {games.map((game) => (
+                            {games.filter(g => g.status === 'Available').map((game) => (
                             <SelectItem key={game.id} value={game.name}>
                                 {game.name}
                             </SelectItem>
@@ -438,7 +447,7 @@ function TrackingContent() {
           <CardHeader>
             <CardTitle>سجل الجلسات المنتهية</CardTitle>
             <CardDescription>
-              عرض تفصيلي لجميع جلسات اللعب التي تم إجراؤها.
+              عرض تفصيلي لجميع جلسات اللعب التي تم إجراؤها اليوم.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -456,7 +465,9 @@ function TrackingContent() {
               </TableHeader>
               <TableBody>
                 {completedSessions.length > 0 ? (
-                  completedSessions.map((session) => (
+                  completedSessions
+                  .sort((a,b) => b.checkOutTime - a.checkOutTime)
+                  .map((session) => (
                     <TableRow key={session.id}>
                       <TableCell className="font-medium">{session.name}</TableCell>
                       <TableCell>{session.parentName}</TableCell>
@@ -492,8 +503,8 @@ function TrackingContent() {
                  </div>
             )}
             <DialogFooter className="sm:justify-between">
-                <Button variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
-                <Button onClick={handlePrint}>
+                <Button type="button" variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
+                <Button type="button" onClick={handlePrint}>
                 <Printer className="me-2 h-4 w-4" />
                 طباعة الإيصال
                 </Button>
@@ -517,3 +528,5 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
+
+    
