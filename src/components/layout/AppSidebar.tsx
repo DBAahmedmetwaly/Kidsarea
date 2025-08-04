@@ -34,6 +34,7 @@ import { useEffect, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Employee } from '@/lib/types';
+import { SheetTitle } from '@/components/ui/sheet';
 
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -54,6 +55,7 @@ type RolePermissions = Record<Employee['role'], Permissions>;
 // Firebase keys cannot contain '.', '#', '$', '/', '[', or ']'
 const encodeKey = (key: string) => key.replace(/\//g, '__slash__');
 const decodeKey = (key: string) => key.replace(/__slash__/g, '/');
+
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -90,8 +92,8 @@ export default function AppSidebar() {
     return pathname.startsWith(path);
   };
 
-  return (
-    <Sidebar side="right" collapsible="icon">
+  const SidebarItems = () => (
+    <>
       <SidebarHeader className="justify-between">
         <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
             <Gamepad2 className="h-6 w-6 text-accent" />
@@ -127,16 +129,8 @@ export default function AppSidebar() {
       <SidebarFooter className="p-2">
           <SidebarMenu>
               <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip={{children: 'الدعم', side: 'left'}}>
-                      <Link href="#">
-                        <LifeBuoy />
-                        <span>الدعم</span>
-                      </Link>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={{children: 'الإعدادات', side: 'left'}}>
-                      <Link href="#">
+                      <Link href="/roles">
                         <Settings />
                         <span>الإعدادات</span>
                       </Link>
@@ -150,6 +144,12 @@ export default function AppSidebar() {
               </SidebarMenuItem>
           </SidebarMenu>
       </SidebarFooter>
+    </>
+  );
+
+  return (
+    <Sidebar side="right" collapsible="icon">
+        <SidebarItems />
     </Sidebar>
   );
 }
