@@ -19,7 +19,8 @@ import {
   ShieldAlert,
   Users,
   Settings,
-  LifeBuoy
+  LifeBuoy,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,7 @@ const menuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/tracking', label: 'تتبع الوقت', icon: Clock },
   { href: '/discrepancy-check', label: 'فحص التباين', icon: ShieldAlert },
+  { href: '/reports', label: 'التقارير', icon: BarChart3 },
   { href: '/branches', label: 'الفروع', icon: Building2 },
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
