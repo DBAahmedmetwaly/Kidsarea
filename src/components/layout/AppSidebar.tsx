@@ -20,7 +20,6 @@ import {
   LayoutDashboard,
   Users,
   Settings,
-  LifeBuoy,
   BarChart3,
   LogOut,
   Briefcase,
@@ -34,7 +33,7 @@ import { useEffect, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Employee } from '@/lib/types';
-import { SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -45,7 +44,6 @@ const allMenuItems = [
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
-  { href: '/discrepancy-check', label: 'فحص التباين', icon: Lightbulb },
   { href: '/roles', label: 'الصلاحيات', icon: Shield },
 ];
 
