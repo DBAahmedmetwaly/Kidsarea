@@ -121,7 +121,7 @@ export default function GamesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {`﷼${game.hourly_rate}`}
+                    {`ج.م${game.hourly_rate}`}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {game.branch}

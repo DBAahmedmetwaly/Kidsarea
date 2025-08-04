@@ -140,7 +140,7 @@ export default function TrackingPage() {
     setReceiptDetails({
       name: child.name,
       duration: `${hours} ساعة و ${minutes} دقيقة`,
-      cost: `﷼ ${cost.toFixed(2)}`,
+      cost: `ج.م ${cost.toFixed(2)}`,
     });
 
     setShowReceipt(true);

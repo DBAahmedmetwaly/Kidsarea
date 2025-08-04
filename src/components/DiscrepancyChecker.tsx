@@ -71,7 +71,7 @@ export function DiscrepancyChecker() {
               name="expectedRevenue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الإيرادات المتوقعة (﷼)</FormLabel>
+                  <FormLabel>الإيرادات المتوقعة (ج.م)</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="1500" {...field} />
                   </FormControl>
@@ -84,7 +84,7 @@ export function DiscrepancyChecker() {
               name="actualRevenue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الإيرادات الفعلية (﷼)</FormLabel>
+                  <FormLabel>الإيرادات الفعلية (ج.م)</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="1450" {...field} />
                   </FormControl>

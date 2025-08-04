@@ -53,7 +53,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="إجمالي الإيرادات"
-          value="﷼ 14,200"
+          value="ج.م 14,200"
           icon={DollarSign}
           description="+20.1% من الشهر الماضي"
         />
@@ -71,7 +71,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="إيرادات اليوم"
-          value="﷼ 850"
+          value="ج.م 850"
           icon={Wallet}
           description="+19% من الأمس"
         />
@@ -96,7 +96,7 @@ export default function DashboardPage() {
                   tickLine={false}
                   axisLine={false}
                   tickMargin={10}
-                  tickFormatter={(value) => `﷼${value / 1000}k`}
+                  tickFormatter={(value) => `ج.م${value / 1000}k`}
                 />
                 <ChartTooltip
                   cursor={false}
