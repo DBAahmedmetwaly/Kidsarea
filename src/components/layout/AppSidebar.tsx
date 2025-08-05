@@ -162,10 +162,17 @@ function SidebarItems() {
     setOpenMobile(false);
   }
 
+  const getHomeLink = () => {
+    if (user && 'role' in user && user.role === 'كاشير') {
+      return '/tracking';
+    }
+    return '/';
+  }
+
   return (
     <>
       <SidebarHeader className="justify-between">
-         <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
+         <Link href={getHomeLink()} className="flex items-center gap-2 font-bold text-lg text-primary px-2">
             <Gamepad2 className="h-6 w-6 text-accent" />
             <span className={cn(
                 "duration-200 text-sidebar-foreground",
