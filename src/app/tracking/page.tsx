@@ -694,14 +694,17 @@ function TrackingContent() {
       </div>
        
         <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-xs">
                 <DialogHeader>
-                    <DialogTitle>جاهز للطباعة</DialogTitle>
+                    <DialogTitle>معاينة الإيصال</DialogTitle>
                     <DialogDescription>
-                        تم تجهيز الإيصال للطباعة. انقر على الزر أدناه للمتابعة.
+                         هذا هو شكل الإيصال الذي سيتم طباعته.
                     </DialogDescription>
                 </DialogHeader>
-                <DialogFooter>
+                 <div className="scale-100">
+                   {receiptDetails && <Receipt {...receiptDetails} />}
+                </div>
+                <DialogFooter className="sm:justify-between">
                      <Button type="button" variant="secondary" onClick={() => setShowPrintDialog(false)}>إلغاء</Button>
                      <Button type="button" onClick={handlePrint}>
                         <Printer className="me-2 h-4 w-4" />
@@ -736,5 +739,3 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
