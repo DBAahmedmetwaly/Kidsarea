@@ -142,9 +142,6 @@ function SidebarItems() {
             <div className="hidden md:block">
                 <SidebarTrigger />
             </div>
-             <div className="md:hidden">
-               <SidebarTrigger />
-            </div>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2">
