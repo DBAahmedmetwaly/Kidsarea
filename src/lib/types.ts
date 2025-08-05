@@ -44,7 +44,6 @@ export interface Branch {
     id: string;
     name: string;
     manager: string;
-    employees: number;
     status: 'Active' | 'Inactive';
 }
 
@@ -109,4 +108,14 @@ export interface Policies {
     weekendDays: Record<DayOfWeek, boolean>;
 }
 
-    
+export interface CustomerChild {
+    name: string;
+    age: number;
+}
+export interface Customer {
+    id: string;
+    parentName: string;
+    phoneNumber: string;
+    children: CustomerChild[];
+    createdAt: string;
+}

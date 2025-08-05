@@ -29,6 +29,7 @@ import {
   Database,
   List,
   History,
+  Contact,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -49,6 +50,7 @@ const allMenuItems = [
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
   { href: '/transactions', label: 'سجل الحركات', icon: List },
+  { href: '/customers', label: 'العملاء', icon: Contact },
 ];
 
 const settingsMenuItems = [

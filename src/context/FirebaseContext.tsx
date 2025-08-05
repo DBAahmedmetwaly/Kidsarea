@@ -49,59 +49,60 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const gamesRef = ref(db, 'games');
-    const employeesRef = ref(db, 'employees');
-    const branchesRef = ref(db, 'branches');
-    const safesRef = ref(db, 'safes');
-    const policiesRef = ref(db, 'policies');
-    const openShiftsRef = ref(db, 'openShifts');
-    const transactionsRef = ref(db, 'safeTransactions');
-
+    const dataRefs = [
+      { key: 'games', setter: setGames, isArray: true },
+      { key: 'employees', setter: setEmployees, isArray: true },
+      { key: 'branches', setter: setBranches, isArray: true },
+      { key: 'safes', setter: setSafes, isArray: true },
+      { key: 'policies', setter: setPolicies, isArray: false },
+      { key: 'openShifts', setter: setOpenShifts, isArray: true },
+      { key: 'safeTransactions', setter: setTransactions, isArray: true },
+    ];
 
     let isMounted = true;
     let loadedCount = 0;
-    const totalListeners = 7;
+    const totalListeners = dataRefs.length;
 
     const handleLoad = () => {
-        loadedCount++;
-        if(loadedCount >= totalListeners && isMounted){
-            setLoading(false);
+      loadedCount++;
+      if (loadedCount >= totalListeners && isMounted) {
+        setLoading(false);
+      }
+    };
+
+    const createUnsubscribe = (dbRefKey: string, setter: Dispatch<SetStateAction<any>>, isArray: boolean) => {
+      const dbRef = ref(db, dbRefKey);
+      return onValue(
+        dbRef,
+        (snapshot) => {
+          const data = snapshot.val();
+          let processedData = isArray ? [] : null;
+          if (data) {
+            processedData = isArray
+              ? Object.entries(data).map(([id, value]) => ({ id, ...(value as object) }))
+              : data;
+          }
+          if (isMounted) setter(processedData);
+          handleLoad();
+        },
+        (err) => {
+          console.error(`Firebase ${dbRefKey} error:`, err);
+          if (isMounted) setError(err as Error);
+          handleLoad();
         }
-    }
+      );
+    };
 
-    const createUnsubscribe = (dbRef: any, setter: Dispatch<SetStateAction<any>>, isArray: boolean) => {
-        return onValue(dbRef, (snapshot) => {
-            const data = snapshot.val();
-            let processedData = isArray ? [] : null;
-            if (data) {
-                processedData = isArray 
-                    ? Object.entries(data).map(([id, value]) => ({ id, ...(value as object) })) 
-                    : data;
-            }
-            if(isMounted) setter(processedData);
-            handleLoad();
-        }, (err) => {
-            console.error(`Firebase ${dbRef.key} error:`, err);
-            if(isMounted) setError(err as Error);
-            handleLoad();
-        });
-    }
+    const unsubscribes = dataRefs.map(({ key, setter, isArray }) =>
+      createUnsubscribe(key, setter, isArray)
+    );
 
-    const unsubscribes = [
-      createUnsubscribe(gamesRef, setGames, true),
-      createUnsubscribe(employeesRef, setEmployees, true),
-      createUnsubscribe(branchesRef, setBranches, true),
-      createUnsubscribe(safesRef, setSafes, true),
-      createUnsubscribe(policiesRef, setPolicies, false),
-      createUnsubscribe(openShiftsRef, setOpenShifts, true),
-      createUnsubscribe(transactionsRef, setTransactions, true),
-    ];
-    
     return () => {
-        isMounted = false;
-        unsubscribes.forEach(unsub => unsub());
-    }
+      isMounted = false;
+      unsubscribes.forEach((unsub) => unsub());
+    };
   }, []);
+
 
   if (loading) {
     return (

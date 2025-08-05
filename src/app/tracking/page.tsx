@@ -37,19 +37,23 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, History } from 'lucide-react';
+import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, History, Search, ChevronsUpDown, Check } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee } from '@/lib/types';
+import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee, Customer } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
-import { ref, set, onValue } from 'firebase/database';
+import { ref, set, onValue, get, update, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { Receipt, type ReceiptProps } from '@/components/Receipt';
 import { useReactToPrint } from 'react-to-print';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+import { useCustomers } from '@/context/CustomerContext';
 
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
@@ -129,12 +133,23 @@ function getDayOfWeek(date: Date): DayOfWeek {
 
 function TrackingContent() {
   const { activeChildren, setActiveChildren, completedSessions, setCompletedSessions } = useSession();
+  const { customers, setCustomers } = useCustomers();
+  
+  // New Customer State
   const [newChildName, setNewChildName] = useState('');
   const [newChildAge, setNewChildAge] = useState('');
   const [newChildParentName, setNewChildParentName] = useState('');
   const [newChildPhoneNumber, setNewChildPhoneNumber] = useState('');
+
+  // Existing Customer State
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedChild, setSelectedChild] = useState<{name: string, age: number} | null>(null);
+  const [openCombobox, setOpenCombobox] = useState(false);
+  
+  // Common State
   const [selectedGame, setSelectedGame] = useState('');
   const [checkInBranch, setCheckInBranch] = useState('');
+  
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const { toast } = useToast();
@@ -178,7 +193,7 @@ function TrackingContent() {
 
   const gamesInSelectedBranch = useMemo(() => {
     if (!checkInBranch) return [];
-    return games.filter(g => g.branch === checkInBranch && g.status === 'Available');
+    return games.filter(g => (g.branch === checkInBranch || g.branch === 'كل الفروع') && g.status === 'Available');
   }, [games, checkInBranch]);
 
 
@@ -216,7 +231,7 @@ function TrackingContent() {
   useEffect(() => {
       const activeRef = ref(db, 'sessions/active');
       const completedRef = ref(db, 'sessions/completed');
-
+      
       const unsubscribeActive = onValue(activeRef, (snapshot) => {
           const data = snapshot.val();
           setActiveChildren(data ? Object.values(data) : []);
@@ -236,10 +251,40 @@ function TrackingContent() {
       }
   }, [setActiveChildren, setCompletedSessions]);
 
+    const resetNewCustomerForm = () => {
+        setNewChildName('');
+        setNewChildAge('');
+        setNewChildParentName('');
+        setNewChildPhoneNumber('');
+    }
 
-  const handleCheckIn = async (e: React.FormEvent) => {
+    const resetExistingCustomerForm = () => {
+        setSelectedCustomer(null);
+        setSelectedChild(null);
+    }
+  
+    const handleCustomerSelect = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        if (customer.children.length === 1) {
+            setSelectedChild(customer.children[0]);
+        } else {
+            setSelectedChild(null);
+        }
+        setOpenCombobox(false);
+    }
+
+
+  const handleCheckIn = async (e: React.FormEvent, type: 'new' | 'existing') => {
     e.preventDefault();
-    if (!newChildName || !newChildAge || !selectedGame || !newChildParentName || !newChildPhoneNumber || !checkInBranch) {
+
+    const isNew = type === 'new';
+    
+    const childName = isNew ? newChildName : selectedChild?.name;
+    const childAge = isNew ? newChildAge : selectedChild?.age;
+    const parentName = isNew ? newChildParentName : selectedCustomer?.parentName;
+    const phoneNumber = isNew ? newChildPhoneNumber : selectedCustomer?.phoneNumber;
+    
+    if (!childName || !childAge || !selectedGame || !parentName || !phoneNumber || !checkInBranch) {
       toast({
         title: 'خطأ',
         description: 'الرجاء تعبئة جميع الحقول لتسجيل الدخول.',
@@ -272,14 +317,39 @@ function TrackingContent() {
         return;
     }
 
+    if (isNew) {
+        const existingCustomer = customers.find(c => c.phoneNumber === phoneNumber);
+        if (existingCustomer) {
+            // Add new child to existing customer
+            const newChildData = { name: childName, age: parseInt(childAge.toString()) };
+            const updatedChildren = [...(existingCustomer.children || []), newChildData];
+            try {
+                await update(ref(db, `customers/${existingCustomer.id}`), { children: updatedChildren });
+            } catch(err) { console.error(err) }
+        } else {
+            // Create new customer
+            const customersRef = ref(db, 'customers');
+            const newCustomerRef = push(customersRef);
+            const newCustomer: Omit<Customer, 'id'> = {
+                parentName: parentName,
+                phoneNumber: phoneNumber,
+                children: [{ name: childName, age: parseInt(childAge.toString()) }],
+                createdAt: new Date().toISOString()
+            };
+            try {
+                 await set(newCustomerRef, newCustomer);
+            } catch(err) { console.error(err); }
+        }
+    }
+
 
     const childId = Date.now();
     const newChild: Child = {
       id: childId,
-      name: newChildName,
-      age: parseInt(newChildAge),
-      parentName: newChildParentName,
-      phoneNumber: newChildPhoneNumber,
+      name: childName,
+      age: parseInt(childAge.toString()),
+      parentName: parentName,
+      phoneNumber: phoneNumber,
       game: selectedGame,
       branchName: gameDetails.branch,
       checkInTime: Date.now(),
@@ -288,12 +358,12 @@ function TrackingContent() {
 
     try {
         await set(ref(db, `sessions/active/${childId}`), newChild);
-        setNewChildName('');
-        setNewChildAge('');
-        setNewChildParentName('');
-        setNewChildPhoneNumber('');
+        
+        // Reset forms
+        resetNewCustomerForm();
+        resetExistingCustomerForm();
         setSelectedGame('');
-        // Do not reset checkInBranch if it's fixed for the user
+
         if (currentUser?.branch === 'كل الفروع') {
             setCheckInBranch('');
         }
@@ -409,93 +479,8 @@ function TrackingContent() {
         />
       </div>
       <div className="grid gap-8 md:grid-cols-3 items-start">
-        <div className="md:col-span-1">
-            {hasActiveShift ? (
-                <Card>
-                <CardHeader>
-                    <CardTitle>تسجيل دخول طفل جديد</CardTitle>
-                    <CardDescription>
-                    أدخل تفاصيل الطفل وولي الأمر لبدء جلسة اللعب.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleCheckIn} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="child-name">اسم الطفل</Label>
-                        <Input
-                        id="child-name"
-                        value={newChildName}
-                        onChange={(e) => setNewChildName(e.target.value)}
-                        placeholder="مثال: محمد"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="child-age">عمر الطفل</Label>
-                        <Input
-                        id="child-age"
-                        type="number"
-                        value={newChildAge}
-                        onChange={(e) => setNewChildAge(e.target.value)}
-                        placeholder="مثال: 5"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="parent-name">اسم ولي الأمر</Label>
-                        <Input
-                        id="parent-name"
-                        value={newChildParentName}
-                        onChange={(e) => setNewChildParentName(e.target.value)}
-                        placeholder="مثال: أحمد عبد الله"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="phone-number">رقم الهاتف</Label>
-                        <Input
-                        id="phone-number"
-                        type="tel"
-                        value={newChildPhoneNumber}
-                        onChange={(e) => setNewChildPhoneNumber(e.target.value)}
-                        placeholder="مثال: 01234567890"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="branch-select">اختر الفرع</Label>
-                        <Select value={checkInBranch} onValueChange={(value) => { setCheckInBranch(value); setSelectedGame(''); }} disabled={currentUser?.branch !== 'كل الفروع'}>
-                            <SelectTrigger id="branch-select">
-                                <SelectValue placeholder="اختر فرع..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {branches.map((branch) => (
-                                <SelectItem key={branch.id} value={branch.name}>
-                                    {branch.name}
-                                </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="game-select">اختر اللعبة</Label>
-                        <Select value={selectedGame} onValueChange={setSelectedGame} disabled={!checkInBranch}>
-                        <SelectTrigger id="game-select">
-                            <SelectValue placeholder="اختر لعبة..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {gamesInSelectedBranch.map((game) => (
-                            <SelectItem key={game.id} value={game.name}>
-                                {game.name}
-                            </SelectItem>
-                            ))}
-                        </SelectContent>
-                        </Select>
-                    </div>
-                    <Button type="submit" className="w-full">
-                        <PlayCircle className="me-2 h-4 w-4" />
-                        بدء اللعب
-                    </Button>
-                    </form>
-                </CardContent>
-                </Card>
-            ) : (
+        <div className="md:col-span-1 space-y-6">
+            {!hasActiveShift && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
@@ -506,6 +491,175 @@ function TrackingContent() {
                     </AlertDescription>
                 </Alert>
             )}
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>تسجيل دخول عميل حالي</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={(e) => handleCheckIn(e, 'existing')} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>ابحث برقم هاتف ولي الأمر</Label>
+                            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openCombobox}
+                                    className="w-full justify-between"
+                                    disabled={!hasActiveShift}
+                                    >
+                                    {selectedCustomer
+                                        ? `${selectedCustomer.parentName} (${selectedCustomer.phoneNumber})`
+                                        : "اختر ولي الأمر..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[300px] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="ابحث بالرقم أو الاسم..." />
+                                        <CommandList>
+                                            <CommandEmpty>لم يتم العثور على عميل.</CommandEmpty>
+                                            <CommandGroup>
+                                                {customers.map((customer) => (
+                                                <CommandItem
+                                                    key={customer.id}
+                                                    value={`${customer.parentName} ${customer.phoneNumber}`}
+                                                    onSelect={() => handleCustomerSelect(customer)}
+                                                >
+                                                    <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        selectedCustomer?.id === customer.id ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                    />
+                                                    {customer.parentName} ({customer.phoneNumber})
+                                                </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        {selectedCustomer && (
+                             <div className="space-y-2">
+                                <Label htmlFor="child-select">اختر الطفل</Label>
+                                <Select value={selectedChild?.name} onValueChange={(childName) => {
+                                    const child = selectedCustomer.children.find(c => c.name === childName);
+                                    setSelectedChild(child || null);
+                                }} disabled={!hasActiveShift}>
+                                    <SelectTrigger id="child-select">
+                                        <SelectValue placeholder="اختر طفل..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {selectedCustomer.children.map((child, index) => (
+                                            <SelectItem key={index} value={child.name}>
+                                                {child.name} (عمر: {child.age})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="branch-select-existing">اختر الفرع</Label>
+                            <Select value={checkInBranch} onValueChange={(value) => { setCheckInBranch(value); setSelectedGame(''); }} disabled={!hasActiveShift || currentUser?.branch !== 'كل الفروع'}>
+                                <SelectTrigger id="branch-select-existing">
+                                    <SelectValue placeholder="اختر فرع..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {branches.map((branch) => (
+                                    <SelectItem key={branch.id} value={branch.name}>
+                                        {branch.name}
+                                    </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="game-select-existing">اختر اللعبة</Label>
+                            <Select value={selectedGame} onValueChange={setSelectedGame} disabled={!hasActiveShift || !checkInBranch}>
+                                <SelectTrigger id="game-select-existing">
+                                    <SelectValue placeholder="اختر لعبة..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {gamesInSelectedBranch.map((game) => (
+                                        <SelectItem key={game.id} value={game.name}>
+                                            {game.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <Button type="submit" className="w-full" disabled={!hasActiveShift || !selectedChild}>
+                            <PlayCircle className="me-2 h-4 w-4" />
+                            بدء اللعب
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
+
+            <Card>
+            <CardHeader>
+                <CardTitle>تسجيل دخول عميل جديد</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={(e) => handleCheckIn(e, 'new')} className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="child-name">اسم الطفل</Label>
+                    <Input id="child-name" value={newChildName} onChange={(e) => setNewChildName(e.target.value)} placeholder="مثال: محمد" disabled={!hasActiveShift}/>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="child-age">عمر الطفل</Label>
+                    <Input id="child-age" type="number" value={newChildAge} onChange={(e) => setNewChildAge(e.target.value)} placeholder="مثال: 5" disabled={!hasActiveShift} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="parent-name">اسم ولي الأمر</Label>
+                    <Input id="parent-name" value={newChildParentName} onChange={(e) => setNewChildParentName(e.target.value)} placeholder="مثال: أحمد عبد الله" disabled={!hasActiveShift} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="phone-number">رقم الهاتف</Label>
+                    <Input id="phone-number" type="tel" value={newChildPhoneNumber} onChange={(e) => setNewChildPhoneNumber(e.target.value)} placeholder="مثال: 01234567890" disabled={!hasActiveShift} />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="branch-select-new">اختر الفرع</Label>
+                    <Select value={checkInBranch} onValueChange={(value) => { setCheckInBranch(value); setSelectedGame(''); }} disabled={!hasActiveShift || currentUser?.branch !== 'كل الفروع'}>
+                        <SelectTrigger id="branch-select-new">
+                            <SelectValue placeholder="اختر فرع..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {branches.map((branch) => (
+                            <SelectItem key={branch.id} value={branch.name}>
+                                {branch.name}
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="game-select-new">اختر اللعبة</Label>
+                    <Select value={selectedGame} onValueChange={setSelectedGame} disabled={!hasActiveShift || !checkInBranch}>
+                    <SelectTrigger id="game-select-new">
+                        <SelectValue placeholder="اختر لعبة..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {gamesInSelectedBranch.map((game) => (
+                        <SelectItem key={game.id} value={game.name}>
+                            {game.name}
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <Button type="submit" className="w-full" disabled={!hasActiveShift}>
+                    <PlayCircle className="me-2 h-4 w-4" />
+                    تسجيل وبدء اللعب
+                </Button>
+                </form>
+            </CardContent>
+            </Card>
+            
         </div>
         <div className="md:col-span-2 space-y-8">
             <Card>
@@ -519,20 +673,20 @@ function TrackingContent() {
                 <Table>
                 <TableHeader>
                     <TableRow>
-                    <TableHead>اسم الطفل</TableHead>
-                    <TableHead>اللعبة</TableHead>
-                    <TableHead>الفرع</TableHead>
-                    <TableHead className="text-center">مدة اللعب</TableHead>
-                    <TableHead className="text-center">إجراء</TableHead>
+                        <TableHead className="text-right">اسم الطفل</TableHead>
+                        <TableHead className="text-right">اللعبة</TableHead>
+                        <TableHead className="text-right">الفرع</TableHead>
+                        <TableHead className="text-center">مدة اللعب</TableHead>
+                        <TableHead className="text-center">إجراء</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {filteredActiveChildren.length > 0 ? (
                     filteredActiveChildren.map((child) => (
                         <TableRow key={child.id}>
-                        <TableCell className="font-medium">{child.name}</TableCell>
-                        <TableCell>{child.game}</TableCell>
-                        <TableCell>{child.branchName}</TableCell>
+                        <TableCell className="font-medium text-right">{child.name}</TableCell>
+                        <TableCell className="text-right">{child.game}</TableCell>
+                        <TableCell className="text-right">{child.branchName}</TableCell>
                         <TableCell className="text-center">
                             <TimeCounter startTime={child.checkInTime} />
                         </TableCell>
@@ -650,7 +804,3 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
-
-    
