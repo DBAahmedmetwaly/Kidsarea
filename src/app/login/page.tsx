@@ -33,7 +33,7 @@ export default function LoginPage() {
     setLoading(true);
 
     const user = employees.find(
-        (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع') && emp.username === username && emp.password === password
+        (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع') && emp.username === username && emp.password === password && emp.status !== 'Disabled'
     );
 
     if (user) {
@@ -42,18 +42,18 @@ export default function LoginPage() {
         title: 'تم تسجيل الدخول بنجاح',
         description: `مرحباً بعودتك، ${user.name}!`,
         });
-        router.push('/');
+        router.push('/tracking');
     } else if (username === 'admin' && password === '123456') {
         login({ username: 'admin' });
         toast({
         title: 'تم تسجيل الدخول بنجاح',
         description: 'مرحباً بعودتك!',
         });
-        router.push('/');
+        router.push('/tracking');
     } else {
         toast({
         title: 'فشل تسجيل الدخول',
-        description: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
+        description: 'اسم المستخدم أو كلمة المرور غير صحيحة أو الحساب معطل.',
         variant: 'destructive',
         });
     }
