@@ -24,7 +24,6 @@ export interface Game {
     id: string;
     name: string;
     hourly_rate: number;
-    fractional_rate?: number;
     branch: string;
     image: string;
     status: 'Available' | 'Maintenance';
@@ -35,7 +34,7 @@ export interface Employee {
     name: string;
     role: 'مشرف' | 'كاشير' | 'مدير فرع';
     branch: string | 'كل الفروع';
-    status: 'Active' | 'On Leave';
+    status: 'Active' | 'On Leave' | 'Disabled';
     avatarUrl: string;
     username?: string;
     password?: string;

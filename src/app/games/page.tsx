@@ -54,6 +54,18 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, push, set, remove, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 
 function GameFormDialog({ 
     open, 
@@ -72,7 +84,6 @@ function GameFormDialog({
     const { branches } = useFirebase();
     const [name, setName] = useState('');
     const [hourlyRate, setHourlyRate] = useState('');
-    const [fractionalRate, setFractionalRate] = useState('');
     const [branch, setBranch] = useState('');
     const [status, setStatus] = useState<'Available' | 'Maintenance'>('Available');
     
@@ -80,13 +91,11 @@ function GameFormDialog({
         if (isEditMode && initialData) {
             setName(initialData.name);
             setHourlyRate(String(initialData.hourly_rate));
-            setFractionalRate(String(initialData.fractional_rate || ''));
             setBranch(initialData.branch);
             setStatus(initialData.status);
         } else {
             setName('');
             setHourlyRate('');
-            setFractionalRate('');
             setBranch('');
             setStatus('Available');
         }
@@ -106,7 +115,6 @@ function GameFormDialog({
             ...(isEditMode && initialData ? { id: initialData.id } : {}),
             name,
             hourly_rate: parseFloat(hourlyRate),
-            fractional_rate: parseFloat(fractionalRate) || 0,
             branch,
             status,
             image: initialData?.image || 'https://placehold.co/64x64.png',
@@ -136,12 +144,6 @@ function GameFormDialog({
                             السعر/ساعة
                         </Label>
                         <Input id="hourly_rate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="fractional_rate" className="text-right">
-                            السعر/نصف ساعة
-                        </Label>
-                        <Input id="fractional_rate" type="number" value={fractionalRate} onChange={(e) => setFractionalRate(e.target.value)} className="col-span-3" placeholder="e.g. 50" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="branch" className="text-right">
@@ -298,15 +300,12 @@ function GamesContent() {
                 <TableHead className="hidden w-[100px] sm:table-cell">
                   <span className="sr-only">صورة اللعبة</span>
                 </TableHead>
-                <TableHead>اسم اللعبة</TableHead>
-                <TableHead>الحالة</TableHead>
+                <TableHead className="text-right">اسم اللعبة</TableHead>
+                <TableHead className="text-center">الحالة</TableHead>
                 <TableHead className="hidden md:table-cell text-center">
                   السعر/ساعة
                 </TableHead>
-                <TableHead className="hidden md:table-cell text-center">
-                  السعر/نصف ساعة
-                </TableHead>
-                <TableHead className="hidden md:table-cell">
+                <TableHead className="hidden md:table-cell text-right">
                   الفروع المتاحة
                 </TableHead>
                 <TableHead className="text-center">
@@ -327,12 +326,12 @@ function GamesContent() {
                       data-ai-hint="kids playground"
                     />
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium text-right">
                      <Link href={`/games/${encodeURIComponent(game.name)}`} className="hover:underline">
                         {game.name}
                      </Link>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <Badge variant={game.status === 'Available' ? 'default' : 'destructive'} className={game.status === 'Available' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}>
                       {game.status === 'Available' ? 'متاح' : 'صيانة'}
                     </Badge>
@@ -340,10 +339,7 @@ function GamesContent() {
                   <TableCell className="hidden md:table-cell text-center">
                     {`ج.م${game.hourly_rate}`}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-center">
-                    {`ج.م${game.fractional_rate || (game.hourly_rate / 2)}`}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-right">
                     {game.branch}
                   </TableCell>
                   <TableCell className="text-center">
@@ -361,7 +357,23 @@ function GamesContent() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => openForm(game)}>تعديل</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteGame(game.id)}>حذف</DropdownMenuItem>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">حذف</DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    هذا الإجراء لا يمكن التراجع عنه. سيؤدي هذا إلى حذف اللعبة بشكل دائم.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)}>متابعة</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
