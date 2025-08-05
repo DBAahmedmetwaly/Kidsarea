@@ -111,16 +111,6 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-
-  // Do not show a full-screen loader on the login page itself, just let the button be disabled.
-  if (loading && pathname !== '/login') {
-    return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-    );
-  }
-
   return (
     <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, openShifts, transactions, subscriptions, subscriptionPlans, loading, error }}>
       {children}

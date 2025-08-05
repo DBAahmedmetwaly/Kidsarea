@@ -5,9 +5,9 @@ import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import AuthProvider from '@/components/AuthProvider';
 import { SessionProvider } from '@/context/SessionContext';
-import { FirebaseProvider } from '@/context/FirebaseContext';
 import { CustomerProvider } from '@/context/CustomerContext';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { FirebaseProvider } from '@/context/FirebaseContext';
 
 
 export const metadata: Metadata = {
@@ -38,6 +38,7 @@ export default function RootLayout({
         )}
       >
         <AuthProvider>
+          <FirebaseProvider>
             <CustomerProvider>
               <SessionProvider>
                 <SidebarProvider>
@@ -45,6 +46,7 @@ export default function RootLayout({
                 </SidebarProvider>
               </SessionProvider>
             </CustomerProvider>
+          </FirebaseProvider>
         </AuthProvider>
         <Toaster />
       </body>

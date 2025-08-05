@@ -30,7 +30,7 @@ export function useAuth() {
   return context;
 }
 
-function AuthContent({ children }: { children: ReactNode }) {
+export default function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthContextType['user']>(null);
   const [loading, setLoading] = useState(true);
@@ -76,6 +76,7 @@ function AuthContent({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
     setUser(userData);
+    router.push('/tracking');
   };
 
   const logout = () => {
@@ -100,14 +101,4 @@ function AuthContent({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-// The main AuthProvider now wraps content with FirebaseProvider
-// This makes Firebase data available on the login page as well
-export default function AuthProvider({ children }: { children: ReactNode }) {
-    return (
-        <FirebaseProvider>
-            <AuthContent>{children}</AuthContent>
-        </FirebaseProvider>
-    )
 }
