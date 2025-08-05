@@ -11,6 +11,7 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import type { Employee } from '@/lib/types';
+import { FirebaseProvider } from '@/context/FirebaseContext';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -29,7 +30,7 @@ export function useAuth() {
   return context;
 }
 
-export default function AuthProvider({ children }: { children: ReactNode }) {
+function AuthContent({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthContextType['user']>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +53,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
                 if (!authStatus && pathname !== '/login') {
                     router.push('/login');
                 } else if (authStatus && pathname === '/login') {
-                    router.push('/');
+                    router.push('/tracking'); // Redirect to tracking on successful login
                 }
             } catch (error) {
                 console.error("Failed to parse user data from localStorage", error);
@@ -70,6 +71,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
     setUser(userData);
+    router.push('/tracking');
   };
 
   const logout = () => {
@@ -88,9 +90,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
   
+  // If not authenticated and not on login page, show loader while redirecting
   if (!isAuthenticated && pathname !== '/login') {
-    // While loading, or if not authenticated on a protected route, show a loader or nothing.
-    // This prevents flashing the page content before redirecting.
     return (
         <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -98,10 +99,20 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       );
   }
 
-  // Render children only if authenticated or on the login page.
+  // Render children (or login page)
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
+}
+
+// The main AuthProvider now wraps content with FirebaseProvider
+// This makes Firebase data available on the login page as well
+export default function AuthProvider({ children }: { children: ReactNode }) {
+    return (
+        <FirebaseProvider>
+            <AuthContent>{children}</AuthContent>
+        </FirebaseProvider>
+    )
 }

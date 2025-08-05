@@ -14,6 +14,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 interface FirebaseContextType {
   games: Game[];
@@ -51,6 +52,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const dataRefs = [
@@ -110,7 +112,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  if (loading) {
+  // Do not show a full-screen loader on the login page itself, just let the button be disabled.
+  if (loading && pathname !== '/login') {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -124,5 +127,3 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     </FirebaseContext.Provider>
   );
 }
-
-    
