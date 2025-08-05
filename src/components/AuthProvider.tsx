@@ -85,11 +85,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
     setUser(userData);
-     if (userData && 'role' in userData && userData.role === 'كاشير') {
-        router.push('/tracking');
-    } else {
-        router.push('/');
-    }
   };
 
   const logout = () => {
