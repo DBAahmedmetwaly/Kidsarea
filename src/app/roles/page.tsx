@@ -11,12 +11,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, FileCog } from 'lucide-react';
+import { Shield, FileCog, History } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ALL_SCREENS = [
   { href: '/', label: 'لوحة التحكم' },
   { href: '/tracking', label: 'تتبع الوقت' },
+  { href: '/sessions', label: 'سجل الجلسات' },
   { href: '/shift-closing', label: 'إدارة الورديات' },
   { href: '/reports', label: 'التقارير' },
   { href: '/branches', label: 'الفروع' },
@@ -25,6 +26,7 @@ const ALL_SCREENS = [
   { href: '/safes', label: 'الخزائن' },
   { href: '/roles', label: 'الصلاحيات' },
   { href: '/policies', label: 'السياسات' },
+  { href: '/transactions', label: 'سجل الحركات'},
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -67,8 +69,8 @@ function RolesContent() {
         // Initialize with default permissions if none exist
         const defaultPermissions: RolePermissions = {
           'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {}),
-          'كاشير': { '/tracking': true, '/shift-closing': true },
-          'مشرف': { '/tracking': true },
+          'كاشير': { '/tracking': true, '/shift-closing': true, '/sessions': true },
+          'مشرف': { '/tracking': true, '/sessions': true },
         };
         setPermissions(defaultPermissions);
       }
@@ -84,8 +86,20 @@ function RolesContent() {
   const handlePermissionChange = (screenHref: string, checked: boolean) => {
     setPermissions(prev => {
         if (!prev) return null;
-        const newPermissions = { ...prev };
+        const newPermissions = JSON.parse(JSON.stringify(prev)); // Deep copy
+        
         newPermissions[selectedRole][screenHref] = checked;
+
+        // Logic: if /tracking is enabled, /sessions should be too.
+        if (screenHref === '/tracking' && checked) {
+             newPermissions[selectedRole]['/sessions'] = true;
+        }
+         // Logic: if /sessions is disabled, /tracking should be too.
+        if(screenHref === '/sessions' && !checked) {
+             newPermissions[selectedRole]['/tracking'] = false;
+        }
+
+
         return newPermissions;
     });
   };
@@ -176,6 +190,7 @@ function RolesContent() {
                                 id={`${selectedRole}-${screen.href}`}
                                 checked={permissions?.[selectedRole]?.[screen.href] || false}
                                 onCheckedChange={(checked) => handlePermissionChange(screen.href, !!checked)}
+                                disabled={screen.href === '/sessions' && permissions?.[selectedRole]?.['/tracking']}
                             />
                             <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                 {screen.label}

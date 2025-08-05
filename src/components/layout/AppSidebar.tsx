@@ -28,6 +28,7 @@ import {
   FileCog,
   Database,
   List,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -40,6 +41,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger as SheetTriggerComponent 
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/tracking', label: 'تتبع الوقت', icon: Clock },
+  { href: '/sessions', label: 'سجل الجلسات', icon: History },
   { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
   { href: '/branches', label: 'الفروع', icon: Building2 },
@@ -116,6 +118,11 @@ function SidebarItems() {
 
     const userPermissions = permissions[employee.role];
     
+    // Add /sessions to permissions if they can see /tracking
+    if (userPermissions['/tracking'] && !userPermissions['/sessions']) {
+        userPermissions['/sessions'] = true;
+    }
+
     return [...allMenuItems, ...settingsMenuItems].filter(item => userPermissions[item.href]);
   };
 
