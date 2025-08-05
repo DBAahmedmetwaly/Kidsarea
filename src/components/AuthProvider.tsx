@@ -12,6 +12,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import type { Employee } from '@/lib/types';
 import { FirebaseProvider } from '@/context/FirebaseContext';
+import SplashScreen from './layout/SplashScreen';
+
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -51,32 +53,43 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             } catch (error) {
                 console.error("Failed to parse user data from localStorage", error);
                 // Clear corrupted data
-                logout();
+                localStorage.removeItem('isAuthenticated');
+                localStorage.removeItem('user');
+                setIsAuthenticated(false);
+                setUser(null);
             } finally {
-                setLoading(false);
+                // Add a small delay to let the splash screen be visible
+                setTimeout(() => setLoading(false), 1500);
             }
         };
         checkAuth();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on initial mount
+  }, []);
 
   useEffect(() => {
     if (!loading) {
        if (!isAuthenticated && pathname !== '/login') {
             router.push('/login');
         } else if (isAuthenticated && pathname === '/login') {
-            router.push('/tracking'); 
+            if (user && 'role' in user && user.role === 'كاشير') {
+                router.push('/tracking');
+            } else {
+                router.push('/');
+            }
         }
     }
-  }, [isAuthenticated, pathname, router, loading]);
+  }, [isAuthenticated, pathname, router, loading, user]);
 
   const login = (userData: AuthContextType['user']) => {
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
     setUser(userData);
-    router.push('/tracking');
+     if (userData && 'role' in userData && userData.role === 'كاشير') {
+        router.push('/tracking');
+    } else {
+        router.push('/');
+    }
   };
 
   const logout = () => {
@@ -88,10 +101,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   if (loading) {
+    // The FirebaseProvider is needed for the SplashScreen to get the app name
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
+        <FirebaseProvider>
+            <SplashScreen />
+        </FirebaseProvider>
     );
   }
   
