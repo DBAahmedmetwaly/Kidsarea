@@ -42,12 +42,14 @@ export default function LoginPage() {
         title: 'تم تسجيل الدخول بنجاح',
         description: `مرحباً بعودتك، ${user.name}!`,
         });
+        router.push('/tracking'); 
     } else if (username === 'admin' && password === '123456') {
         login({ username: 'admin' });
         toast({
         title: 'تم تسجيل الدخول بنجاح',
         description: 'مرحباً بعودتك!',
         });
+        router.push('/');
     } else {
         toast({
         title: 'فشل تسجيل الدخول',
