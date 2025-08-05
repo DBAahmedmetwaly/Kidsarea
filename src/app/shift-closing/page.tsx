@@ -70,7 +70,7 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
       cashierUsername: '',
       branchName: '',
       safeId: '',
-      actualRevenue: undefined,
+      actualRevenue: '' as unknown as number, // Fix: Use empty string instead of undefined
       notes: '',
     },
   });
@@ -175,6 +175,7 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
                 description: 'تم تسجيل بيانات الوردية وإضافة المبلغ إلى الخزينة.',
             });
             form.reset();
+            setExpectedRevenue(0);
 
         } catch (dbError) {
              setError('فشل حفظ البيانات في قاعدة البيانات.');
@@ -204,7 +205,7 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>اختر الكاشير</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="اختر من الكاشيرز المتاحين..." />
@@ -375,7 +376,7 @@ function OpenShiftForm({ onShiftOpen }: { onShiftOpen: (shift: Omit<OpenShift, '
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>اختر الكاشير</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="اختر كاشير لبدء ورديته..." />
