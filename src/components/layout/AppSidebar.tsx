@@ -242,10 +242,9 @@ export default function AppSidebar() {
         <Sheet open={openMobile} onOpenChange={setOpenMobile}>
             {/* The trigger is now part of the page content */}
             <SheetContent side="right" className="p-0 w-[250px] bg-sidebar text-sidebar-foreground border-none">
+                 <SheetTitle className="sr-only">القائمة الرئيسية</SheetTitle>
                  <SidebarItems />
             </SheetContent>
         </Sheet>
   );
 }
-
-    
