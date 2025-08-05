@@ -79,7 +79,7 @@ function DashboardContent() {
 
     const stats = useMemo(() => {
         const totalRevenue = filteredData.sessions.reduce((acc, s) => acc + s.cost, 0);
-        const totalVisitors = filteredData.sessions.length + filteredData.active.length;
+        const totalVisitors = filteredData.sessions.length;
         const activeNow = filteredData.active.length;
         
         const todayRange = { start: startOfDay(new Date()), end: endOfDay(new Date()) };
@@ -93,17 +93,19 @@ function DashboardContent() {
         return { totalRevenue, totalVisitors, activeNow, revenueToday };
     }, [filteredData, completedSessions, selectedBranch, games]);
 
-    const weeklyChartData = useMemo(() => {
-        const last7Days = eachDayOfInterval({
-            start: subDays(new Date(), 6),
-            end: new Date(),
+    const chartData = useMemo(() => {
+        if (!date?.from || !date.to) return [];
+
+        const intervalDays = eachDayOfInterval({
+            start: date.from,
+            end: date.to,
         });
 
         const branchGames = selectedBranch === 'all' 
             ? games.map(g => g.name) 
             : games.filter(g => g.branch === selectedBranch).map(g => g.name);
 
-        return last7Days.map(day => {
+        return intervalDays.map(day => {
             const dayStart = startOfDay(day);
             const dayEnd = endOfDay(day);
             const dayInterval = { start: dayStart, end: dayEnd };
@@ -114,13 +116,13 @@ function DashboardContent() {
             });
 
             return {
-                date: format(day, 'eeee', { locale: ar }),
+                date: format(day, 'MMM d', { locale: ar }),
                 revenue: daySessions.reduce((sum, s) => sum + s.cost, 0),
                 visitors: daySessions.length,
             };
         });
 
-    }, [completedSessions, selectedBranch, games]);
+    }, [completedSessions, selectedBranch, games, date]);
 
     return (
         <div className="flex flex-col gap-8">
@@ -197,7 +199,7 @@ function DashboardContent() {
                 title="الأطفال النشطون حاليًا"
                 value={`${stats.activeNow}`}
                 icon={Activity}
-                description="في جميع الفروع"
+                description={selectedBranch === 'all' ? `في كل الفروع` : `في ${selectedBranch}`}
             />
             <StatCard
                 title="إيرادات اليوم"
@@ -210,11 +212,11 @@ function DashboardContent() {
             <div className="grid gap-4 md:grid-cols-2">
             <Card>
                 <CardHeader>
-                <CardTitle>الإيرادات هذا الأسبوع</CardTitle>
+                <CardTitle>الإيرادات في الفترة المحددة</CardTitle>
                 </CardHeader>
                 <CardContent>
                 <ChartContainer config={revenueChartConfig} className="h-64 w-full">
-                    <BarChart accessibilityLayer data={weeklyChartData} dir="ltr">
+                    <BarChart accessibilityLayer data={chartData} dir="ltr">
                     <CartesianGrid vertical={false} />
                     <XAxis
                         dataKey="date"
@@ -240,11 +242,11 @@ function DashboardContent() {
 
             <Card>
                 <CardHeader>
-                <CardTitle>الزوار هذا الأسبوع</CardTitle>
+                <CardTitle>الزوار في الفترة المحددة</CardTitle>
                 </CardHeader>
                 <CardContent>
                 <ChartContainer config={visitorsChartConfig} className="h-64 w-full">
-                    <BarChart accessibilityLayer data={weeklyChartData} dir="ltr">
+                    <BarChart accessibilityLayer data={chartData} dir="ltr">
                     <CartesianGrid vertical={false} />
                     <XAxis
                         dataKey="date"
