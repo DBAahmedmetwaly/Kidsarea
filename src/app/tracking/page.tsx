@@ -155,6 +155,9 @@ function TrackingContent() {
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
 
+  // Local state for my completed sessions to ensure immediate UI update
+  const [myLocalCompletedSessions, setMyLocalCompletedSessions] = useState<CompletedSession[]>([]);
+
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
       onAfterPrint: () => {
@@ -245,15 +248,23 @@ function TrackingContent() {
 
   }, [activeChildren, completedSessions, selectedBranchFilter]);
 
-  const myCompletedSessions = useMemo(() => {
-    if (!user?.username) return [];
+  // Effect to populate the local completed sessions state from the global context
+  useEffect(() => {
+    if (!user?.username) {
+        setMyLocalCompletedSessions([]);
+        return;
+    };
     const myOpenShift = openShifts.find(s => s.cashierUsername === user.username);
-    if (!myOpenShift) return [];
+    if (!myOpenShift) {
+        setMyLocalCompletedSessions([]);
+        return;
+    }
 
-    return completedSessions.filter(s => 
+    const sessionsInShift = completedSessions.filter(s => 
         s.cashierUsername === user.username && 
         s.checkOutTime >= new Date(myOpenShift.startTime).getTime()
     );
+    setMyLocalCompletedSessions(sessionsInShift);
   }, [completedSessions, user, openShifts]);
 
   // Sync with Firebase
@@ -441,6 +452,9 @@ function TrackingContent() {
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
         
+        // Update local state immediately
+        setMyLocalCompletedSessions(prev => [completedSession as CompletedSession, ...prev]);
+
         showReceiptForSession(completedSession as CompletedSession);
     } catch(err) {
         console.error(err);
@@ -736,8 +750,8 @@ function TrackingContent() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {myCompletedSessions.length > 0 ? (
-                                myCompletedSessions.map((session) => (
+                            {myLocalCompletedSessions.length > 0 ? (
+                                myLocalCompletedSessions.map((session) => (
                                     <TableRow key={session.id}>
                                         <TableCell className="font-medium text-right">{session.name}</TableCell>
                                         <TableCell className="text-right">{session.game}</TableCell>
