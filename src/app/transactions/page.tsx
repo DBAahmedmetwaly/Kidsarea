@@ -36,7 +36,6 @@ import { useFirebase } from '@/context/FirebaseContext';
 import type { SafeTransaction } from '@/lib/types';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -49,7 +48,8 @@ function TransactionsContent() {
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [selectedSafe, setSelectedSafe] = useState('all');
   const [selectedType, setSelectedType] = useState<'all' | 'deposit' | 'withdrawal'>('all');
-  const [date, setDate] = useState<DateRange | undefined>();
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
   
   useEffect(() => {
     const transactionsRef = ref(db, 'safeTransactions');
@@ -88,8 +88,8 @@ function TransactionsContent() {
     if (selectedType !== 'all') {
       transactions = transactions.filter(t => t.type === selectedType);
     }
-    if (date?.from && date.to) {
-        const range = { start: startOfDay(date.from), end: endOfDay(date.to) };
+    if (fromDate && toDate) {
+        const range = { start: startOfDay(fromDate), end: endOfDay(toDate) };
         transactions = transactions.filter(t => {
             const txDate = new Date(t.date);
             return isWithinInterval(txDate, range);
@@ -97,13 +97,14 @@ function TransactionsContent() {
     }
 
     return transactions;
-  }, [allTransactions, selectedBranch, selectedSafe, selectedType, date]);
+  }, [allTransactions, selectedBranch, selectedSafe, selectedType, fromDate, toDate]);
   
   const clearFilters = () => {
     setSelectedBranch('all');
     setSelectedSafe('all');
     setSelectedType('all');
-    setDate(undefined);
+    setFromDate(undefined);
+    setToDate(undefined);
   }
 
   const renderContent = () => {
@@ -140,16 +141,16 @@ function TransactionsContent() {
       <TableBody>
         {filteredTransactions.map((tx) => (
           <TableRow key={tx.id}>
-            <TableCell>{new Date(tx.date).toLocaleString('ar-EG')}</TableCell>
-            <TableCell>{tx.branchName}</TableCell>
-            <TableCell>{tx.safeName}</TableCell>
-            <TableCell>
+            <TableCell className="text-right">{new Date(tx.date).toLocaleString('ar-EG')}</TableCell>
+            <TableCell className="text-right">{tx.branchName}</TableCell>
+            <TableCell className="text-right">{tx.safeName}</TableCell>
+            <TableCell className="text-center">
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${tx.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                 {tx.type === 'deposit' ? 'إيداع' : 'سحب'}
               </span>
             </TableCell>
-            <TableCell className="font-medium">{`ج.م ${tx.amount.toFixed(2)}`}</TableCell>
-            <TableCell>{tx.cashierName}</TableCell>
+            <TableCell className="font-medium text-center">{`ج.م ${tx.amount.toFixed(2)}`}</TableCell>
+            <TableCell className="text-right">{tx.cashierName}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -167,14 +168,20 @@ function TransactionsContent() {
             <h1 className="text-lg font-semibold md:text-2xl">سجل الحركات المالية</h1>
         </div>
         <Card>
-            <CardHeader>
-                <CardTitle>فلترة الحركات</CardTitle>
-                <CardDescription>
-                استخدم الفلاتر أدناه لتحديد الحركات التي ترغب في عرضها.
-                </CardDescription>
+            <CardHeader className="flex-row items-center justify-between">
+                <div>
+                  <CardTitle>فلترة الحركات</CardTitle>
+                  <CardDescription>
+                  استخدم الفلاتر أدناه لتحديد الحركات التي ترغب في عرضها.
+                  </CardDescription>
+                </div>
+                 <Button variant="ghost" onClick={clearFilters}>
+                    <FilterX className="me-2 h-4 w-4" />
+                    مسح الفلاتر
+                </Button>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
                         <Select value={selectedBranch} onValueChange={setSelectedBranch}>
@@ -216,50 +223,54 @@ function TransactionsContent() {
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="space-y-2 md:col-span-3 lg:col-span-1">
-                        <label className="text-sm font-medium">النطاق الزمني</label>
-                         <div className="flex items-center gap-2">
-                             <Popover>
+                    <div className="grid grid-cols-2 gap-2 items-end">
+                       <div className="space-y-2">
+                          <label className="text-sm font-medium">من تاريخ</label>
+                          <Popover>
+                              <PopoverTrigger asChild>
+                              <Button
+                                  variant={"outline"}
+                                  className={cn("w-full justify-start text-left font-normal", !fromDate && "text-muted-foreground")}
+                              >
+                                  <CalendarIcon className="me-2 h-4 w-4" />
+                                  {fromDate ? format(fromDate, "PP", { locale: ar }) : <span>اختر</span>}
+                              </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                  mode="single"
+                                  selected={fromDate}
+                                  onSelect={setFromDate}
+                                  disabled={(date) => toDate ? date > toDate : false}
+                                  initialFocus
+                                  locale={ar}
+                              />
+                              </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">إلى تاريخ</label>
+                            <Popover>
                                 <PopoverTrigger asChild>
                                 <Button
-                                    id="date"
                                     variant={"outline"}
-                                    className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !date && "text-muted-foreground"
-                                    )}
+                                    className={cn("w-full justify-start text-left font-normal", !toDate && "text-muted-foreground")}
                                 >
                                     <CalendarIcon className="me-2 h-4 w-4" />
-                                    {date?.from ? (
-                                    date.to ? (
-                                        <>
-                                        {format(date.from, "PPP", { locale: ar })} -{" "}
-                                        {format(date.to, "PPP", { locale: ar })}
-                                        </>
-                                    ) : (
-                                        format(date.from, "PPP", { locale: ar })
-                                    )
-                                    ) : (
-                                    <span>الفصل على فلترين</span>
-                                    )}
+                                    {toDate ? format(toDate, "PP", { locale: ar }) : <span>اختر</span>}
                                 </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                 <Calendar
+                                    mode="single"
+                                    selected={toDate}
+                                    onSelect={setToDate}
+                                    disabled={(date) => fromDate ? date < fromDate : false}
                                     initialFocus
-                                    mode="range"
-                                    defaultMonth={date?.from}
-                                    selected={date}
-                                    onSelect={setDate}
-                                    numberOfMonths={2}
                                     locale={ar}
                                 />
                                 </PopoverContent>
                             </Popover>
-                             <Button variant="ghost" onClick={clearFilters} size="icon">
-                                <FilterX className="h-4 w-4" />
-                                <span className="sr-only">مسح الفلاتر</span>
-                            </Button>
                         </div>
                     </div>
                 </div>
@@ -273,12 +284,12 @@ function TransactionsContent() {
                  <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>التاريخ والوقت</TableHead>
-                        <TableHead>الفرع</TableHead>
-                        <TableHead>الخزينة</TableHead>
-                        <TableHead>النوع</TableHead>
-                        <TableHead>المبلغ</TableHead>
-                        <TableHead>الموظف المسؤول</TableHead>
+                        <TableHead className="text-right">التاريخ والوقت</TableHead>
+                        <TableHead className="text-right">الفرع</TableHead>
+                        <TableHead className="text-right">الخزينة</TableHead>
+                        <TableHead className="text-center">النوع</TableHead>
+                        <TableHead className="text-center">المبلغ</TableHead>
+                        <TableHead className="text-right">الموظف المسؤول</TableHead>
                     </TableRow>
                     </TableHeader>
                     {renderContent()}

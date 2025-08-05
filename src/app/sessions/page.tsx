@@ -37,7 +37,6 @@ import { useFirebase } from '@/context/FirebaseContext';
 import type { CompletedSession } from '@/lib/types';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/context/SessionContext';
@@ -62,7 +61,8 @@ function SessionsContent() {
 
   // Filters
   const [selectedBranch, setSelectedBranch] = useState('all');
-  const [date, setDate] = useState<DateRange | undefined>();
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
   
   // Receipt State
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
@@ -99,8 +99,8 @@ function SessionsContent() {
     if (selectedBranch !== 'all') {
       sessions = sessions.filter(s => s.branchName === selectedBranch);
     }
-    if (date?.from && date.to) {
-        const range = { start: startOfDay(date.from), end: endOfDay(date.to) };
+    if (fromDate && toDate) {
+        const range = { start: startOfDay(fromDate), end: endOfDay(toDate) };
         sessions = sessions.filter(s => {
             const sessionDate = new Date(s.checkOutTime);
             return isWithinInterval(sessionDate, range);
@@ -108,11 +108,12 @@ function SessionsContent() {
     }
 
     return sessions;
-  }, [completedSessions, selectedBranch, date]);
+  }, [completedSessions, selectedBranch, fromDate, toDate]);
   
   const clearFilters = () => {
     setSelectedBranch('all');
-    setDate(undefined);
+    setFromDate(undefined);
+    setToDate(undefined);
   }
 
   const showReceiptForSession = (session: CompletedSession) => {
@@ -148,6 +149,8 @@ function SessionsContent() {
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -158,7 +161,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={7} className="h-24 text-center">
+            <TableCell colSpan={8} className="h-24 text-center">
               لا توجد جلسات مطابقة للبحث.
             </TableCell>
           </TableRow>
@@ -170,22 +173,22 @@ function SessionsContent() {
       <TableBody>
         {filteredSessions.map((session) => (
             <TableRow key={session.id}>
-                <TableCell className="font-medium">
+                <TableCell className="font-medium text-right">
                 {session.name}
                 </TableCell>
-                <TableCell>{session.parentName}</TableCell>
-                <TableCell>{session.branchName}</TableCell>
-                <TableCell>{session.game}</TableCell>
-                <TableCell>
+                <TableCell className="text-right">{session.parentName}</TableCell>
+                <TableCell className="text-right">{session.branchName}</TableCell>
+                <TableCell className="text-right">{session.game}</TableCell>
+                <TableCell className="text-center">
                 {formatDuration(session.durationMs)}
                 </TableCell>
-                <TableCell className="font-bold">{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
-                <TableCell>
+                <TableCell className="font-bold text-center">{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
+                <TableCell className="text-center">
                 {new Date(
                     session.checkOutTime
                 ).toLocaleString('ar-EG')}
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-center">
                 <Button
                     variant="outline"
                     size="sm"
@@ -212,11 +215,17 @@ function SessionsContent() {
             <h1 className="text-lg font-semibold md:text-2xl">سجل الجلسات</h1>
         </div>
         <Card>
-            <CardHeader>
-                <CardTitle>فلترة الجلسات</CardTitle>
-                <CardDescription>
-                استخدم الفلاتر أدناه لعرض جلسات محددة.
-                </CardDescription>
+            <CardHeader className="flex-row items-center justify-between">
+                <div>
+                    <CardTitle>فلترة الجلسات</CardTitle>
+                    <CardDescription>
+                    استخدم الفلاتر أدناه لعرض جلسات محددة.
+                    </CardDescription>
+                </div>
+                 <Button variant="ghost" onClick={clearFilters}>
+                    <FilterX className="me-2 h-4 w-4" />
+                    مسح الفلاتر
+                </Button>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
@@ -235,51 +244,54 @@ function SessionsContent() {
                         </Select>
                     </div>
 
-                    <div className="space-y-2 lg:col-span-2">
-                        <label className="text-sm font-medium">النطاق الزمني</label>
-                         <div className="flex items-center gap-2">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    id="date"
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !date && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="me-2 h-4 w-4" />
-                                    {date?.from ? (
-                                    date.to ? (
-                                        <>
-                                        {format(date.from, "PPP", { locale: ar })} -{" "}
-                                        {format(date.to, "PPP", { locale: ar })}
-                                        </>
-                                    ) : (
-                                        format(date.from, "PPP", { locale: ar })
-                                    )
-                                    ) : (
-                                    <span>الفصل على فلترين</span>
-                                    )}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    initialFocus
-                                    mode="range"
-                                    defaultMonth={date?.from}
-                                    selected={date}
-                                    onSelect={setDate}
-                                    numberOfMonths={2}
-                                    locale={ar}
-                                />
-                                </PopoverContent>
-                            </Popover>
-                             <Button variant="ghost" onClick={clearFilters} size="icon">
-                                <FilterX className="h-4 w-4" />
-                                <span className="sr-only">مسح الفلاتر</span>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">من تاريخ</label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal", !fromDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {fromDate ? format(fromDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
                             </Button>
-                         </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={fromDate}
+                                onSelect={setFromDate}
+                                disabled={(date) => toDate ? date > toDate : false}
+                                initialFocus
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">إلى تاريخ</label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal", !toDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {toDate ? format(toDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={toDate}
+                                onSelect={setToDate}
+                                disabled={(date) => fromDate ? date < fromDate : false}
+                                initialFocus
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
                     </div>
                 </div>
             </CardContent>
@@ -292,14 +304,14 @@ function SessionsContent() {
                  <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>اسم الطفل</TableHead>
-                        <TableHead>ولي الأمر</TableHead>
-                        <TableHead>الفرع</TableHead>
-                        <TableHead>اللعبة</TableHead>
-                        <TableHead>مدة اللعب</TableHead>
-                        <TableHead>التكلفة</TableHead>
-                        <TableHead>وقت الخروج</TableHead>
-                        <TableHead>إجراء</TableHead>
+                        <TableHead className="text-right">اسم الطفل</TableHead>
+                        <TableHead className="text-right">ولي الأمر</TableHead>
+                        <TableHead className="text-right">الفرع</TableHead>
+                        <TableHead className="text-right">اللعبة</TableHead>
+                        <TableHead className="text-center">مدة اللعب</TableHead>
+                        <TableHead className="text-center">التكلفة</TableHead>
+                        <TableHead className="text-center">وقت الخروج</TableHead>
+                        <TableHead className="text-center">إجراء</TableHead>
                     </TableRow>
                     </TableHeader>
                     {renderContent()}

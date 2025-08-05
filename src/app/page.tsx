@@ -26,7 +26,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format, subDays, startOfDay, endOfDay, eachDayOfInterval, isWithinInterval } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
@@ -52,17 +51,15 @@ function DashboardContent() {
     const { branches, employees, games } = useFirebase();
 
     const [selectedBranch, setSelectedBranch] = useState('all');
-    const [date, setDate] = useState<DateRange | undefined>({
-        from: subDays(new Date(), 6),
-        to: new Date(),
-    });
+    const [fromDate, setFromDate] = useState<Date | undefined>(subDays(new Date(), 6));
+    const [toDate, setToDate] = useState<Date | undefined>(new Date());
 
     const filteredData = useMemo(() => {
         const branchGames = selectedBranch === 'all' 
             ? games.map(g => g.name) 
-            : games.filter(g => g.branch === selectedBranch).map(g => g.name);
+            : games.filter(g => g.branch === selectedBranch || g.branch === 'كل الفروع').map(g => g.name);
 
-        const range = date?.from && date.to ? { start: startOfDay(date.from), end: endOfDay(date.to) } : null;
+        const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
 
         const sessions = completedSessions.filter(session => {
             const isBranchMatch = branchGames.includes(session.game);
@@ -75,7 +72,7 @@ function DashboardContent() {
         
         return { sessions, active };
 
-    }, [completedSessions, activeChildren, games, selectedBranch, date]);
+    }, [completedSessions, activeChildren, games, selectedBranch, fromDate, toDate]);
 
     const stats = useMemo(() => {
         const totalRevenue = filteredData.sessions.reduce((acc, s) => acc + s.cost, 0);
@@ -85,7 +82,8 @@ function DashboardContent() {
         const todayRange = { start: startOfDay(new Date()), end: endOfDay(new Date()) };
         const revenueToday = completedSessions
             .filter(s => {
-                 const isBranchMatch = selectedBranch === 'all' || games.find(g => g.name === s.game)?.branch === selectedBranch;
+                 const game = games.find(g => g.name === s.game);
+                 const isBranchMatch = selectedBranch === 'all' || game?.branch === selectedBranch || game?.branch === 'كل الفروع';
                  return isBranchMatch && isWithinInterval(new Date(s.checkOutTime), todayRange);
             })
             .reduce((acc, s) => acc + s.cost, 0);
@@ -94,16 +92,16 @@ function DashboardContent() {
     }, [filteredData, completedSessions, selectedBranch, games]);
 
     const chartData = useMemo(() => {
-        if (!date?.from || !date.to) return [];
+        if (!fromDate || !toDate) return [];
 
         const intervalDays = eachDayOfInterval({
-            start: date.from,
-            end: date.to,
+            start: fromDate,
+            end: toDate,
         });
 
         const branchGames = selectedBranch === 'all' 
             ? games.map(g => g.name) 
-            : games.filter(g => g.branch === selectedBranch).map(g => g.name);
+            : games.filter(g => g.branch === selectedBranch || g.branch === 'كل الفروع').map(g => g.name);
 
         return intervalDays.map(day => {
             const dayStart = startOfDay(day);
@@ -122,7 +120,13 @@ function DashboardContent() {
             };
         });
 
-    }, [completedSessions, selectedBranch, games, date]);
+    }, [completedSessions, selectedBranch, games, fromDate, toDate]);
+
+    const clearFilters = () => {
+        setSelectedBranch('all');
+        setFromDate(subDays(new Date(), 6));
+        setToDate(new Date());
+    }
 
     return (
         <div className="flex flex-col gap-8">
@@ -137,9 +141,15 @@ function DashboardContent() {
             </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>الفلاتر</CardTitle>
-                    <CardDescription>استخدم الفلاتر أدناه لتخصيص البيانات المعروضة في لوحة التحكم.</CardDescription>
+                <CardHeader className="flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>الفلاتر</CardTitle>
+                        <CardDescription>استخدم الفلاتر أدناه لتخصيص البيانات المعروضة.</CardDescription>
+                    </div>
+                    <Button variant="ghost" onClick={clearFilters}>
+                        <FilterX className="me-2 h-4 w-4" />
+                        مسح الفلاتر
+                    </Button>
                 </CardHeader>
                 <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
@@ -156,41 +166,49 @@ function DashboardContent() {
                             </SelectContent>
                         </Select>
                     </div>
-                     <div className="space-y-2 lg:col-span-2">
-                        <label className="text-sm font-medium">النطاق الزمني</label>
-                         <Popover>
+                     <div className="space-y-2">
+                        <label className="text-sm font-medium">من تاريخ</label>
+                        <Popover>
                             <PopoverTrigger asChild>
                             <Button
-                                id="date"
                                 variant={"outline"}
-                                className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !date && "text-muted-foreground"
-                                )}
+                                className={cn("w-full justify-start text-left font-normal", !fromDate && "text-muted-foreground")}
                             >
                                 <CalendarIcon className="me-2 h-4 w-4" />
-                                {date?.from ? (
-                                date.to ? (
-                                    <>
-                                    {format(date.from, "PPP", { locale: ar })} -{" "}
-                                    {format(date.to, "PPP", { locale: ar })}
-                                    </>
-                                ) : (
-                                    format(date.from, "PPP", { locale: ar })
-                                )
-                                ) : (
-                                <span>الفصل على فلترين</span>
-                                )}
+                                {fromDate ? format(fromDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
                             </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
+                                mode="single"
+                                selected={fromDate}
+                                onSelect={setFromDate}
+                                disabled={(date) => toDate ? date > toDate : false}
                                 initialFocus
-                                mode="range"
-                                defaultMonth={date?.from}
-                                selected={date}
-                                onSelect={setDate}
-                                numberOfMonths={2}
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">إلى تاريخ</label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal", !toDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {toDate ? format(toDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={toDate}
+                                onSelect={setToDate}
+                                disabled={(date) => fromDate ? date < fromDate : false}
+                                initialFocus
                                 locale={ar}
                             />
                             </PopoverContent>
@@ -205,13 +223,13 @@ function DashboardContent() {
                 title="إجمالي الإيرادات"
                 value={`ج.م ${stats.totalRevenue.toFixed(2)}`}
                 icon={DollarSign}
-                description={date?.from && date?.to ? `في الفترة المحددة` : ''}
+                description={fromDate && toDate ? `في الفترة المحددة` : ''}
             />
             <StatCard
                 title="إجمالي الزوار"
                 value={`${stats.totalVisitors}`}
                 icon={Users}
-                description={date?.from && date?.to ? `في الفترة المحددة` : ''}
+                description={fromDate && toDate ? `في الفترة المحددة` : ''}
             />
             <StatCard
                 title="الأطفال النشطون حاليًا"
