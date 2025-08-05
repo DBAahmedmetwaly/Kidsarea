@@ -135,45 +135,54 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
             difference: values.actualRevenue - expectedRevenue,
             analysis: response.data,
         };
-        onShiftClose(newRecord, newRecordId);
+        
+        try {
+            // Use onShiftClose to optimistically update UI and write to DB
+            onShiftClose(newRecord, newRecordId);
 
-        // Update safe balance
-        const safeRef = ref(db, `safes/${values.safeId}`);
-        const safeSnapshot = await get(safeRef);
-        if (safeSnapshot.exists()) {
-            const currentBalance = safeSnapshot.val().balance;
-            await update(safeRef, { balance: currentBalance + values.actualRevenue });
+            // Update safe balance
+            const safeRef = ref(db, `safes/${values.safeId}`);
+            const safeSnapshot = await get(safeRef);
+            if (safeSnapshot.exists()) {
+                const currentBalance = safeSnapshot.val().balance;
+                await update(safeRef, { balance: currentBalance + values.actualRevenue });
+            }
+
+            // Create a new safe transaction
+            const transactionRef = ref(db, 'safeTransactions');
+            const newTransactionRef = push(transactionRef);
+            const newTransaction: Omit<SafeTransaction, 'id'> = {
+                safeId: values.safeId,
+                shiftRecordId: newRecordId,
+                amount: values.actualRevenue,
+                type: 'deposit',
+                date: new Date().toISOString(),
+                cashierName: cashier.name,
+                notes: `إيداع من وردية: ${newRecordId}`,
+                branchName: safe.branchName,
+                safeName: safe.name,
+            };
+            await set(newTransactionRef, newTransaction);
+
+
+            const openShiftToDelete = openShifts.find(s => s.cashierUsername === values.cashierUsername);
+            if (openShiftToDelete) {
+              await remove(ref(db, `openShifts/${openShiftToDelete.id}`));
+            }
+
+            toast({
+                title: 'تم إغلاق الوردية بنجاح',
+                description: 'تم تسجيل بيانات الوردية وإضافة المبلغ إلى الخزينة.',
+            });
+            form.reset();
+
+        } catch (dbError) {
+             setError('فشل حفظ البيانات في قاعدة البيانات.');
+             console.error(dbError);
         }
 
-        // Create a new safe transaction
-        const transactionRef = ref(db, 'safeTransactions');
-        const newTransactionRef = push(transactionRef);
-        const newTransaction: Omit<SafeTransaction, 'id'> = {
-            safeId: values.safeId,
-            shiftRecordId: newRecordId,
-            amount: values.actualRevenue,
-            type: 'deposit',
-            date: new Date().toISOString(),
-            cashierName: cashier.name,
-            notes: `إيداع من وردية: ${newRecordId}`,
-            branchName: safe.branchName,
-            safeName: safe.name,
-        };
-        await set(newTransactionRef, newTransaction);
-
-
-        const openShiftToDelete = openShifts.find(s => s.cashierUsername === values.cashierUsername);
-        if (openShiftToDelete) {
-          await remove(ref(db, `openShifts/${openShiftToDelete.id}`));
-        }
-
-        toast({
-            title: 'تم إغلاق الوردية بنجاح',
-            description: 'تم تسجيل بيانات الوردية وإضافة المبلغ إلى الخزينة.',
-        });
-        form.reset();
     } else {
-      setError(response.error || 'حدث خطأ غير متوقع.');
+      setError(response.error || 'حدث خطأ غير متوقع في تحليل التباين.');
     }
     
     setLoading(false);
