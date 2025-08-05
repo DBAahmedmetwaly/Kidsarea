@@ -525,7 +525,7 @@ function TrackingContent() {
                 <Button type="button" variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
                 <Button type="button" onClick={handlePrint}>
                     <Printer className="me-2 h-4 w-4" />
-                    هذا الزر لا يعمل
+                    طباعة
                 </Button>
             </DialogFooter>
             </DialogContent>
