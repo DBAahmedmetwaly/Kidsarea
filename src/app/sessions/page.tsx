@@ -58,6 +58,12 @@ function SessionsContent() {
   const { branches, employees } = useFirebase();
   const { completedSessions, setCompletedSessions } = useSession();
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  const currentUser = useMemo(() => {
+    if (!user) return null;
+    return employees.find(e => e.username === user.username);
+  }, [user, employees]);
 
   // Filters
   const [selectedBranch, setSelectedBranch] = useState('all');
@@ -67,7 +73,12 @@ function SessionsContent() {
   // Receipt State
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+
+  useEffect(() => {
+    if (currentUser && currentUser.branch !== 'كل الفروع') {
+        setSelectedBranch(currentUser.branch);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const sessionsRef = ref(db, 'sessions/completed');
@@ -102,7 +113,11 @@ function SessionsContent() {
   }, [completedSessions, selectedBranch, fromDate, toDate]);
   
   const clearFilters = () => {
-    setSelectedBranch('all');
+    if (currentUser && currentUser.branch !== 'كل الفروع') {
+        // Don't clear branch if it's locked
+    } else {
+        setSelectedBranch('all');
+    }
     setFromDate(undefined);
     setToDate(undefined);
   }
@@ -222,7 +237,7 @@ function SessionsContent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
-                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
                             <SelectTrigger>
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>
@@ -313,7 +328,9 @@ function SessionsContent() {
             <DialogContent className="max-w-xs p-0 border-none">
                  {receiptDetails && (
                     <>
-                        <Receipt ref={receiptRef} {...receiptDetails} />
+                        <div className="printable-area">
+                            <Receipt ref={receiptRef} {...receiptDetails} />
+                        </div>
                         <DialogFooter className="p-4 bg-gray-100">
                              <DialogClose asChild>
                                 <Button type="button" variant="secondary">

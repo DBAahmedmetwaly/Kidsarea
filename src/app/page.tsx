@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { ChartConfig } from '@/components/ui/chart';
 import {
   ChartContainer,
@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import type { CompletedSession } from '@/lib/types';
+import { useAuth } from '@/components/AuthProvider';
 
 
 const revenueChartConfig = {
@@ -50,11 +51,23 @@ function DashboardContent() {
     const { completedSessions, activeChildren } = useSession();
     const { branches, employees, games } = useFirebase();
     const { toggleSidebar } = useSidebar();
+    const { user } = useAuth();
+
+    const currentUser = useMemo(() => {
+        if (!user) return null;
+        return employees.find(e => e.username === user.username);
+    }, [user, employees]);
 
 
     const [selectedBranch, setSelectedBranch] = useState('all');
     const [fromDate, setFromDate] = useState<Date | undefined>(subDays(new Date(), 6));
     const [toDate, setToDate] = useState<Date | undefined>(new Date());
+
+    useEffect(() => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            setSelectedBranch(currentUser.branch);
+        }
+    }, [currentUser]);
 
     const filteredData = useMemo(() => {
         const branchGames = selectedBranch === 'all' 
@@ -125,7 +138,11 @@ function DashboardContent() {
     }, [completedSessions, selectedBranch, games, fromDate, toDate]);
 
     const clearFilters = () => {
-        setSelectedBranch('all');
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+             // Don't clear branch if it's locked
+        } else {
+            setSelectedBranch('all');
+        }
         setFromDate(subDays(new Date(), 6));
         setToDate(new Date());
     }
@@ -156,7 +173,7 @@ function DashboardContent() {
                 <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
-                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
                             <SelectTrigger>
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>
