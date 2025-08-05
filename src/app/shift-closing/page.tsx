@@ -37,6 +37,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useSession } from '@/context/SessionContext';
 import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession, Subscription } from '@/lib/types';
+import { useAuth } from '@/components/AuthProvider';
 
 const closeShiftSchema = z.object({
   cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
@@ -57,10 +58,10 @@ type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
 function ShiftClosingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expectedRevenue, setExpectedRevenue] = useState(0);
   const { toast } = useToast();
   const { employees, openShifts, subscriptions } = useFirebase();
   const { completedSessions } = useSession();
+  const { user } = useAuth();
   const cashiers = employees.filter(emp => emp.role === 'كاشير');
 
   const form = useForm<CloseShiftFormValues>({
@@ -68,36 +69,40 @@ function ShiftClosingForm() {
     defaultValues: {
       cashierUsername: '',
       branchName: '',
-      actualRevenue: '' as unknown as number,
+      actualRevenue: 0,
       notes: '',
     },
   });
 
   const selectedCashierUsername = form.watch('cashierUsername');
+  
+  const expectedRevenue = useMemo(() => {
+    if (!selectedCashierUsername) return 0;
+    
+    const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
+    if (!openShift) return 0;
+    
+    const shiftStartTime = new Date(openShift.startTime).getTime();
+    
+    const sessionsRevenue = completedSessions
+      .filter(session => session.cashierUsername === selectedCashierUsername && new Date(session.checkOutTime).getTime() >= shiftStartTime)
+      .reduce((total, session) => total + session.cost, 0);
+
+    const subscriptionsRevenue = subscriptions
+      .filter(sub => sub.cashierUsername === selectedCashierUsername && new Date(sub.createdAt).getTime() >= shiftStartTime)
+      .reduce((total, sub) => total + sub.price, 0);
+
+    return sessionsRevenue + subscriptionsRevenue;
+  }, [selectedCashierUsername, openShifts, completedSessions, subscriptions]);
 
   useEffect(() => {
-    if (selectedCashierUsername) {
-      const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
-      if (openShift) {
+    const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
+    if (openShift) {
         form.setValue('branchName', openShift.branchName, { shouldValidate: true });
-        
-        const shiftStartTime = new Date(openShift.startTime).getTime();
-        
-        const sessionsRevenue = completedSessions
-          .filter(session => session.cashierUsername === selectedCashierUsername && new Date(session.checkOutTime).getTime() >= shiftStartTime)
-          .reduce((total, session) => total + session.cost, 0);
-
-        const subscriptionsRevenue = subscriptions
-            .filter(sub => sub.cashierUsername === selectedCashierUsername && new Date(sub.createdAt).getTime() >= shiftStartTime)
-            .reduce((total, sub) => total + sub.price, 0);
-
-        setExpectedRevenue(sessionsRevenue + subscriptionsRevenue);
-      }
     } else {
         form.setValue('branchName', '');
-        setExpectedRevenue(0);
     }
-  }, [selectedCashierUsername, form, openShifts, completedSessions, subscriptions]);
+  }, [selectedCashierUsername, openShifts, form]);
 
 
   async function onSubmit(values: CloseShiftFormValues) {
@@ -113,7 +118,6 @@ function ShiftClosingForm() {
 
     const recordsRef = ref(db, 'shiftRecords');
     const newRecordRef = push(recordsRef);
-    const newRecordId = newRecordRef.key!;
 
     const newRecord: Omit<ShiftRecord, 'id'> = {
         ...values,
@@ -121,7 +125,7 @@ function ShiftClosingForm() {
         expectedRevenue: expectedRevenue,
         date: new Date().toISOString(),
         difference: values.actualRevenue - expectedRevenue,
-        safeId: '', // Will be set during settlement
+        safeId: '',
         status: 'Closed',
     };
     
@@ -137,8 +141,7 @@ function ShiftClosingForm() {
             title: 'تم استلام النقدية',
             description: 'تم إغلاق الوردية ويمكن الآن ترحيلها في خطوة "إغلاق اليومية".',
         });
-        form.reset();
-        setExpectedRevenue(0);
+        form.reset({cashierUsername: '', branchName: '', actualRevenue: 0, notes: ''});
         
     } catch (dbError) {
          setError('فشل حفظ البيانات الأساسية في قاعدة البيانات.');
@@ -215,7 +218,7 @@ function ShiftClosingForm() {
                         <FormItem>
                         <FormLabel>النقدية المستلمة (ج.م)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="1450" {...field} />
+                            <Input type="number" placeholder="0" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -394,6 +397,7 @@ function ActiveShiftsTable() {
 function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
     const { safes } = useFirebase();
     const { toast } = useToast();
+    const { user } = useAuth();
     const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
     const [selectedSafeId, setSelectedSafeId] = useState<string>('');
     const [loading, setLoading] = useState(false);
@@ -425,6 +429,7 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
         }
 
         const settlementId = `settle-${Date.now()}`;
+        const adminUsername = user?.username || 'Admin';
 
         try {
             // 1. Create one summary transaction
@@ -436,7 +441,7 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
                 amount: totalToSettle,
                 type: 'deposit',
                 date: new Date().toISOString(),
-                cashierName: 'System Settlement', // Or current admin user
+                cashierName: adminUsername,
                 notes: `إيداع إغلاق اليومية لعدد ${shiftsToSettle.length} وردية.`,
                 branchName: safe.branchName,
                 safeName: safe.name,
@@ -608,16 +613,8 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
 
 function ShiftManagementContent() {
     const [shiftRecords, setShiftRecords] = useState<ShiftRecord[]>([]);
-    const { setCompletedSessions } = useSession();
 
     useEffect(() => {
-        // Sync completed sessions for revenue calculation
-        const completedRef = ref(db, 'sessions/completed');
-        const unsubCompleted = onValue(completedRef, (snapshot) => {
-            const data = snapshot.val();
-            setCompletedSessions(data ? Object.values(data) as CompletedSession[] : []);
-        });
-
         const recordsRef = ref(db, 'shiftRecords');
 
         const unsubRecords = onValue(recordsRef, (snapshot) => {
@@ -628,9 +625,8 @@ function ShiftManagementContent() {
 
         return () => {
             unsubRecords();
-            unsubCompleted();
         }
-    }, [setCompletedSessions])
+    }, [])
 
   const closedShifts = useMemo(() => shiftRecords.filter(r => r.status === 'Closed'), [shiftRecords]);
 
