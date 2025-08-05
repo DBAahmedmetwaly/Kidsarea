@@ -172,6 +172,7 @@ function EmployeeFormDialog({
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="كل الفروع">كل الفروع</SelectItem>
                                 {branches.map(b => (
                                     <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
                                 ))}
@@ -391,3 +392,5 @@ export default function EmployeesPage() {
         </SidebarProvider>
     );
 }
+
+    

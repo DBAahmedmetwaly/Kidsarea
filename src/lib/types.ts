@@ -34,7 +34,7 @@ export interface Employee {
     id: string;
     name: string;
     role: 'مشرف' | 'كاشير' | 'مدير فرع';
-    branch: string;
+    branch: string | 'كل الفروع';
     status: 'Active' | 'On Leave';
     avatarUrl: string;
     username?: string;
@@ -109,3 +109,5 @@ export interface Policies {
     entryFee: number;
     weekendDays: Record<DayOfWeek, boolean>;
 }
+
+    

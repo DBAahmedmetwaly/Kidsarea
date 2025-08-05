@@ -37,10 +37,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle } from 'lucide-react';
+import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, History } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, CompletedSession, Policies, DayOfWeek, Game } from '@/lib/types';
+import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
@@ -141,7 +141,7 @@ function TrackingContent() {
   const { games, policies, openShifts, employees, branches } = useFirebase();
   const { user } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
-  const [selectedBranch, setSelectedBranch] = useState('all');
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
 
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
@@ -151,6 +151,20 @@ function TrackingContent() {
       }
   });
 
+  const currentUser = useMemo(() => {
+    if (!user) return null;
+    return employees.find(e => e.username === user.username);
+  }, [user, employees]);
+
+
+  useEffect(() => {
+    if (currentUser && currentUser.branch !== 'كل الفروع') {
+      setCheckInBranch(currentUser.branch);
+      setSelectedBranchFilter(currentUser.branch);
+    }
+  }, [currentUser]);
+
+
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
     if (user.username === 'admin') return true;
@@ -158,9 +172,9 @@ function TrackingContent() {
   }, [user, openShifts]);
 
   const filteredActiveChildren = useMemo(() => {
-    if (selectedBranch === 'all') return activeChildren;
-    return activeChildren.filter(child => child.branchName === selectedBranch);
-  }, [activeChildren, selectedBranch]);
+    if (selectedBranchFilter === 'all') return activeChildren;
+    return activeChildren.filter(child => child.branchName === selectedBranchFilter);
+  }, [activeChildren, selectedBranchFilter]);
 
   const gamesInSelectedBranch = useMemo(() => {
     if (!checkInBranch) return [];
@@ -181,11 +195,22 @@ function TrackingContent() {
       const filteredByBranch = [...uniqueChildIds]
         .map(id => allSessionsToday.find(s => s.id === id))
         .filter(Boolean)
-        .filter(s => selectedBranch === 'all' || s!.branchName === selectedBranch);
+        .filter(s => selectedBranchFilter === 'all' || s!.branchName === selectedBranchFilter);
 
       return filteredByBranch.length;
 
-  }, [activeChildren, completedSessions, selectedBranch]);
+  }, [activeChildren, completedSessions, selectedBranchFilter]);
+
+  const myCompletedSessions = useMemo(() => {
+    if (!user?.username) return [];
+    const myOpenShift = openShifts.find(s => s.cashierUsername === user.username);
+    if (!myOpenShift) return [];
+
+    return completedSessions.filter(s => 
+        s.cashierUsername === user.username && 
+        s.checkOutTime >= new Date(myOpenShift.startTime).getTime()
+    );
+  }, [completedSessions, user, openShifts]);
 
   // Sync with Firebase
   useEffect(() => {
@@ -268,7 +293,10 @@ function TrackingContent() {
         setNewChildParentName('');
         setNewChildPhoneNumber('');
         setSelectedGame('');
-        setCheckInBranch('');
+        // Do not reset checkInBranch if it's fixed for the user
+        if (currentUser?.branch === 'كل الفروع') {
+            setCheckInBranch('');
+        }
         toast({
         title: 'تم تسجيل الدخول بنجاح',
         description: `تم تسجيل دخول الطفل ${newChild.name}.`,
@@ -353,7 +381,7 @@ function TrackingContent() {
             </div>
             <h1 className="text-2xl font-bold">تتبع الأطفال</h1>
              <div className="ms-auto w-full sm:w-auto">
-                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                    <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
                         <SelectTrigger className="w-full sm:w-[200px]">
                             <SelectValue placeholder="اختر الفرع" />
                         </SelectTrigger>
@@ -371,16 +399,16 @@ function TrackingContent() {
           title="الأطفال النشطون حاليًا"
           value={filteredActiveChildren.length.toString()}
           icon={Activity}
-          description={selectedBranch === 'all' ? `في كل الفروع` : `في ${selectedBranch}`}
+          description={selectedBranchFilter === 'all' ? `في كل الفروع` : `في ${selectedBranchFilter}`}
         />
         <StatCard
           title="إجمالي زوار اليوم"
           value={totalVisitorsToday.toString()}
           icon={Users}
-          description={selectedBranch === 'all' ? `في كل الفروع` : `في ${selectedBranch}`}
+          description={selectedBranchFilter === 'all' ? `في كل الفروع` : `في ${selectedBranchFilter}`}
         />
       </div>
-      <div className="grid gap-8 md:grid-cols-3">
+      <div className="grid gap-8 md:grid-cols-3 items-start">
         <div className="md:col-span-1">
             {hasActiveShift ? (
                 <Card>
@@ -432,7 +460,7 @@ function TrackingContent() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="branch-select">اختر الفرع</Label>
-                        <Select value={checkInBranch} onValueChange={(value) => { setCheckInBranch(value); setSelectedGame(''); }}>
+                        <Select value={checkInBranch} onValueChange={(value) => { setCheckInBranch(value); setSelectedGame(''); }} disabled={currentUser?.branch !== 'كل الفروع'}>
                             <SelectTrigger id="branch-select">
                                 <SelectValue placeholder="اختر فرع..." />
                             </SelectTrigger>
@@ -479,7 +507,7 @@ function TrackingContent() {
                 </Alert>
             )}
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 space-y-8">
             <Card>
             <CardHeader>
                 <CardTitle>الأطفال النشطون حاليًا</CardTitle>
@@ -532,6 +560,56 @@ function TrackingContent() {
                 </Table>
             </CardContent>
             </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>جلساتي المكتملة في هذه الوردية</CardTitle>
+                    <CardDescription>
+                        قائمة بالجلسات التي قمت بإنهائها خلال ورديتك الحالية.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>اسم الطفل</TableHead>
+                                <TableHead>اللعبة</TableHead>
+                                <TableHead>التكلفة</TableHead>
+                                <TableHead>وقت الخروج</TableHead>
+                                <TableHead>إجراء</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {myCompletedSessions.length > 0 ? (
+                                myCompletedSessions.map((session) => (
+                                    <TableRow key={session.id}>
+                                        <TableCell className="font-medium">{session.name}</TableCell>
+                                        <TableCell>{session.game}</TableCell>
+                                        <TableCell className="font-bold">{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
+                                        <TableCell>{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
+                                        <TableCell>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => showReceiptForSession(session)}
+                                            >
+                                                <Printer className="me-2 h-4 w-4" />
+                                                طباعة
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center">
+                                        لم تقم بإنهاء أي جلسات في ورديتك الحالية بعد.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
         </div>
       </div>
        
@@ -547,7 +625,7 @@ function TrackingContent() {
                      <Button type="button" variant="secondary" onClick={() => setShowPrintDialog(false)}>إلغاء</Button>
                      <Button type="button" onClick={handlePrint}>
                         <Printer className="me-2 h-4 w-4" />
-                        طباعة
+                        تأكيد الطباعة
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -572,3 +650,5 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
+
+    
