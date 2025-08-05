@@ -44,7 +44,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/AuthProvider';
 import { Receipt, type ReceiptProps } from '@/components/Receipt';
 import { useReactToPrint } from 'react-to-print';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 
 function formatDuration(durationMs: number) {
@@ -66,23 +66,19 @@ function SessionsContent() {
   
   // Receipt State
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
-  const [showPrintDialog, setShowPrintDialog] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
-      onAfterPrint: () => {
-        setReceiptDetails(null);
-        setShowPrintDialog(false);
-      }
+      onAfterPrint: () => setReceiptDetails(null)
   });
 
-  const triggerPrint = () => {
-    setTimeout(() => {
-        handlePrint();
-    }, 0);
-  }
+  useEffect(() => {
+    if (receiptDetails && handlePrint) {
+      handlePrint();
+    }
+  }, [receiptDetails, handlePrint]);
 
   useEffect(() => {
     const sessionsRef = ref(db, 'sessions/completed');
@@ -140,7 +136,6 @@ function SessionsContent() {
         entryFee: session.entryFee,
         cashierName: cashierName
     });
-    setShowPrintDialog(true);
   }
 
   const renderContent = () => {
@@ -324,26 +319,6 @@ function SessionsContent() {
                 </Table>
             </CardContent>
         </Card>
-        <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
-            <DialogContent className="sm:max-w-xs">
-                <DialogHeader>
-                    <DialogTitle>معاينة الإيصال</DialogTitle>
-                    <DialogDescription>
-                        هذا هو شكل الإيصال الذي سيتم طباعته.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="scale-100">
-                   {receiptDetails && <Receipt {...receiptDetails} />}
-                </div>
-                <DialogFooter className="sm:justify-between">
-                     <Button type="button" variant="secondary" onClick={() => setShowPrintDialog(false)}>إلغاء</Button>
-                     <Button type="button" onClick={triggerPrint}>
-                        <Printer className="me-2 h-4 w-4" />
-                        تأكيد الطباعة
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
         <div className="print-container">
             {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
         </div>

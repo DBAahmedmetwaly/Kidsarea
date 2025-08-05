@@ -277,7 +277,7 @@ function CheckOutDialog({
 
 
 function TrackingContent() {
-  const { activeChildren, setActiveChildren, completedSessions, setCompletedSessions } = useSession();
+  const { activeChildren, setActiveChildren } = useSession();
   const { customers, setCustomers } = useCustomers();
   
   // Existing Customer State
@@ -291,13 +291,14 @@ function TrackingContent() {
   const [checkInBranch, setCheckInBranch] = useState('');
   
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
-  const [showPrintDialog, setShowPrintDialog] = useState(false);
   const { toast } = useToast();
   const { games, policies, openShifts, employees, branches } = useFirebase();
   const { user } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
+  
+  const [myCompletedSessions, setMyCompletedSessions] = useState<CompletedSession[]>([]);
 
   // Checkout Dialog State
   const [isCheckoutDialogOpen, setCheckoutDialogOpen] = useState(false);
@@ -308,15 +309,14 @@ function TrackingContent() {
       content: () => receiptRef.current,
       onAfterPrint: () => {
         setReceiptDetails(null);
-        setShowPrintDialog(false);
       }
   });
 
-  const triggerPrint = () => {
-    setTimeout(() => {
+  useEffect(() => {
+    if (receiptDetails && handlePrint) {
         handlePrint();
-    }, 0);
-  }
+    }
+  }, [receiptDetails, handlePrint]);
 
   const currentUser = useMemo(() => {
     if (!user) return null;
@@ -376,56 +376,46 @@ function TrackingContent() {
 
 
   const totalVisitorsToday = useMemo(() => {
-      const todayStart = new Date();
-      todayStart.setHours(0,0,0,0);
-      
-      const allSessionsToday = [...activeChildren, ...completedSessions].filter(s => {
-          const sessionTime = 'checkOutTime' in s ? (s as CompletedSession).checkOutTime : s.checkInTime;
-          return sessionTime >= todayStart.getTime();
-      });
+    const todayStart = startOfDay(new Date()).getTime();
 
-      const uniqueChildIds = new Set(allSessionsToday.map(s => s.id));
-      const filteredByBranch = [...uniqueChildIds]
-        .map(id => allSessionsToday.find(s => s.id === id))
-        .filter(Boolean)
-        .filter(s => selectedBranchFilter === 'all' || s!.branchName === selectedBranchFilter);
+    const todaysActiveChildren = activeChildren.filter(s => {
+        const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
+        return branchMatch && s.checkInTime >= todayStart;
+    });
 
-      return filteredByBranch.length;
+    const todaysSessions = myCompletedSessions.filter(s => {
+        const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
+        return branchMatch && s.checkOutTime >= todayStart;
+    });
 
-  }, [activeChildren, completedSessions, selectedBranchFilter]);
+    const uniqueIds = new Set([
+        ...todaysActiveChildren.map(c => c.id),
+        ...todaysSessions.map(c => c.id),
+    ]);
+    
+    return uniqueIds.size;
+  }, [activeChildren, myCompletedSessions, selectedBranchFilter]);
+
 
   const todaysCompletedSessions = useMemo(() => {
     const today = startOfDay(new Date()).getTime();
-    return completedSessions.filter(s => {
+    return myCompletedSessions.filter(s => {
         const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
         return branchMatch && s.checkOutTime >= today;
     });
-  }, [completedSessions, selectedBranchFilter]);
+  }, [myCompletedSessions, selectedBranchFilter]);
 
 
-  // Sync with Firebase
+  // Sync with Firebase for active children
   useEffect(() => {
       const activeRef = ref(db, 'sessions/active');
-      const completedRef = ref(db, 'sessions/completed');
-      
       const unsubscribeActive = onValue(activeRef, (snapshot) => {
           const data = snapshot.val();
           setActiveChildren(data ? Object.values(data) : []);
       });
 
-      const unsubscribeCompleted = onValue(completedRef, (snapshot) => {
-          const data = snapshot.val();
-          const sessionsArray: CompletedSession[] = data 
-            ? Object.values(data).sort((a: any,b: any) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime())
-            : [];
-          setCompletedSessions(sessionsArray);
-      });
-
-      return () => {
-          unsubscribeActive();
-          unsubscribeCompleted();
-      }
-  }, [setActiveChildren, setCompletedSessions]);
+      return () => unsubscribeActive();
+  }, [setActiveChildren]);
 
 
     const resetExistingCustomerForm = () => {
@@ -593,7 +583,10 @@ function TrackingContent() {
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
         
-        showReceiptForSession(completedSession as CompletedSession);
+        const finalSession = completedSession as CompletedSession;
+        setMyCompletedSessions(prev => [finalSession, ...prev]);
+
+        showReceiptForSession(finalSession);
     } catch(err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
@@ -620,7 +613,6 @@ function TrackingContent() {
         cashierName: cashierName,
         isSubscription: !!session.subscriptionId,
     });
-    setShowPrintDialog(true);
   }
   
   const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
@@ -932,26 +924,6 @@ function TrackingContent() {
         onConfirm={handleCheckOut}
       />
 
-      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
-            <DialogContent className="sm:max-w-xs">
-                <DialogHeader>
-                    <DialogTitle>معاينة الإيصال</DialogTitle>
-                    <DialogDescription>
-                         هذا هو شكل الإيصال الذي سيتم طباعته.
-                    </DialogDescription>
-                </DialogHeader>
-                 <div className="scale-100">
-                   {receiptDetails && <Receipt {...receiptDetails} />}
-                </div>
-                <DialogFooter className="sm:justify-between">
-                     <Button type="button" variant="secondary" onClick={() => setShowPrintDialog(false)}>إلغاء</Button>
-                     <Button type="button" onClick={triggerPrint}>
-                        <Printer className="me-2 h-4 w-4" />
-                        تأكيد الطباعة
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
         <CustomerFormDialog 
             open={isCustomerFormOpen} 
             onOpenChange={setCustomerFormOpen} 

@@ -37,62 +37,62 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
   const appName = policies?.appName || 'FunTrack';
 
   return (
-    <div ref={ref} className="bg-white p-4 text-black printable-area font-sans">
+    <div ref={ref} className="bg-white p-2 text-black printable-area font-mono">
       <div className="text-center mb-4">
         <div className="flex justify-center items-center gap-2">
-            <Gamepad2 className="w-8 h-8" />
-            <h1 className="text-2xl font-bold">{appName}</h1>
+            <Gamepad2 className="w-10 h-10" />
+            <h1 className="text-3xl font-bold">{appName}</h1>
         </div>
-        <p className="text-xs">شكراً لزيارتكم!</p>
+        <p className="text-sm">شكراً لزيارتكم!</p>
       </div>
 
-      <div className="space-y-2 text-xs">
+      <div className="space-y-3 text-sm">
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-1"><Smile size={12} /> اسم الطفل</span>
-          <span className="font-medium">{childName}</span>
+          <span className="flex items-center gap-2"><Smile size={16} /> اسم الطفل</span>
+          <span className="font-bold">{childName}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-1"><User size={12} /> ولي الأمر</span>
-          <span className="font-medium">{parentName}</span>
+          <span className="flex items-center gap-2"><User size={16} /> ولي الأمر</span>
+          <span className="font-bold">{parentName}</span>
         </div>
         <hr className="border-dashed border-gray-400 my-2" />
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-1"><Gamepad2 size={12} /> اللعبة</span>
-          <span className="font-medium">{gameName}</span>
+          <span className="flex items-center gap-2"><Gamepad2 size={16} /> اللعبة</span>
+          <span className="font-bold">{gameName}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-1"><Calendar size={12} /> دخول</span>
-          <span className="font-medium text-right">{checkInTime.toLocaleTimeString('ar-EG')}</span>
+          <span className="flex items-center gap-2"><Calendar size={16} /> دخول</span>
+          <span className="font-bold text-right">{checkInTime.toLocaleTimeString('ar-EG')}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-1"><Calendar size={12} /> خروج</span>
-          <span className="font-medium text-right">{checkOutTime.toLocaleTimeString('ar-EG')}</span>
+          <span className="flex items-center gap-2"><Calendar size={16} /> خروج</span>
+          <span className="font-bold text-right">{checkOutTime.toLocaleTimeString('ar-EG')}</span>
         </div>
          <div className="flex justify-between items-center">
-          <span className="flex items-center gap-1"><Clock size={12} /> المدة</span>
-          <span className="font-medium">{duration}</span>
+          <span className="flex items-center gap-2"><Clock size={16} /> المدة</span>
+          <span className="font-bold">{duration}</span>
         </div>
         <hr className="border-dashed border-gray-400 my-2" />
         {isSubscription ? (
-             <div className="flex justify-center items-center text-sm font-bold p-2 bg-green-100 text-green-800 rounded-md">
-                <span className="flex items-center gap-1"><Star size={14} /> مدفوع بالاشتراك</span>
+             <div className="flex justify-center items-center text-lg font-bold p-2 bg-green-100 text-green-800 rounded-md">
+                <span className="flex items-center gap-2"><Star size={18} /> مدفوع بالاشتراك</span>
             </div>
         ) : (
             <>
-                <div className="space-y-1">
+                <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                        <span className="flex items-center gap-1"><Tag size={12} /> تكلفة اللعب</span>
-                        <span className="font-medium">{`ج.م ${(durationCost ?? totalCost).toFixed(2)}`}</span>
+                        <span className="flex items-center gap-2"><Tag size={16} /> تكلفة اللعب</span>
+                        <span className="font-bold">{`ج.م ${(durationCost ?? totalCost).toFixed(2)}`}</span>
                     </div>
                     {entryFee && entryFee > 0 && (
                         <div className="flex justify-between items-center">
-                            <span className="flex items-center gap-1"><PlusCircle size={12} /> رسوم دخول</span>
-                            <span className="font-medium">{`ج.م ${entryFee.toFixed(2)}`}</span>
+                            <span className="flex items-center gap-2"><PlusCircle size={16} /> رسوم دخول</span>
+                            <span className="font-bold">{`ج.م ${entryFee.toFixed(2)}`}</span>
                         </div>
                     )}
                 </div>
                 <hr className="border-dashed border-gray-400 my-2" />
-                <div className="flex justify-between items-center text-sm font-bold p-2 bg-gray-200">
+                <div className="flex justify-between items-center text-xl font-bold p-2 bg-gray-200">
                 <span>الإجمالي</span>
                 <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
                 </div>
@@ -100,7 +100,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
         )}
       </div>
 
-       <div className="mt-4 text-[8px] text-gray-600 text-center space-y-0.5">
+       <div className="mt-6 text-xs text-gray-600 text-center space-y-1">
             <p>الكاشير: {cashierName}</p>
             <p>رقم الإيصال: {receiptId}</p>
             <p>{new Date().toLocaleString('ar-EG')}</p>
