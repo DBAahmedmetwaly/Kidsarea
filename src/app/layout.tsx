@@ -7,6 +7,7 @@ import AuthProvider from '@/components/AuthProvider';
 import { SessionProvider } from '@/context/SessionContext';
 import { FirebaseProvider } from '@/context/FirebaseContext';
 import { CustomerProvider } from '@/context/CustomerContext';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 export const metadata: Metadata = {
   title: 'FunTrack Manager',
@@ -38,9 +39,11 @@ export default function RootLayout({
         <AuthProvider>
           <FirebaseProvider>
             <CustomerProvider>
-                <SessionProvider>
-                {children}
-                </SessionProvider>
+              <SessionProvider>
+                <SidebarProvider>
+                    {children}
+                </SidebarProvider>
+              </SessionProvider>
             </CustomerProvider>
           </FirebaseProvider>
         </AuthProvider>

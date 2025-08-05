@@ -10,10 +10,10 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon, FilterX } from 'lucide-react';
+import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon, FilterX, Menu } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -49,6 +49,8 @@ const visitorsChartConfig = {
 function DashboardContent() {
     const { completedSessions, activeChildren } = useSession();
     const { branches, employees, games } = useFirebase();
+    const { toggleSidebar } = useSidebar();
+
 
     const [selectedBranch, setSelectedBranch] = useState('all');
     const [fromDate, setFromDate] = useState<Date | undefined>(subDays(new Date(), 6));
@@ -131,9 +133,9 @@ function DashboardContent() {
     return (
         <div className="flex flex-col gap-8">
             <div className="flex flex-col sm:flex-row items-center gap-4">
-                 <div className="md:hidden">
-                    <SidebarTrigger />
-                </div>
+                 <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleSidebar}>
+                    <Menu className="h-5 w-5" />
+                </Button>
                 <h1 className="text-lg font-semibold md:text-2xl">لوحة التحكم</h1>
                 <div className="ms-auto flex items-center gap-2 w-full sm:w-auto">
                     {/* Filters will be in a separate card now */}
@@ -309,20 +311,13 @@ function DashboardContent() {
     );
 }
 
-function WithSidebar() {
-  return (
-    <SidebarProvider>
+export default function DashboardPage() {
+    return (
         <div className="flex min-h-screen w-full">
           <AppSidebar />
           <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             <DashboardContent />
           </main>
         </div>
-    </SidebarProvider>
-  );
-}
-
-
-export default function DashboardPage() {
-    return <WithSidebar />;
+    );
 }

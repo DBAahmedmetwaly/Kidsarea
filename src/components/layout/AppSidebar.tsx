@@ -12,6 +12,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   Building2,
@@ -30,6 +31,7 @@ import {
   List,
   History,
   Contact,
+  Menu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -38,6 +40,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Employee } from '@/lib/types';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger as SheetTriggerComponent } from '@/components/ui/sheet';
+import { Button } from '../ui/button';
 
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -72,6 +75,8 @@ function SidebarItems() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
+  const { setOpenMobile } = useSidebar();
+
 
   useEffect(() => {
     if (!user || user.username === 'admin') {
@@ -134,6 +139,10 @@ function SidebarItems() {
     if (path === '/') return pathname === '/';
     return pathname.startsWith(path);
   };
+  
+  const handleLinkClick = () => {
+    setOpenMobile(false);
+  }
 
   return (
     <>
@@ -156,7 +165,7 @@ function SidebarItems() {
       <SidebarContent className="p-2">
         <SidebarMenu>
           {menuItems.filter(item => !settingsMenuItems.some(s => s.href === item.href)).map((item) => (
-            <SidebarMenuItem key={item.href}>
+            <SidebarMenuItem key={item.href} onClick={handleLinkClick}>
               <SidebarMenuButton
                 asChild
                 isActive={isActive(item.href)}
@@ -176,7 +185,7 @@ function SidebarItems() {
              {menuItems.filter(item => settingsMenuItems.some(s => s.href === item.href)).length > 0 && (
                  <>
                     {menuItems.filter(item => settingsMenuItems.some(s => s.href === item.href)).map((item) => (
-                        <SidebarMenuItem key={item.href}>
+                        <SidebarMenuItem key={item.href} onClick={handleLinkClick}>
                             <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={{children: item.label, side: 'left'}}>
                                 <Link href={item.href}>
                                     <item.icon />
@@ -201,26 +210,22 @@ function SidebarItems() {
 
 
 export default function AppSidebar() {
-  return (
-    <>
-      <div className="hidden md:block">
-        <Sidebar side="right" collapsible="icon">
-          <SidebarItems />
-        </Sidebar>
-      </div>
-      <div className="md:hidden">
-        <Sheet>
-          <SheetTriggerComponent asChild>
-            <button className="fixed top-4 right-4 z-50 md:hidden p-2">
-                <Gamepad2 className="h-6 w-6 text-primary" />
-            </button>
-          </SheetTriggerComponent>
-          <SheetContent side="right" className="p-0 w-[250px]">
-            <SheetTitle className="sr-only">Main Menu</SheetTitle>
-            <SidebarItems />
-          </SheetContent>
+    const { isMobile, openMobile, setOpenMobile } = useSidebar();
+    
+    if (!isMobile) {
+        return (
+             <Sidebar side="right" collapsible="icon">
+                <SidebarItems />
+            </Sidebar>
+        )
+    }
+
+    return (
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+            {/* The trigger is now part of the page content */}
+            <SheetContent side="right" className="p-0 w-[250px] bg-sidebar text-sidebar-foreground border-none">
+                 <SidebarItems />
+            </SheetContent>
         </Sheet>
-      </div>
-    </>
   );
 }

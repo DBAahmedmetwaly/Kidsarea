@@ -42,7 +42,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebar';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch, Employee } from '@/lib/types';
@@ -153,6 +153,8 @@ function BranchesContent() {
   const { branches, employees } = useFirebase();
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { toggleSidebar } = useSidebar();
+
 
   const handleAddBranch = async (newBranchData: Omit<Branch, 'id' | 'employees'>) => {
       try {
@@ -184,9 +186,9 @@ function BranchesContent() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
-         <div className="md:hidden">
-            <SidebarTrigger />
-        </div>
+         <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleSidebar}>
+            <PlusCircle className="h-4 w-4" />
+          </Button>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الفروع</h1>
         <div className="ms-auto flex items-center gap-2">
           <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
@@ -268,13 +270,11 @@ function BranchesContent() {
 
 export default function BranchesPage() {
     return (
-        <SidebarProvider>
-            <div className="flex min-h-screen w-full">
-            <AppSidebar />
-            <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-                <BranchesContent />
-            </main>
-            </div>
-        </SidebarProvider>
+        <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+            <BranchesContent />
+        </main>
+        </div>
     );
 }
