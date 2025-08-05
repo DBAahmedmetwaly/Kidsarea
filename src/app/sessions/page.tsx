@@ -256,7 +256,7 @@ function SessionsContent() {
                                         format(date.from, "PPP", { locale: ar })
                                     )
                                     ) : (
-                                    <span>اريده من تاريخ إلى تاريخ</span>
+                                    <span>الفصل على فلترين</span>
                                     )}
                                 </Button>
                                 </PopoverTrigger>
