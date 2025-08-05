@@ -370,14 +370,13 @@ function TrackingContent() {
     const checkOutTime = Date.now();
     const durationMs = checkOutTime - child.checkInTime;
 
-    // Check for an active subscription for the checked-out child
     const subscriptionsRef = ref(db, 'subscriptions');
     const subsSnapshot = await get(subscriptionsRef);
     const allSubscriptions = subsSnapshot.val();
     let finalCost = 0;
     let finalDurationCost = 0;
     let finalEntryFee = 0;
-    let subscriptionId: string | undefined = undefined;
+    let subscriptionId: string | null = null;
 
     if (allSubscriptions) {
         const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
@@ -389,10 +388,11 @@ function TrackingContent() {
             now >= new Date(sub.startDate) &&
             now <= new Date(sub.endDate)
         );
-        subscriptionId = foundSubscription?.id;
+        if (foundSubscription) {
+          subscriptionId = foundSubscription.id;
+        }
     }
 
-    // If no active subscription, calculate cost
     if (!subscriptionId) {
         const gameDetails = games.find((g) => g.name === child.game);
         let hourlyRate = gameDetails?.hourly_rate || 0;
@@ -418,22 +418,24 @@ function TrackingContent() {
         finalEntryFee = entryFee;
     }
 
-
-    const completedSession: CompletedSession = {
+    const completedSession: Omit<CompletedSession, 'subscriptionId'> & { subscriptionId?: string } = {
         ...child,
         checkOutTime,
         durationMs,
         cost: finalCost,
         durationCost: finalDurationCost,
         entryFee: finalEntryFee,
-        subscriptionId: subscriptionId
     };
+
+    if (subscriptionId) {
+        completedSession.subscriptionId = subscriptionId;
+    }
     
     try {
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
-        await set(ref(db, `sessions/active/${child.id}`), null); // Remove from active
+        await set(ref(db, `sessions/active/${child.id}`), null);
         
-        showReceiptForSession(completedSession);
+        showReceiptForSession(completedSession as CompletedSession);
     } catch(err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
@@ -792,7 +794,7 @@ function TrackingContent() {
             isEditMode={false}
         />
         <div className="print-container">
-            {receiptDetails && <Receipt ref={ref} {...receiptDetails} />}
+            {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
         </div>
     </div>
   );
