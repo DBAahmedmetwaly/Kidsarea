@@ -65,7 +65,6 @@ function SessionsContent() {
   const [date, setDate] = useState<DateRange | undefined>();
   
   // Receipt State
-  const [showReceipt, setShowReceipt] = useState(false);
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -73,6 +72,12 @@ function SessionsContent() {
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
   });
+
+    useEffect(() => {
+        if (receiptDetails) {
+            handlePrint();
+        }
+    }, [receiptDetails, handlePrint]);
 
   useEffect(() => {
     const sessionsRef = ref(db, 'sessions/completed');
@@ -129,8 +134,6 @@ function SessionsContent() {
         entryFee: session.entryFee,
         cashierName: cashierName
     });
-
-    setShowReceipt(true);
   }
 
   const renderContent = () => {
@@ -189,7 +192,7 @@ function SessionsContent() {
                     onClick={() => showReceiptForSession(session)}
                 >
                     <Printer className="me-2 h-4 w-4" />
-                    إيصال
+                    طباعة
                 </Button>
                 </TableCell>
             </TableRow>
@@ -303,26 +306,9 @@ function SessionsContent() {
                 </Table>
             </CardContent>
         </Card>
-        <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
-            <DialogContent className="max-w-sm">
-            <DialogHeader>
-                <DialogTitle>إيصال الدفع</DialogTitle>
-                <DialogDescription>
-                تفاصيل جلسة اللعب للطفل {receiptDetails?.childName}.
-                </DialogDescription>
-            </DialogHeader>
-            <div ref={receiptRef}>
-                {receiptDetails && <Receipt {...receiptDetails} />}
-            </div>
-            <DialogFooter className="sm:justify-between">
-                <Button type="button" variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
-                <Button type="button" onClick={handlePrint}>
-                    <Printer className="me-2 h-4 w-4" />
-                    طباعة
-                </Button>
-            </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <div className="print-container">
+            {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
+        </div>
     </div>
   );
 }

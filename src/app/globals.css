@@ -100,3 +100,13 @@ body {
     width: 100%;
   }
 }
+
+.print-container {
+    display: none;
+}
+
+@media print {
+    .print-container {
+        display: block;
+    }
+}

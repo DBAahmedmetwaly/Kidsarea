@@ -134,7 +134,6 @@ function TrackingContent() {
   const [newChildParentName, setNewChildParentName] = useState('');
   const [newChildPhoneNumber, setNewChildPhoneNumber] = useState('');
   const [selectedGame, setSelectedGame] = useState('');
-  const [showReceipt, setShowReceipt] = useState(false);
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const { toast } = useToast();
   const { games, policies, openShifts, employees, branches } = useFirebase();
@@ -146,6 +145,12 @@ function TrackingContent() {
       content: () => receiptRef.current,
   });
   
+    useEffect(() => {
+        if (receiptDetails) {
+            handlePrint();
+        }
+    }, [receiptDetails, handlePrint]);
+
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
     if (user.username === 'admin') return true;
@@ -332,7 +337,6 @@ function TrackingContent() {
         cashierName: cashierName
     });
 
-    setShowReceipt(true);
   }
   
   return (
@@ -510,26 +514,9 @@ function TrackingContent() {
         </div>
       </div>
        
-        <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
-            <DialogContent className="max-w-sm">
-            <DialogHeader>
-                <DialogTitle>إيصال الدفع</DialogTitle>
-                <DialogDescription>
-                تفاصيل جلسة اللعب للطفل {receiptDetails?.childName}.
-                </DialogDescription>
-            </DialogHeader>
-            <div ref={receiptRef}>
-                {receiptDetails && <Receipt {...receiptDetails} />}
-            </div>
-            <DialogFooter className="sm:justify-between">
-                <Button type="button" variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
-                <Button type="button" onClick={handlePrint}>
-                    <Printer className="me-2 h-4 w-4" />
-                    طباعة
-                </Button>
-            </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <div className="print-container">
+            {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
+        </div>
     </div>
   );
 }
