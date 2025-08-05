@@ -7,6 +7,7 @@ import { ref, set, remove, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCustomers } from '@/context/CustomerContext';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -191,9 +192,16 @@ function CustomersContent() {
 
     const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
         try {
+            // Using phone number as ID is not ideal if it can change. Let's stick to push IDs.
+            // But we need to check for existing phone numbers to avoid duplicates.
+            const existingCustomer = customers.find(c => c.phoneNumber === newCustomerData.phoneNumber);
+            if (existingCustomer) {
+                 toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
+                 return;
+            }
             const customersRef = ref(db, 'customers');
-            const newCustomerRef = ref(db, `customers/${newCustomerData.phoneNumber}`); // Use phone number as ID for uniqueness
-             const finalData = { ...newCustomerData, createdAt: new Date().toISOString() };
+            const newCustomerRef = push(customersRef);
+            const finalData = { ...newCustomerData, createdAt: new Date().toISOString() };
             await set(newCustomerRef, finalData);
             toast({
                 title: "تمت الإضافة بنجاح",
@@ -275,7 +283,7 @@ function CustomersContent() {
       <Card>
         <CardHeader>
           <CardTitle>قائمة العملاء</CardTitle>
-          <CardDescription>عرض وإدارة بيانات العملاء المسجلين.</CardDescription>
+          <CardDescription>عرض وإدارة بيانات العملاء المسجلين. انقر على اسم العميل لعرض سجل زياراته.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -291,7 +299,11 @@ function CustomersContent() {
             <TableBody>
               {filteredCustomers.map((customer) => (
                 <TableRow key={customer.id}>
-                  <TableCell className="font-medium">{customer.parentName}</TableCell>
+                  <TableCell className="font-medium">
+                     <Link href={`/customers/${customer.id}`} className="hover:underline text-primary">
+                        {customer.parentName}
+                     </Link>
+                  </TableCell>
                   <TableCell>{customer.phoneNumber}</TableCell>
                   <TableCell>{customer.children.map(c => `${c.name} (${c.age})`).join(', ')}</TableCell>
                   <TableCell>{new Date(customer.createdAt).toLocaleDateString('ar-EG')}</TableCell>

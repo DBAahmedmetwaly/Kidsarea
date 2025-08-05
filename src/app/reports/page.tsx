@@ -7,14 +7,15 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Tooltip } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Tooltip, PieChart, Pie } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
+import { useCustomers } from '@/context/CustomerContext';
 import { useMemo } from 'react';
-import { startOfHour, getHours } from 'date-fns';
+import { getHours } from 'date-fns';
 
 const gameProfitChartConfig = {
   profit: {
@@ -44,9 +45,18 @@ const branchRevenueChartConfig = {
     },
 } satisfies ChartConfig;
 
+const topCustomersChartConfig = {
+    visits: {
+        label: 'الزيارات',
+        color: 'hsl(var(--chart-5))',
+    },
+} satisfies ChartConfig;
+
+
 function ReportsContent() {
     const { completedSessions } = useSession();
     const { games, employees, branches } = useFirebase();
+    const { customers } = useCustomers();
 
     const gameProfitData = useMemo(() => {
         const profitByGame: { [key: string]: number } = {};
@@ -129,6 +139,20 @@ function ReportsContent() {
             revenue
         })).filter(item => item.revenue > 0);
     }, [completedSessions, games, branches]);
+
+    const topCustomersData = useMemo(() => {
+        const visitsByCustomer: { [key: string]: number } = {};
+        
+        completedSessions.forEach(session => {
+            visitsByCustomer[session.parentName] = (visitsByCustomer[session.parentName] || 0) + 1;
+        });
+
+        return Object.entries(visitsByCustomer)
+            .map(([name, visits]) => ({ name, visits }))
+            .sort((a, b) => b.visits - a.visits)
+            .slice(0, 10); // Top 10 customers
+
+    }, [completedSessions, customers]);
 
 
   return (
@@ -259,6 +283,34 @@ function ReportsContent() {
                             content={<ChartTooltipContent indicator="dot" formatter={(value) => `ج.م ${Number(value).toFixed(2)}`} />}
                         />
                         <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
+                    </BarChart>
+                </ChartContainer>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>تقرير زيارات العملاء</CardTitle>
+                <CardDescription>عرض العملاء الأكثر زيارة بناءً على عدد الجلسات المسجلة.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ChartContainer config={topCustomersChartConfig} className="h-72 w-full">
+                    <BarChart accessibilityLayer data={topCustomersData} layout="vertical" dir="ltr" margin={{ top: 20, right: 20, left: 20, bottom: 0 }}>
+                        <CartesianGrid horizontal={false} />
+                         <YAxis
+                            dataKey="name"
+                            type="category"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            tickFormatter={(value) => value.slice(0, 15)}
+                        />
+                        <XAxis dataKey="visits" type="number" hide />
+                        <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent indicator="dot" />}
+                        />
+                        <Bar dataKey="visits" fill="var(--color-visits)" radius={4} />
                     </BarChart>
                 </ChartContainer>
             </CardContent>
