@@ -98,7 +98,7 @@ function GameDetailsContent() {
               <TableRow>
                 <TableHead>اسم الطفل</TableHead>
                 <TableHead>اسم ولي الأمر</TableHead>
-                <TableHead>رقم الهاتف</TableHead>
+                <TableHead>الفرع</TableHead>
                 <TableHead>مدة اللعب</TableHead>
                 <TableHead>التكلفة</TableHead>
                 <TableHead>وقت الخروج</TableHead>
@@ -110,7 +110,7 @@ function GameDetailsContent() {
                   <TableRow key={session.id}>
                     <TableCell className="font-medium">{session.name}</TableCell>
                     <TableCell>{session.parentName}</TableCell>
-                    <TableCell>{session.phoneNumber}</TableCell>
+                    <TableCell>{session.branchName}</TableCell>
                     <TableCell>{formatDuration(session.durationMs)}</TableCell>
                     <TableCell>{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
                     <TableCell>
