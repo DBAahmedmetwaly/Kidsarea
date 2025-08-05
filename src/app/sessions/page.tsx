@@ -71,14 +71,7 @@ function SessionsContent() {
 
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
-      onAfterPrint: () => setReceiptDetails(null)
   });
-
-  useEffect(() => {
-    if (receiptDetails && handlePrint) {
-      handlePrint();
-    }
-  }, [receiptDetails, handlePrint]);
 
   useEffect(() => {
     const sessionsRef = ref(db, 'sessions/completed');
@@ -134,7 +127,8 @@ function SessionsContent() {
         totalCost: session.cost,
         durationCost: session.durationCost,
         entryFee: session.entryFee,
-        cashierName: cashierName
+        cashierName: cashierName,
+        isSubscription: !!session.subscriptionId,
     });
   }
 
@@ -196,7 +190,7 @@ function SessionsContent() {
                     onClick={() => showReceiptForSession(session)}
                 >
                     <Printer className="me-2 h-4 w-4" />
-                    طباعة
+                    عرض الإيصال
                 </Button>
                 </TableCell>
             </TableRow>
@@ -319,9 +313,22 @@ function SessionsContent() {
                 </Table>
             </CardContent>
         </Card>
-        <div className="print-container">
-            {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
-        </div>
+         <Dialog open={!!receiptDetails} onOpenChange={(isOpen) => !isOpen && setReceiptDetails(null)}>
+            <DialogContent className="max-w-xs p-0 border-none">
+                {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
+                 <DialogFooter className="p-4 bg-gray-100">
+                    <DialogClose asChild>
+                         <Button type="button" variant="secondary">
+                            إغلاق
+                        </Button>
+                    </DialogClose>
+                    <Button onClick={handlePrint}>
+                        <Printer className="me-2 h-4 w-4" />
+                        طباعة
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
