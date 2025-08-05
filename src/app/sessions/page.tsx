@@ -66,18 +66,17 @@ function SessionsContent() {
   
   // Receipt State
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
+      onAfterPrint: () => {
+        setReceiptDetails(null);
+        setShowPrintDialog(false);
+      }
   });
-
-    useEffect(() => {
-        if (receiptDetails) {
-            handlePrint();
-        }
-    }, [receiptDetails, handlePrint]);
 
   useEffect(() => {
     const sessionsRef = ref(db, 'sessions/completed');
@@ -134,6 +133,7 @@ function SessionsContent() {
         entryFee: session.entryFee,
         cashierName: cashierName
     });
+    setShowPrintDialog(true);
   }
 
   const renderContent = () => {
@@ -219,7 +219,7 @@ function SessionsContent() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
                         <Select value={selectedBranch} onValueChange={setSelectedBranch}>
@@ -236,7 +236,7 @@ function SessionsContent() {
                     </div>
 
                     <div className="space-y-2 lg:col-span-2">
-                         <label className="text-sm font-medium">النطاق الزمني</label>
+                        <label className="text-sm font-medium">النطاق الزمني</label>
                          <div className="flex items-center gap-2">
                             <Popover>
                                 <PopoverTrigger asChild>
@@ -306,6 +306,23 @@ function SessionsContent() {
                 </Table>
             </CardContent>
         </Card>
+        <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>جاهز للطباعة</DialogTitle>
+                    <DialogDescription>
+                        تم تجهيز الإيصال للطباعة. انقر على الزر أدناه للمتابعة.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                     <Button type="button" variant="secondary" onClick={() => setShowPrintDialog(false)}>إلغاء</Button>
+                     <Button type="button" onClick={handlePrint}>
+                        <Printer className="me-2 h-4 w-4" />
+                        تأكيد الطباعة
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
         <div className="print-container">
             {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
         </div>
