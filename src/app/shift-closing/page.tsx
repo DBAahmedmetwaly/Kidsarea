@@ -22,7 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase, Banknote, ChevronsRight } from 'lucide-react';
-import { detectRevenueDiscrepancy } from '@/ai/flows/revenue-discrepancy-detection';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
@@ -116,7 +115,6 @@ function ShiftClosingForm() {
         expectedRevenue: expectedRevenue,
         date: new Date().toISOString(),
         difference: values.actualRevenue - expectedRevenue,
-        analysis: null,
         safeId: '', // Will be set during settlement
         status: 'Closed',
     };
@@ -136,19 +134,6 @@ function ShiftClosingForm() {
         form.reset();
         setExpectedRevenue(0);
         
-        detectRevenueDiscrepancy({ 
-            ...values, 
-            expectedRevenue: expectedRevenue, 
-            actualRevenue: values.actualRevenue, 
-            shiftDetails: `الوردية المسائية للكاشير ${cashier.name}. ملاحظات: ${values.notes || 'لا يوجد'}`, 
-            branchName: values.branchName 
-        }).then(analysisResult => {
-            update(newRecordRef, { analysis: analysisResult });
-        }).catch(aiError => {
-            console.error("AI analysis failed:", aiError);
-            update(newRecordRef, { analysis: { hasDiscrepancy: true, discrepancyAnalysis: "فشل تحليل الذكاء الاصطناعي." } });
-        });
-
     } catch (dbError) {
          setError('فشل حفظ البيانات الأساسية في قاعدة البيانات.');
          console.error(dbError);
@@ -574,7 +559,6 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                             <TableHead>المبلغ المستلم</TableHead>
                              <TableHead>الحالة</TableHead>
                             <TableHead>الفرق</TableHead>
-                            <TableHead>تحليل التباين</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -596,23 +580,11 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                                     <TableCell className={record.difference < 0 ? 'text-red-500' : 'text-green-500'}>
                                         {`ج.م ${record.difference.toFixed(2)}`}
                                     </TableCell>
-                                    <TableCell>
-                                        {record.analysis ? (
-                                            <div className="flex items-center gap-2">
-                                                {record.analysis.hasDiscrepancy ? (
-                                                     <AlertTriangle className="h-5 w-5 text-orange-500" title={record.analysis.discrepancyAnalysis} />
-                                                ) : (
-                                                    <CheckCircle2 className="h-5 w-5 text-green-500" title={record.analysis.discrepancyAnalysis}/>
-                                                )}
-                                                <span className="text-xs text-muted-foreground">{record.analysis.hasDiscrepancy ? 'يوجد تباين' : 'لا يوجد تباين'}</span>
-                                            </div>
-                                        ) : 'جاري التحليل...'}
-                                    </TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center">
+                                <TableCell colSpan={6} className="text-center">
                                     لا توجد سجلات لعرضها.
                                 </TableCell>
                             </TableRow>

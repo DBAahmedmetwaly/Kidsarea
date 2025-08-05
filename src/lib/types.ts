@@ -59,7 +59,6 @@ export interface ShiftRecord {
   notes?: string;
   date: string;
   difference: number;
-  analysis: any; // Consider creating a specific type for analysis output
   safeId: string;
   status: 'Open' | 'Closed' | 'Settled';
   settlementId?: string;
@@ -110,4 +109,3 @@ export interface Policies {
     entryFee: number;
     weekendDays: Record<DayOfWeek, boolean>;
 }
-
