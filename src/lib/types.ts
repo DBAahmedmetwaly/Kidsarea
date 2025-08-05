@@ -129,6 +129,7 @@ export interface Subscription {
     childName: string;
     planId: string;
     planName: string;
+    planDescription?: string;
     startDate: string;
     endDate: string;
     price: number;
@@ -142,6 +143,5 @@ export interface SubscriptionPlan {
     name: string;
     price: number;
     duration: number; // in days
+    description?: string;
 }
-
-    

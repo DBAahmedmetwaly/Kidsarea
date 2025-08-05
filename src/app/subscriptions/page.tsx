@@ -121,6 +121,7 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
       childName: values.childName,
       planId: plan.id,
       planName: plan.name,
+      planDescription: plan.description,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       price: plan.price,
@@ -344,9 +345,14 @@ function SubscriptionsContent() {
         <TableBody>
           {filteredSubscriptions.map((sub) => (
             <TableRow key={sub.id}>
-              <TableCell>{sub.customerName}</TableCell>
-              <TableCell>{sub.childName}</TableCell>
-              <TableCell>{sub.planName}</TableCell>
+              <TableCell>
+                <div>{sub.customerName}</div>
+                <div className='text-xs text-muted-foreground'>{sub.childName}</div>
+              </TableCell>
+              <TableCell>
+                 <div>{sub.planName}</div>
+                 <div className='text-xs text-muted-foreground truncate max-w-xs'>{sub.planDescription}</div>
+              </TableCell>
               <TableCell className="text-center">
                  {getStatusBadge(sub)}
               </TableCell>
@@ -415,8 +421,7 @@ function SubscriptionsContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>اسم ولي الأمر</TableHead>
-                <TableHead>اسم الطفل</TableHead>
+                <TableHead>العميل والطفل</TableHead>
                 <TableHead>الباقة</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
                 <TableHead className="text-center">تاريخ البدء</TableHead>
@@ -447,5 +452,3 @@ export default function SubscriptionsPage() {
         </SidebarProvider>
     );
 }
-
-    

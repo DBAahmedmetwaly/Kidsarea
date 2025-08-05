@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -64,6 +65,7 @@ const planSchema = z.object({
   name: z.string().min(3, 'اسم الباقة مطلوب'),
   price: z.coerce.number().min(1, 'السعر يجب أن يكون أكبر من صفر'),
   duration: z.coerce.number().int().min(1, 'المدة (بالأيام) مطلوبة'),
+  description: z.string().optional(),
 });
 
 type PlanFormValues = z.infer<typeof planSchema>;
@@ -95,7 +97,7 @@ function PlanFormDialog({
     if (isEditMode && initialData) {
       reset(initialData);
     } else {
-      reset({ name: '', price: 0, duration: 30 });
+      reset({ name: '', price: 0, duration: 30, description: '' });
     }
   }, [initialData, isEditMode, open, reset]);
 
@@ -125,6 +127,11 @@ function PlanFormDialog({
             <Label htmlFor="duration">المدة (بالأيام)</Label>
             <Input id="duration" type="number" {...register('duration')} placeholder="30" />
             {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration.message}</p>}
+          </div>
+          <div>
+            <Label htmlFor="description">وصف الباقة (اختياري)</Label>
+            <Textarea id="description" {...register('description')} placeholder="وصف موجز لمميزات الباقة..." />
+            {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -210,6 +217,7 @@ function SubscriptionPlansContent() {
             <TableHeader>
               <TableRow>
                 <TableHead>اسم الباقة</TableHead>
+                <TableHead>الوصف</TableHead>
                 <TableHead className="text-center">السعر</TableHead>
                 <TableHead className="text-center">المدة (بالأيام)</TableHead>
                 <TableHead className="text-center">إجراءات</TableHead>
@@ -219,6 +227,7 @@ function SubscriptionPlansContent() {
               {subscriptionPlans.map((plan) => (
                 <TableRow key={plan.id}>
                   <TableCell className="font-medium">{plan.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{plan.description || '-'}</TableCell>
                   <TableCell className="text-center">{`ج.م ${plan.price.toFixed(2)}`}</TableCell>
                   <TableCell className="text-center">{plan.duration} يوم</TableCell>
                   <TableCell className="text-center">
@@ -282,5 +291,3 @@ export default function SubscriptionPlansPage() {
     </SidebarProvider>
   );
 }
-
-    
