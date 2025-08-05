@@ -174,80 +174,94 @@ function TransactionsContent() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                     <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="اختر الفرع" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">كل الفروع</SelectItem>
-                            {branches.map(branch => (
-                                <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={selectedSafe} onValueChange={setSelectedSafe} disabled={selectedBranch === 'all'}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="اختر الخزينة" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">كل الخزائن</SelectItem>
-                            {filteredSafes.map(safe => (
-                                <SelectItem key={safe.id} value={safe.id}>{safe.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={selectedType} onValueChange={setSelectedType as any}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="اختر النوع" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">كل الأنواع</SelectItem>
-                            <SelectItem value="deposit">إيداع</SelectItem>
-                            <SelectItem value="withdrawal">سحب</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            id="date"
-                            variant={"outline"}
-                            className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !date && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="me-2 h-4 w-4" />
-                            {date?.from ? (
-                            date.to ? (
-                                <>
-                                {format(date.from, "PPP", { locale: ar })} -{" "}
-                                {format(date.to, "PPP", { locale: ar })}
-                                </>
-                            ) : (
-                                format(date.from, "PPP", { locale: ar })
-                            )
-                            ) : (
-                            <span>اختر فترة</span>
-                            )}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={date?.from}
-                            selected={date}
-                            onSelect={setDate}
-                            numberOfMonths={2}
-                            locale={ar}
-                        />
-                        </PopoverContent>
-                    </Popover>
-                    <Button variant="ghost" onClick={clearFilters}>
-                        <FilterX className="me-2 h-4 w-4" />
-                        مسح الفلاتر
-                    </Button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-end">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">الفرع</label>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر الفرع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الفروع</SelectItem>
+                                {branches.map(branch => (
+                                    <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-2">
+                        <label className="text-sm font-medium">الخزينة</label>
+                         <Select value={selectedSafe} onValueChange={setSelectedSafe}>
+                            <SelectTrigger disabled={filteredSafes.length === 0 && selectedBranch === 'all'}>
+                                <SelectValue placeholder="اختر الخزينة" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الخزائن</SelectItem>
+                                {filteredSafes.map(safe => (
+                                    <SelectItem key={safe.id} value={safe.id}>{safe.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-2">
+                        <label className="text-sm font-medium">نوع الحركة</label>
+                         <Select value={selectedType} onValueChange={setSelectedType as any}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر النوع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الأنواع</SelectItem>
+                                <SelectItem value="deposit">إيداع</SelectItem>
+                                <SelectItem value="withdrawal">سحب</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 md:col-span-3 lg:col-span-1">
+                        <label className="text-sm font-medium">النطاق الزمني</label>
+                         <div className="flex items-center gap-2">
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    id="date"
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !date && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="me-2 h-4 w-4" />
+                                    {date?.from ? (
+                                    date.to ? (
+                                        <>
+                                        {format(date.from, "PPP", { locale: ar })} -{" "}
+                                        {format(date.to, "PPP", { locale: ar })}
+                                        </>
+                                    ) : (
+                                        format(date.from, "PPP", { locale: ar })
+                                    )
+                                    ) : (
+                                    <span>اختر فترة</span>
+                                    )}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={date?.from}
+                                    selected={date}
+                                    onSelect={setDate}
+                                    numberOfMonths={2}
+                                    locale={ar}
+                                />
+                                </PopoverContent>
+                            </Popover>
+                             <Button variant="ghost" onClick={clearFilters} size="icon">
+                                <FilterX className="h-4 w-4" />
+                                <span className="sr-only">مسح الفلاتر</span>
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </CardContent>
         </Card>

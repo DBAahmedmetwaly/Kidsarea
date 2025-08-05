@@ -9,8 +9,8 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon, FilterX } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -132,56 +132,74 @@ function DashboardContent() {
                 </div>
                 <h1 className="text-lg font-semibold md:text-2xl">لوحة التحكم</h1>
                 <div className="ms-auto flex items-center gap-2 w-full sm:w-auto">
-                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="اختر الفرع" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">كل الفروع</SelectItem>
-                            {branches.map(branch => (
-                                <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            id="date"
-                            variant={"outline"}
-                            className={cn(
-                                "w-full sm:w-[300px] justify-start text-left font-normal",
-                                !date && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="me-2 h-4 w-4" />
-                            {date?.from ? (
-                            date.to ? (
-                                <>
-                                {format(date.from, "PPP", { locale: ar })} -{" "}
-                                {format(date.to, "PPP", { locale: ar })}
-                                </>
-                            ) : (
-                                format(date.from, "PPP", { locale: ar })
-                            )
-                            ) : (
-                            <span>اختر فترة</span>
-                            )}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={date?.from}
-                            selected={date}
-                            onSelect={setDate}
-                            numberOfMonths={2}
-                            locale={ar}
-                        />
-                        </PopoverContent>
-                    </Popover>
+                    {/* Filters will be in a separate card now */}
                 </div>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>الفلاتر</CardTitle>
+                    <CardDescription>استخدم الفلاتر أدناه لتخصيص البيانات المعروضة في لوحة التحكم.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">الفرع</label>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر الفرع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الفروع</SelectItem>
+                                {branches.map(branch => (
+                                    <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-2 lg:col-span-2">
+                        <label className="text-sm font-medium">النطاق الزمني</label>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                id="date"
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !date && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {date?.from ? (
+                                date.to ? (
+                                    <>
+                                    {format(date.from, "PPP", { locale: ar })} -{" "}
+                                    {format(date.to, "PPP", { locale: ar })}
+                                    </>
+                                ) : (
+                                    format(date.from, "PPP", { locale: ar })
+                                )
+                                ) : (
+                                <span>اختر فترة</span>
+                                )}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                initialFocus
+                                mode="range"
+                                defaultMonth={date?.from}
+                                selected={date}
+                                onSelect={setDate}
+                                numberOfMonths={2}
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </CardContent>
+            </Card>
+
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
                 title="إجمالي الإيرادات"
