@@ -35,7 +35,7 @@ import { useEffect, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Employee } from '@/lib/types';
-import { Sheet, SheetContent, SheetTrigger as SheetTriggerComponent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger as SheetTriggerComponent } from '@/components/ui/sheet';
 
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -210,6 +210,7 @@ export default function AppSidebar() {
             </button>
           </SheetTriggerComponent>
           <SheetContent side="right" className="p-0 w-[250px]">
+            <SheetTitle className="sr-only">Main Menu</SheetTitle>
             <SidebarItems />
           </SheetContent>
         </Sheet>
