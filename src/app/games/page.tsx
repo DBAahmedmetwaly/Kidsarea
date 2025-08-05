@@ -65,6 +65,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/components/AuthProvider';
 
 
 function GameFormDialog({ 
@@ -81,7 +82,10 @@ function GameFormDialog({
     initialData: Game | null;
 }) {
     const { toast } = useToast();
-    const { branches } = useFirebase();
+    const { branches, employees } = useFirebase();
+    const { user } = useAuth();
+    const currentUser = employees.find(e => e.username === user?.username);
+
     const [name, setName] = useState('');
     const [hourlyRate, setHourlyRate] = useState('');
     const [branch, setBranch] = useState('');
@@ -96,10 +100,15 @@ function GameFormDialog({
         } else {
             setName('');
             setHourlyRate('');
-            setBranch('');
+            // If user is not "all branches", set their branch by default
+            if (currentUser && currentUser.branch !== 'كل الفروع') {
+                setBranch(currentUser.branch);
+            } else {
+                setBranch('');
+            }
             setStatus('Available');
         }
-    }, [initialData, isEditMode, open]);
+    }, [initialData, isEditMode, open, currentUser]);
 
     const handleSubmit = () => {
         if (!name || !hourlyRate || !branch || !status) {
@@ -149,7 +158,7 @@ function GameFormDialog({
                         <Label htmlFor="branch" className="text-right">
                             الفرع
                         </Label>
-                        <Select value={branch} onValueChange={setBranch}>
+                        <Select value={branch} onValueChange={setBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>

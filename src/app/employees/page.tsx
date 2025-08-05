@@ -49,6 +49,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
+import { useAuth } from '@/components/AuthProvider';
 
 function EmployeeFormDialog({
     open,
@@ -64,7 +65,10 @@ function EmployeeFormDialog({
     isEditMode: boolean;
 }) {
     const { toast } = useToast();
-    const { branches } = useFirebase();
+    const { branches, employees } = useFirebase();
+    const { user } = useAuth();
+    const currentUser = employees.find(e => e.username === user?.username);
+
     const [name, setName] = useState('');
     const [role, setRole] = useState<'مشرف' | 'كاشير' | 'مدير فرع' | ''>('');
     const [branch, setBranch] = useState('');
@@ -81,14 +85,18 @@ function EmployeeFormDialog({
             setPassword(initialData.password || '');
             setStatus(initialData.status);
         } else {
-             setName('');
+            setName('');
             setRole('');
-            setBranch('');
+            if (currentUser && currentUser.branch !== 'كل الفروع') {
+                setBranch(currentUser.branch);
+            } else {
+                setBranch('');
+            }
             setUsername('');
             setPassword('');
             setStatus('Active');
         }
-    }, [initialData, isEditMode, open]);
+    }, [initialData, isEditMode, open, currentUser]);
 
 
     const handleSubmit = () => {
@@ -167,7 +175,7 @@ function EmployeeFormDialog({
                     )}
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="branch" className="text-right">الفرع</Label>
-                        <Select value={branch} onValueChange={setBranch}>
+                        <Select value={branch} onValueChange={setBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>
