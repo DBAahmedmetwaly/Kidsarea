@@ -316,12 +316,10 @@ function SessionsContent() {
             </div>
             <DialogFooter className="sm:justify-between">
                 <Button type="button" variant="outline" onClick={() => setShowReceipt(false)}>إغلاق</Button>
-                <div onClick={handlePrint}>
-                    <Button type="button">
-                        <Printer className="me-2 h-4 w-4" />
-                        هذا الزر لا يعمل
-                    </Button>
-                </div>
+                <Button type="button" onClick={handlePrint}>
+                    <Printer className="me-2 h-4 w-4" />
+                    هذا الزر لا يعمل
+                </Button>
             </DialogFooter>
             </DialogContent>
         </Dialog>
