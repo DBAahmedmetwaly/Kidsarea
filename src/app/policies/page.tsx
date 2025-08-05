@@ -40,6 +40,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import type { DayOfWeek } from '@/lib/types';
 
 const pricingPolicySchema = z.object({
   gameId: z.string().min(1, 'يجب اختيار اللعبة'),
@@ -53,9 +55,28 @@ const policiesSchema = z.object({
   roundingPolicy: z.enum(['none', 'quarter-hour', 'half-hour', 'hour']),
   enableWeekendPricing: z.boolean(),
   pricingPolicies: z.array(pricingPolicySchema),
+  weekendDays: z.object({
+    saturday: z.boolean(),
+    sunday: z.boolean(),
+    monday: z.boolean(),
+    tuesday: z.boolean(),
+    wednesday: z.boolean(),
+    thursday: z.boolean(),
+    friday: z.boolean(),
+  }),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
+
+const daysOfWeek: { id: DayOfWeek, label: string }[] = [
+    { id: 'saturday', label: 'السبت' },
+    { id: 'sunday', label: 'الأحد' },
+    { id: 'monday', label: 'الإثنين' },
+    { id: 'tuesday', label: 'الثلاثاء' },
+    { id: 'wednesday', label: 'الأربعاء' },
+    { id: 'thursday', label: 'الخميس' },
+    { id: 'friday', label: 'الجمعة' },
+];
 
 function PoliciesContent() {
   const { games } = useFirebase();
@@ -70,6 +91,15 @@ function PoliciesContent() {
       roundingPolicy: 'none',
       enableWeekendPricing: false,
       pricingPolicies: [],
+      weekendDays: {
+        saturday: true, // Default weekend
+        sunday: false,
+        monday: false,
+        tuesday: false,
+        wednesday: false,
+        thursday: false,
+        friday: true, // Default weekend
+      },
     },
   });
 
@@ -89,6 +119,15 @@ function PoliciesContent() {
             roundingPolicy: data.roundingPolicy || 'none',
             enableWeekendPricing: data.enableWeekendPricing || false,
             pricingPolicies: data.pricingPolicies || [],
+            weekendDays: data.weekendDays || {
+                saturday: true,
+                sunday: false,
+                monday: false,
+                tuesday: false,
+                wednesday: false,
+                thursday: false,
+                friday: true,
+            },
         });
       }
       setLoading(false);
@@ -218,6 +257,33 @@ function PoliciesContent() {
                     </FormItem>
                     )}
                 />
+
+                <div className="space-y-4">
+                  <h3 className="text-md font-medium">تحديد أيام نهاية الأسبوع</h3>
+                  <div className="flex flex-wrap gap-4">
+                    {daysOfWeek.map((day) => (
+                      <FormField
+                        key={day.id}
+                        control={form.control}
+                        name={`weekendDays.${day.id}`}
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              {day.label}
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+
                 <FormField
                 control={form.control}
                 name="enableWeekendPricing"
@@ -228,7 +294,7 @@ function PoliciesContent() {
                         تفعيل تسعيرة نهاية الأسبوع
                       </FormLabel>
                       <CardDescription>
-                        هل تريد تطبيق أسعار مختلفة في عطلة نهاية الأسبوع (الجمعة والسبت)؟
+                        هل تريد تطبيق أسعار مختلفة في الأيام التي حددتها كعطلة نهاية أسبوع؟
                       </CardDescription>
                     </div>
                     <FormControl>
@@ -243,7 +309,7 @@ function PoliciesContent() {
 
               {form.watch('enableWeekendPricing') && (
                 <div className="space-y-4">
-                    <h3 className="text-md font-medium">قواعد التسعير المخصصة</h3>
+                    <h3 className="text-md font-medium">قواعد التسعير المخصصة للألعاب</h3>
                   {fields.map((item, index) => (
                     <div key={item.id} className="flex items-end gap-4 p-4 border rounded-lg">
                       <FormField

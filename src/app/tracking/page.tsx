@@ -45,7 +45,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, CompletedSession, Policies } from '@/lib/types';
+import type { Child, CompletedSession, Policies, DayOfWeek } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
@@ -115,17 +115,20 @@ function calculateCost(durationMs: number, hourlyRate: number, policies: Policie
         }
     }
     
-    // Ensure at least fractional rate is charged if applicable
-    const baseCost = roundedHours * hourlyRate;
-    
     // This is a simplified logic. A more complex one might check if duration is less than 30mins etc.
     // For now we assume fractional_rate is not used with rounding policies.
-    const durationCost = baseCost;
+    const durationCost = roundedHours * hourlyRate;
 
     const entryFee = policies?.entryFee || 0;
     const totalCost = durationCost + entryFee;
 
     return { totalCost, durationCost, entryFee };
+}
+
+function getDayOfWeek(date: Date): DayOfWeek {
+    const dayIndex = date.getDay(); // Sunday = 0, Monday = 1, etc.
+    const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[dayIndex];
 }
 
 
@@ -139,9 +142,10 @@ function TrackingContent() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const { toast } = useToast();
-  const { games, policies, openShifts, employees } = useFirebase();
+  const { games, policies, openShifts, employees, branches } = useFirebase();
   const { user } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
+  const [selectedBranch, setSelectedBranch] = useState('all');
 
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
@@ -153,16 +157,27 @@ function TrackingContent() {
     return openShifts.some(shift => shift.cashierUsername === user.username);
   }, [user, openShifts]);
 
+  const filteredActiveChildren = useMemo(() => {
+    if (selectedBranch === 'all') return activeChildren;
+    return activeChildren.filter(child => child.branchName === selectedBranch);
+  }, [activeChildren, selectedBranch]);
+
+  const filteredCompletedSessions = useMemo(() => {
+    if (selectedBranch === 'all') return completedSessions;
+    return completedSessions.filter(session => session.branchName === selectedBranch);
+  }, [completedSessions, selectedBranch]);
+
+
   const totalVisitorsToday = useMemo(() => {
       const todayStart = new Date();
       todayStart.setHours(0,0,0,0);
       
-      const activeToday = activeChildren.filter(c => c.checkInTime >= todayStart.getTime());
-      const completedToday = completedSessions.filter(c => c.checkOutTime >= todayStart.getTime());
+      const activeToday = filteredActiveChildren.filter(c => c.checkInTime >= todayStart.getTime());
+      const completedToday = filteredCompletedSessions.filter(c => c.checkOutTime >= todayStart.getTime());
       
       const allIds = new Set([...activeToday.map(c => c.id), ...completedToday.map(c => c.id)]);
       return allIds.size;
-  }, [activeChildren, completedSessions]);
+  }, [filteredActiveChildren, filteredCompletedSessions]);
 
   // Sync with Firebase
   useEffect(() => {
@@ -197,6 +212,12 @@ function TrackingContent() {
       return;
     }
 
+    const gameDetails = games.find((g) => g.name === selectedGame);
+    if (!gameDetails) {
+         toast({ title: 'اللعبة المختارة غير موجودة!', variant: 'destructive'});
+         return;
+    }
+
     if (policies && policies.maxCapacity && activeChildren.length >= policies.maxCapacity) {
         toast({
             title: 'تم الوصول للحد الأقصى',
@@ -224,6 +245,7 @@ function TrackingContent() {
       parentName: newChildParentName,
       phoneNumber: newChildPhoneNumber,
       game: selectedGame,
+      branchName: gameDetails.branch,
       checkInTime: Date.now(),
       cashierUsername: user.username,
     };
@@ -250,8 +272,22 @@ function TrackingContent() {
     const durationMs = checkOutTime - child.checkInTime;
 
     const gameDetails = games.find((g) => g.name === child.game);
-    // TODO: Add logic for weekend pricing
-    const hourlyRate = gameDetails?.hourly_rate || 0;
+    let hourlyRate = gameDetails?.hourly_rate || 0;
+
+    if (policies?.enableWeekendPricing) {
+        const today = getDayOfWeek(new Date(checkOutTime));
+        if (policies.weekendDays[today]) {
+            const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+            if(weekendPolicy) {
+                hourlyRate = weekendPolicy.weekendRate;
+            }
+        } else {
+             const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+             if(weekdayPolicy) {
+                hourlyRate = weekdayPolicy.weekdayRate;
+             }
+        }
+    }
     
     const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
 
@@ -300,24 +336,37 @@ function TrackingContent() {
   
   return (
     <div className="flex flex-col gap-8">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
              <div className="md:hidden">
                 <SidebarTrigger />
             </div>
             <h1 className="text-2xl font-bold">تتبع الأطفال</h1>
+             <div className="ms-auto w-full sm:w-auto">
+                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                        <SelectTrigger className="w-full sm:w-[200px]">
+                            <SelectValue placeholder="اختر الفرع" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">كل الفروع</SelectItem>
+                            {branches.map(branch => (
+                                <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+            </div>
         </div>
        <div className="grid gap-4 md:grid-cols-2">
         <StatCard
           title="الأطفال النشطون حاليًا"
-          value={activeChildren.length.toString()}
+          value={filteredActiveChildren.length.toString()}
           icon={Activity}
-          description={policies?.maxCapacity ? `من أصل ${policies.maxCapacity}` : "عدد الأطفال الموجودين في منطقة اللعب الآن."}
+          description={selectedBranch === 'all' ? `في كل الفروع` : `في ${selectedBranch}`}
         />
         <StatCard
           title="إجمالي زوار اليوم"
           value={totalVisitorsToday.toString()}
           icon={Users}
-          description="مجموع الأطفال الذين دخلوا اليوم."
+          description={selectedBranch === 'all' ? `في كل الفروع` : `في ${selectedBranch}`}
         />
       </div>
       <div className="grid gap-8 md:grid-cols-3">
@@ -418,16 +467,18 @@ function TrackingContent() {
                     <TableRow>
                     <TableHead>اسم الطفل</TableHead>
                     <TableHead>اللعبة</TableHead>
+                    <TableHead>الفرع</TableHead>
                     <TableHead>مدة اللعب</TableHead>
                     <TableHead>إجراء</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {activeChildren.length > 0 ? (
-                    activeChildren.map((child) => (
+                    {filteredActiveChildren.length > 0 ? (
+                    filteredActiveChildren.map((child) => (
                         <TableRow key={child.id}>
                         <TableCell className="font-medium">{child.name}</TableCell>
                         <TableCell>{child.game}</TableCell>
+                        <TableCell>{child.branchName}</TableCell>
                         <TableCell>
                             <TimeCounter startTime={child.checkInTime} />
                         </TableCell>
@@ -446,7 +497,7 @@ function TrackingContent() {
                     ))
                     ) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center">
+                        <TableCell colSpan={5} className="text-center">
                         لا يوجد أطفال نشطون حاليًا.
                         </TableCell>
                     </TableRow>
@@ -479,7 +530,7 @@ function TrackingContent() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>اسم الطفل</TableHead>
-                    <TableHead>ولي الأمر</TableHead>
+                    <TableHead>الفرع</TableHead>
                     <TableHead>اللعبة</TableHead>
                     <TableHead>مدة اللعب</TableHead>
                     <TableHead>التكلفة</TableHead>
@@ -488,15 +539,15 @@ function TrackingContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {completedSessions.length > 0 ? (
-                    completedSessions
+                  {filteredCompletedSessions.length > 0 ? (
+                    filteredCompletedSessions
                       .sort((a, b) => b.checkOutTime - a.checkOutTime)
                       .map((session) => (
                         <TableRow key={session.id}>
                           <TableCell className="font-medium">
                             {session.name}
                           </TableCell>
-                          <TableCell>{session.parentName}</TableCell>
+                           <TableCell>{session.branchName}</TableCell>
                           <TableCell>{session.game}</TableCell>
                           <TableCell>
                             {formatDuration(session.durationMs)}
@@ -571,5 +622,3 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
-
-    

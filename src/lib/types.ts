@@ -7,6 +7,7 @@ export interface Child {
   parentName: string;
   phoneNumber: string;
   game: string;
+  branchName: string;
   checkInTime: number;
   cashierUsername: string; // Added to track who checked the child in
 }
@@ -94,10 +95,13 @@ export interface PricingPolicy {
     weekendRate: number;
 }
 
+export type DayOfWeek = 'saturday' | 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
+
 export interface Policies {
     maxCapacity: number;
     enableWeekendPricing: boolean;
     pricingPolicies: PricingPolicy[];
     roundingPolicy: 'hour' | 'half-hour' | 'quarter-hour' | 'none';
     entryFee: number;
+    weekendDays: Record<DayOfWeek, boolean>;
 }
