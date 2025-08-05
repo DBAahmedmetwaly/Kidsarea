@@ -40,7 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, CompletedSession, Policies, DayOfWeek } from '@/lib/types';
+import type { Child, CompletedSession, Policies, DayOfWeek, Game } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
@@ -134,6 +134,7 @@ function TrackingContent() {
   const [newChildParentName, setNewChildParentName] = useState('');
   const [newChildPhoneNumber, setNewChildPhoneNumber] = useState('');
   const [selectedGame, setSelectedGame] = useState('');
+  const [checkInBranch, setCheckInBranch] = useState('');
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const { toast } = useToast();
@@ -160,6 +161,11 @@ function TrackingContent() {
     if (selectedBranch === 'all') return activeChildren;
     return activeChildren.filter(child => child.branchName === selectedBranch);
   }, [activeChildren, selectedBranch]);
+
+  const gamesInSelectedBranch = useMemo(() => {
+    if (!checkInBranch) return [];
+    return games.filter(g => g.branch === checkInBranch && g.status === 'Available');
+  }, [games, checkInBranch]);
 
 
   const totalVisitorsToday = useMemo(() => {
@@ -208,7 +214,7 @@ function TrackingContent() {
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newChildName || !newChildAge || !selectedGame || !newChildParentName || !newChildPhoneNumber) {
+    if (!newChildName || !newChildAge || !selectedGame || !newChildParentName || !newChildPhoneNumber || !checkInBranch) {
       toast({
         title: 'خطأ',
         description: 'الرجاء تعبئة جميع الحقول لتسجيل الدخول.',
@@ -262,6 +268,7 @@ function TrackingContent() {
         setNewChildParentName('');
         setNewChildPhoneNumber('');
         setSelectedGame('');
+        setCheckInBranch('');
         toast({
         title: 'تم تسجيل الدخول بنجاح',
         description: `تم تسجيل دخول الطفل ${newChild.name}.`,
@@ -424,13 +431,28 @@ function TrackingContent() {
                         />
                     </div>
                     <div className="space-y-2">
+                        <Label htmlFor="branch-select">اختر الفرع</Label>
+                        <Select value={checkInBranch} onValueChange={(value) => { setCheckInBranch(value); setSelectedGame(''); }}>
+                            <SelectTrigger id="branch-select">
+                                <SelectValue placeholder="اختر فرع..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {branches.map((branch) => (
+                                <SelectItem key={branch.id} value={branch.name}>
+                                    {branch.name}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
                         <Label htmlFor="game-select">اختر اللعبة</Label>
-                        <Select value={selectedGame} onValueChange={setSelectedGame}>
+                        <Select value={selectedGame} onValueChange={setSelectedGame} disabled={!checkInBranch}>
                         <SelectTrigger id="game-select">
                             <SelectValue placeholder="اختر لعبة..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {games.filter(g => g.status === 'Available').map((game) => (
+                            {gamesInSelectedBranch.map((game) => (
                             <SelectItem key={game.id} value={game.name}>
                                 {game.name}
                             </SelectItem>
@@ -525,7 +547,7 @@ function TrackingContent() {
                      <Button type="button" variant="secondary" onClick={() => setShowPrintDialog(false)}>إلغاء</Button>
                      <Button type="button" onClick={handlePrint}>
                         <Printer className="me-2 h-4 w-4" />
-                        تأكيد الطباعة
+                        طباعة
                     </Button>
                 </DialogFooter>
             </DialogContent>
