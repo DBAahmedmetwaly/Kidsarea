@@ -78,6 +78,12 @@ function SessionsContent() {
       }
   });
 
+  const triggerPrint = () => {
+    setTimeout(() => {
+        handlePrint();
+    }, 0);
+  }
+
   useEffect(() => {
     const sessionsRef = ref(db, 'sessions/completed');
     const unsubscribe = onValue(sessionsRef, (snapshot) => {
@@ -331,7 +337,7 @@ function SessionsContent() {
                 </div>
                 <DialogFooter className="sm:justify-between">
                      <Button type="button" variant="secondary" onClick={() => setShowPrintDialog(false)}>إلغاء</Button>
-                     <Button type="button" onClick={handlePrint}>
+                     <Button type="button" onClick={triggerPrint}>
                         <Printer className="me-2 h-4 w-4" />
                         تأكيد الطباعة
                     </Button>

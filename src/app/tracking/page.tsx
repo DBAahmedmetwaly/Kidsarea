@@ -163,6 +163,12 @@ function TrackingContent() {
       }
   });
 
+  const triggerPrint = () => {
+    setTimeout(() => {
+        handlePrint();
+    }, 0);
+  }
+
   const currentUser = useMemo(() => {
     if (!user) return null;
     return employees.find(e => e.username === user.username);
@@ -376,7 +382,7 @@ function TrackingContent() {
     let finalCost = 0;
     let finalDurationCost = 0;
     let finalEntryFee = 0;
-    let subscriptionId: string | null = null;
+    let subscriptionId: string | undefined = undefined;
 
     if (allSubscriptions) {
         const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
@@ -780,7 +786,7 @@ function TrackingContent() {
                 </div>
                 <DialogFooter className="sm:justify-between">
                      <Button type="button" variant="secondary" onClick={() => setShowPrintDialog(false)}>إلغاء</Button>
-                     <Button type="button" onClick={handlePrint}>
+                     <Button type="button" onClick={triggerPrint}>
                         <Printer className="me-2 h-4 w-4" />
                         تأكيد الطباعة
                     </Button>
