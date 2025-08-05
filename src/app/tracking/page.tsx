@@ -515,15 +515,15 @@ function TrackingContent() {
                 قائمة بالأطفال الذين يلعبون حاليًا.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
                 <Table>
                 <TableHeader>
                     <TableRow>
                     <TableHead>اسم الطفل</TableHead>
                     <TableHead>اللعبة</TableHead>
                     <TableHead>الفرع</TableHead>
-                    <TableHead>مدة اللعب</TableHead>
-                    <TableHead>إجراء</TableHead>
+                    <TableHead className="text-center">مدة اللعب</TableHead>
+                    <TableHead className="text-center">إجراء</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -533,10 +533,10 @@ function TrackingContent() {
                         <TableCell className="font-medium">{child.name}</TableCell>
                         <TableCell>{child.game}</TableCell>
                         <TableCell>{child.branchName}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                             <TimeCounter startTime={child.checkInTime} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                             <Button
                             variant="destructive"
                             size="sm"
@@ -551,7 +551,7 @@ function TrackingContent() {
                     ))
                     ) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="text-center">
+                        <TableCell colSpan={5} className="h-24 text-center">
                         لا يوجد أطفال نشطون حاليًا.
                         </TableCell>
                     </TableRow>
@@ -650,5 +650,7 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
+
+    
 
     
