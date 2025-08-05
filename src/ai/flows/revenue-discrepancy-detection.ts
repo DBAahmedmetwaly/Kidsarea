@@ -54,7 +54,7 @@ const detectRevenueDiscrepancyFlow = ai.defineFlow(
     outputSchema: RevenueDiscrepancyOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt({input});
     return output!;
   }
 );
