@@ -132,8 +132,10 @@ function DataManagementContent() {
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
     try {
-      const dbRef = ref(db);
-      await remove(dbRef);
+      const allDataPaths = ['branches', 'employees', 'games', 'openShifts', 'policies', 'roles', 'safes', 'safeTransactions', 'sessions', 'shiftRecords'];
+      const promises = allDataPaths.map(path => remove(ref(db, path)));
+      await Promise.all(promises);
+      
       toast({
         title: 'تم الحذف بنجاح',
         description: 'تم حذف جميع البيانات من قاعدة البيانات بنجاح.',
