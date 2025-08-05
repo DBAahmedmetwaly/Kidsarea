@@ -48,30 +48,34 @@ function AuthContent({ children }: { children: ReactNode }) {
 
                 setIsAuthenticated(authStatus);
                 setUser(parsedUser);
-                setLoading(false);
-
-                if (!authStatus && pathname !== '/login') {
-                    router.push('/login');
-                } else if (authStatus && pathname === '/login') {
-                    router.push('/tracking'); // Redirect to tracking on successful login
-                }
             } catch (error) {
                 console.error("Failed to parse user data from localStorage", error);
                 // Clear corrupted data
                 logout();
+            } finally {
                 setLoading(false);
             }
         };
         checkAuth();
     }
-  }, [pathname, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on initial mount
+
+  useEffect(() => {
+    if (!loading) {
+       if (!isAuthenticated && pathname !== '/login') {
+            router.push('/login');
+        } else if (isAuthenticated && pathname === '/login') {
+            router.push('/tracking'); 
+        }
+    }
+  }, [isAuthenticated, pathname, router, loading]);
 
   const login = (userData: AuthContextType['user']) => {
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
     setUser(userData);
-    router.push('/tracking');
   };
 
   const logout = () => {
@@ -90,15 +94,6 @@ function AuthContent({ children }: { children: ReactNode }) {
     );
   }
   
-  // If not authenticated and not on login page, show loader while redirecting
-  if (!isAuthenticated && pathname !== '/login') {
-    return (
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-      );
-  }
-
   // Render children (or login page)
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
