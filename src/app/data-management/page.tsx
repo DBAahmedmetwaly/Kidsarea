@@ -132,13 +132,13 @@ function DataManagementContent() {
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
     try {
-      const allDataPaths = ['branches', 'employees', 'games', 'openShifts', 'policies', 'roles', 'safes', 'safeTransactions', 'sessions', 'shiftRecords'];
-      const promises = allDataPaths.map(path => remove(ref(db, path)));
+      const dataPathsToDelete = ['branches', 'openShifts', 'policies', 'roles', 'safes', 'safeTransactions', 'sessions', 'shiftRecords'];
+      const promises = dataPathsToDelete.map(path => remove(ref(db, path)));
       await Promise.all(promises);
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف جميع البيانات من قاعدة البيانات بنجاح.',
+        description: 'تم حذف جميع بيانات المعاملات من قاعدة البيانات بنجاح.',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -241,9 +241,9 @@ function DataManagementContent() {
             <div>
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>حذف جميع البيانات</AlertTitle>
+                    <AlertTitle>حذف جميع بيانات المعاملات</AlertTitle>
                     <AlertDescription>
-                        سيؤدي هذا الإجراء إلى حذف جميع البيانات في قاعدة البيانات بشكل نهائي، بما في ذلك الألعاب والموظفين والجلسات والسجلات المالية. لا يمكن استعادة البيانات بعد حذفها إلا من خلال ملف نسخة احتياطية.
+                        سيؤدي هذا الإجراء إلى حذف جميع بيانات المعاملات في قاعدة البيانات بشكل نهائي، بما في ذلك الفروع والجلسات والسجلات المالية. سيتم الاحتفاظ ببيانات الموظفين والألعاب.
                     </AlertDescription>
                 </Alert>
               <AlertDialog>
@@ -257,7 +257,7 @@ function DataManagementContent() {
                     ) : (
                         <>
                             <Trash2 className="me-2 h-4 w-4" />
-                            حذف جميع البيانات نهائياً
+                            حذف جميع بيانات المعاملات
                         </>
                     )}
                   </Button>
@@ -266,13 +266,13 @@ function DataManagementContent() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
                     <AlertDialogDescription>
-                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بياناتك بشكل دائم. هل تريد المتابعة؟
+                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات المعاملات الخاصة بك بشكل دائم. هل تريد المتابعة؟
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>إلغاء</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteAllData} className="bg-destructive hover:bg-destructive/90">
-                      نعم، أحذف كل شيء
+                      نعم، أحذف بيانات المعاملات
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
