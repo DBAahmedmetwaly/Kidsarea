@@ -49,7 +49,7 @@ import { ref, set, onValue, get, update, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { Receipt, type ReceiptProps } from '@/components/Receipt';
-import { useReactToPrint } from 'react-to-print';
+import ReactToPrint from 'react-to-print';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -147,9 +147,6 @@ function CheckOutDialog({
   const { games, policies } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
   const [isSubscription, setIsSubscription] = useState(false);
-  const handlePrint = useReactToPrint({
-      content: () => receiptRef.current,
-  });
   const receiptRef = useRef<HTMLDivElement>(null);
 
 
@@ -219,17 +216,6 @@ function CheckOutDialog({
 
   const change = Number(amountReceived) - (isSubscription ? 0 : checkoutData.totalCost);
 
-  const handleConfirm = () => {
-    onConfirm(child);
-    // Timeout to allow state to update before printing
-    setTimeout(() => {
-      if (handlePrint) {
-        handlePrint();
-      }
-      onOpenChange(false);
-    }, 100);
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -277,9 +263,15 @@ function CheckOutDialog({
           <DialogClose asChild>
             <Button variant="outline">إلغاء</Button>
           </DialogClose>
-          <Button onClick={handleConfirm} disabled={!isSubscription && !amountReceived}>
-            حفظ وطباعة
-          </Button>
+            <ReactToPrint
+                trigger={() => (
+                     <Button disabled={!isSubscription && !amountReceived}>
+                        حفظ وطباعة
+                    </Button>
+                )}
+                content={() => receiptRef.current}
+                onAfterPrint={() => onConfirm(child)}
+            />
         </DialogFooter>
          <div className="print-container">
             {child && checkoutData && (
@@ -528,6 +520,7 @@ function TrackingContent() {
   }
 
   const handleCheckOut = async (child: Child) => {
+    setCheckoutDialogOpen(false);
     const checkOutTime = Date.now();
     const durationMs = checkOutTime - child.checkInTime;
 
@@ -883,16 +876,14 @@ function TrackingContent() {
                                         </TableCell>
                                         <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
                                         <TableCell className="text-center">
-                                            <Button
+                                            {/* We can re-enable this if needed with a robust solution */}
+                                            {/* <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => {
-                                                    // This is a placeholder for the fixed print functionality
-                                                }}
                                             >
                                                 <Printer className="me-2 h-4 w-4" />
                                                 طباعة
-                                            </Button>
+                                            </Button> */}
                                         </TableCell>
                                     </TableRow>
                                 ))
