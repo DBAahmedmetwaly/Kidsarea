@@ -61,12 +61,12 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <Card>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+      <div className="w-full max-w-md">
+        <Card className="shadow-lg">
           <CardHeader className="text-center">
             <div className="flex justify-center items-center mb-4">
-              <Gamepad2 className="h-10 w-10 text-primary" />
+              <Gamepad2 className="h-12 w-12 text-primary" />
             </div>
             <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
             <CardDescription>
