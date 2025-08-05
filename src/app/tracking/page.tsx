@@ -56,6 +56,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { useCustomers } from '@/context/CustomerContext';
 import { CustomerFormDialog } from '../customers/page';
+import { startOfDay } from 'date-fns';
 
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
@@ -298,8 +299,6 @@ function TrackingContent() {
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
 
-  const [myLocalCompletedSessions, setMyLocalCompletedSessions] = useState<CompletedSession[]>([]);
-
   // Checkout Dialog State
   const [isCheckoutDialogOpen, setCheckoutDialogOpen] = useState(false);
   const [childToCheckout, setChildToCheckout] = useState<Child | null>(null);
@@ -395,24 +394,14 @@ function TrackingContent() {
 
   }, [activeChildren, completedSessions, selectedBranchFilter]);
 
-  // Effect to populate the local completed sessions state from the global context
-  useEffect(() => {
-    if (!user?.username) {
-        setMyLocalCompletedSessions([]);
-        return;
-    };
-    const myOpenShift = openShifts.find(s => s.cashierUsername === user.username);
-    if (!myOpenShift) {
-        setMyLocalCompletedSessions([]);
-        return;
-    }
+  const todaysCompletedSessions = useMemo(() => {
+    const today = startOfDay(new Date()).getTime();
+    return completedSessions.filter(s => {
+        const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
+        return branchMatch && s.checkOutTime >= today;
+    });
+  }, [completedSessions, selectedBranchFilter]);
 
-    const sessionsInShift = completedSessions.filter(s => 
-        s.cashierUsername === user.username && 
-        s.checkOutTime >= new Date(myOpenShift.startTime).getTime()
-    );
-    setMyLocalCompletedSessions(sessionsInShift);
-  }, [completedSessions, user, openShifts]);
 
   // Sync with Firebase
   useEffect(() => {
@@ -604,9 +593,6 @@ function TrackingContent() {
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
         
-        // Update local state immediately
-        setMyLocalCompletedSessions(prev => [completedSession as CompletedSession, ...prev]);
-
         showReceiptForSession(completedSession as CompletedSession);
     } catch(err) {
         console.error(err);
@@ -693,8 +679,8 @@ function TrackingContent() {
           description={selectedBranchFilter === 'all' ? `في كل الفروع` : `في ${selectedBranchFilter}`}
         />
       </div>
-      <div className="grid gap-8 md:grid-cols-3 items-start">
-        <div className="md:col-span-1 space-y-6">
+      <div className="grid gap-8 md:grid-cols-5 items-start">
+        <div className="md:col-span-2 space-y-6">
             {!hasActiveShift && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
@@ -829,12 +815,12 @@ function TrackingContent() {
                 </CardContent>
             </Card>
         </div>
-        <div className="md:col-span-2 space-y-8">
+        <div className="md:col-span-3 space-y-8">
             <Card>
             <CardHeader>
                 <CardTitle>الأطفال النشطون حاليًا</CardTitle>
                 <CardDescription>
-                قائمة بالأطفال الذين يلعبون حاليًا.
+                قائمة بالأطفال الذين يلعبون حاليًا في الفرع المحدد.
                 </CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
@@ -885,9 +871,9 @@ function TrackingContent() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>جلساتي المكتملة في هذه الوردية</CardTitle>
+                    <CardTitle>الجلسات المكتملة اليوم</CardTitle>
                     <CardDescription>
-                        قائمة بالجلسات التي قمت بإنهائها خلال ورديتك الحالية.
+                        قائمة بالجلسات التي تم إنهائها اليوم في الفرع المحدد.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -902,8 +888,8 @@ function TrackingContent() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {myLocalCompletedSessions.length > 0 ? (
-                                myLocalCompletedSessions.map((session) => (
+                            {todaysCompletedSessions.length > 0 ? (
+                                todaysCompletedSessions.map((session) => (
                                     <TableRow key={session.id}>
                                         <TableCell className="font-medium text-right">{session.name}</TableCell>
                                         <TableCell className="text-right">{session.game}</TableCell>
@@ -928,7 +914,7 @@ function TrackingContent() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center">
-                                        لم تقم بإنهاء أي جلسات في ورديتك الحالية بعد.
+                                        لم تكتمل أي جلسات اليوم بعد.
                                     </TableCell>
                                 </TableRow>
                             )}
