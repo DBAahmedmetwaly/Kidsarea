@@ -134,7 +134,7 @@ function SafeDetailsContent() {
                     </TableCell>
                     <TableCell className="font-medium">{`ج.م ${tx.amount.toFixed(2)}`}</TableCell>
                     <TableCell>{tx.cashierName}</TableCell>
-                    <TableCell>{tx.notes}</TableCell>
+                    <TableCell>{tx.notes || '-'}</TableCell>
                   </TableRow>
                 ))
               ) : (

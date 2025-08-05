@@ -111,6 +111,13 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
         setLoading(false);
         return;
     }
+
+    const safe = safes.find(s => s.id === values.safeId);
+    if (!safe) {
+        setError('لم يتم العثور على الخزينة.');
+        setLoading(false);
+        return;
+    }
     
     const shiftDetails = `الوردية المسائية للكاشير ${cashier.name}. ملاحظات: ${values.notes || 'لا يوجد'}`;
     const response = await checkDiscrepancy({ ...values, expectedRevenue: expectedRevenue, actualRevenue: values.actualRevenue, shiftDetails, branchName: values.branchName });
@@ -149,6 +156,8 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
             date: new Date().toISOString(),
             cashierName: cashier.name,
             notes: `إيداع من وردية: ${newRecordId}`,
+            branchName: safe.branchName,
+            safeName: safe.name,
         };
         await set(newTransactionRef, newTransaction);
 

@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch, Safe, Policies, OpenShift } from '@/lib/types';
+import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
 interface FirebaseContextType {
@@ -22,6 +22,7 @@ interface FirebaseContextType {
   safes: Safe[];
   policies: Policies | null;
   openShifts: OpenShift[];
+  transactions: SafeTransaction[];
   loading: boolean;
   error: Error | null;
 }
@@ -43,6 +44,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [safes, setSafes] = useState<Safe[]>([]);
   const [policies, setPolicies] = useState<Policies | null>(null);
   const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
+  const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -53,15 +55,16 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     const safesRef = ref(db, 'safes');
     const policiesRef = ref(db, 'policies');
     const openShiftsRef = ref(db, 'openShifts');
+    const transactionsRef = ref(db, 'safeTransactions');
 
 
     let isMounted = true;
     let loadedCount = 0;
-    const totalListeners = 6;
+    const totalListeners = 7;
 
     const handleLoad = () => {
         loadedCount++;
-        if(loadedCount === totalListeners && isMounted){
+        if(loadedCount >= totalListeners && isMounted){
             setLoading(false);
         }
     }
@@ -91,6 +94,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       createUnsubscribe(safesRef, setSafes, true),
       createUnsubscribe(policiesRef, setPolicies, false),
       createUnsubscribe(openShiftsRef, setOpenShifts, true),
+      createUnsubscribe(transactionsRef, setTransactions, true),
     ];
     
     return () => {
@@ -108,7 +112,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, openShifts, loading, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, openShifts, transactions, loading, error }}>
       {children}
     </FirebaseContext.Provider>
   );

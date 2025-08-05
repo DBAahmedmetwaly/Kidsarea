@@ -27,6 +27,7 @@ import {
   Shield,
   FileCog,
   Database,
+  List,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -45,6 +46,7 @@ const allMenuItems = [
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
+  { href: '/transactions', label: 'سجل الحركات', icon: List },
 ];
 
 const settingsMenuItems = [

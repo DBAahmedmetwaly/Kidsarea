@@ -81,7 +81,9 @@ export interface Safe {
 export interface SafeTransaction {
     id: string;
     safeId: string;
-    shiftRecordId: string;
+    shiftRecordId?: string; // Optional link to shift record
+    branchName: string; // Denormalized for easier filtering
+    safeName: string; // Denormalized for easier filtering
     amount: number;
     type: 'deposit' | 'withdrawal';
     date: string;
