@@ -36,13 +36,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, ChevronsUpDown } from 'lucide-react';
+import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, CompletedSession, Policies, DayOfWeek } from '@/lib/types';
@@ -162,22 +157,25 @@ function TrackingContent() {
     return activeChildren.filter(child => child.branchName === selectedBranch);
   }, [activeChildren, selectedBranch]);
 
-  const filteredCompletedSessions = useMemo(() => {
-    if (selectedBranch === 'all') return completedSessions;
-    return completedSessions.filter(session => session.branchName === selectedBranch);
-  }, [completedSessions, selectedBranch]);
-
 
   const totalVisitorsToday = useMemo(() => {
       const todayStart = new Date();
       todayStart.setHours(0,0,0,0);
       
-      const activeToday = filteredActiveChildren.filter(c => c.checkInTime >= todayStart.getTime());
-      const completedToday = filteredCompletedSessions.filter(c => c.checkOutTime >= todayStart.getTime());
-      
-      const allIds = new Set([...activeToday.map(c => c.id), ...completedToday.map(c => c.id)]);
-      return allIds.size;
-  }, [filteredActiveChildren, filteredCompletedSessions]);
+      const allSessionsToday = [...activeChildren, ...completedSessions].filter(s => {
+          const sessionTime = 'checkOutTime' in s ? (s as CompletedSession).checkOutTime : s.checkInTime;
+          return sessionTime >= todayStart.getTime();
+      });
+
+      const uniqueChildIds = new Set(allSessionsToday.map(s => s.id));
+      const filteredByBranch = [...uniqueChildIds]
+        .map(id => allSessionsToday.find(s => s.id === id))
+        .filter(Boolean)
+        .filter(s => selectedBranch === 'all' || s!.branchName === selectedBranch);
+
+      return filteredByBranch.length;
+
+  }, [activeChildren, completedSessions, selectedBranch]);
 
   // Sync with Firebase
   useEffect(() => {
@@ -191,7 +189,10 @@ function TrackingContent() {
 
       const unsubscribeCompleted = onValue(completedRef, (snapshot) => {
           const data = snapshot.val();
-          setCompletedSessions(data ? Object.values(data) : []);
+          const sessionsArray: CompletedSession[] = data 
+            ? Object.values(data).sort((a: any,b: any) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime())
+            : [];
+          setCompletedSessions(sessionsArray);
       });
 
       return () => {
