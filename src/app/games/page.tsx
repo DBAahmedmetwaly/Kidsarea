@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -52,19 +52,48 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Game } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
-import { ref, push, set, remove } from 'firebase/database';
+import { ref, push, set, remove, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
-function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpenChange: (open: boolean) => void; onAddGame: (game: Omit<Game, 'id'>) => void; }) {
+function GameFormDialog({ 
+    open, 
+    onOpenChange, 
+    onSubmit,
+    isEditMode,
+    initialData
+}: { 
+    open: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    onSubmit: (game: Omit<Game, 'id'> | Game) => void; 
+    isEditMode: boolean;
+    initialData: Game | null;
+}) {
     const { toast } = useToast();
+    const { branches } = useFirebase();
     const [name, setName] = useState('');
     const [hourlyRate, setHourlyRate] = useState('');
     const [fractionalRate, setFractionalRate] = useState('');
     const [branch, setBranch] = useState('');
     const [status, setStatus] = useState<'Available' | 'Maintenance'>('Available');
+    
+    useEffect(() => {
+        if (isEditMode && initialData) {
+            setName(initialData.name);
+            setHourlyRate(String(initialData.hourly_rate));
+            setFractionalRate(String(initialData.fractional_rate || ''));
+            setBranch(initialData.branch);
+            setStatus(initialData.status);
+        } else {
+            setName('');
+            setHourlyRate('');
+            setFractionalRate('');
+            setBranch('');
+            setStatus('Available');
+        }
+    }, [initialData, isEditMode, open]);
 
-    const handleAddGameClick = () => {
-        if (!name || !hourlyRate || !fractionalRate || !branch || !status) {
+    const handleSubmit = () => {
+        if (!name || !hourlyRate || !branch || !status) {
             toast({
                 title: "خطأ في الإدخال",
                 description: "يرجى تعبئة جميع الحقول.",
@@ -73,25 +102,16 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
             return;
         }
 
-        const newGame: Omit<Game, 'id'> = {
+        const gameData: Omit<Game, 'id'> | Game = {
+            ...(isEditMode && initialData ? { id: initialData.id } : {}),
             name,
             hourly_rate: parseFloat(hourlyRate),
-            fractional_rate: parseFloat(fractionalRate),
+            fractional_rate: parseFloat(fractionalRate) || 0,
             branch,
             status,
-            image: 'https://placehold.co/64x64.png',
+            image: initialData?.image || 'https://placehold.co/64x64.png',
         };
-        onAddGame(newGame);
-        toast({
-            title: "تمت الإضافة بنجاح",
-            description: `تمت إضافة لعبة "${name}" إلى القائمة.`,
-        });
-        // Reset fields
-        setName('');
-        setHourlyRate('');
-        setFractionalRate('');
-        setBranch('');
-        setStatus('Available');
+        onSubmit(gameData);
         onOpenChange(false);
     };
 
@@ -99,9 +119,9 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>إضافة لعبة جديدة</DialogTitle>
+                    <DialogTitle>{isEditMode ? 'تعديل بيانات اللعبة' : 'إضافة لعبة جديدة'}</DialogTitle>
                     <DialogDescription>
-                        أدخل تفاصيل اللعبة الجديدة هنا. انقر على "إضافة" عند الانتهاء.
+                        {isEditMode ? 'قم بتحديث تفاصيل اللعبة.' : 'أدخل تفاصيل اللعبة الجديدة هنا. انقر على "حفظ" عند الانتهاء.'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -113,13 +133,13 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="hourly_rate" className="text-right">
-                            سعر/ساعة
+                            السعر/ساعة
                         </Label>
                         <Input id="hourly_rate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="fractional_rate" className="text-right">
-                            سعر/نصف ساعة
+                            السعر/نصف ساعة
                         </Label>
                         <Input id="fractional_rate" type="number" value={fractionalRate} onChange={(e) => setFractionalRate(e.target.value)} className="col-span-3" placeholder="e.g. 50" />
                     </div>
@@ -127,7 +147,17 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
                         <Label htmlFor="branch" className="text-right">
                             الفرع
                         </Label>
-                        <Input id="branch" value={branch} onChange={(e) => setBranch(e.target.value)} className="col-span-3" placeholder="e.g. فرع الرياض" />
+                        <Select value={branch} onValueChange={setBranch}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="اختر الفرع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="كل الفروع">كل الفروع</SelectItem>
+                                {branches.map((b) => (
+                                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="status" className="text-right">
@@ -150,7 +180,7 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
                             إلغاء
                         </Button>
                     </DialogClose>
-                    <Button type="button" onClick={handleAddGameClick}>إضافة اللعبة</Button>
+                    <Button type="button" onClick={handleSubmit}>{isEditMode ? 'حفظ التغييرات' : 'إضافة اللعبة'}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -160,13 +190,19 @@ function AddGameDialog({ open, onOpenChange, onAddGame }: { open: boolean; onOpe
 function GamesContent() {
     const { games } = useFirebase();
     const { toast } = useToast();
-    const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+    const [isFormOpen, setFormOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
-    const handleAddGame = async (newGame: Omit<Game, 'id'>) => {
+    const handleAddGame = async (newGameData: Omit<Game, 'id'>) => {
         try {
             const gamesRef = ref(db, 'games');
             const newGameRef = push(gamesRef);
-            await set(newGameRef, newGame);
+            await set(newGameRef, newGameData);
+            toast({
+                title: "تمت الإضافة بنجاح",
+                description: `تمت إضافة لعبة "${newGameData.name}" إلى القائمة.`,
+            });
         } catch(e) {
             console.error(e);
             toast({
@@ -174,6 +210,25 @@ function GamesContent() {
                 description: "لم يتم إضافة اللعبة",
                 variant: 'destructive'
             })
+        }
+    };
+    
+    const handleEditGame = async (gameToUpdate: Game) => {
+        try {
+            const gameRef = ref(db, `games/${gameToUpdate.id}`);
+            const { id, ...gameData } = gameToUpdate;
+            await update(gameRef, gameData);
+            toast({
+                title: "تم التعديل بنجاح",
+                description: `تم تحديث بيانات اللعبة "${gameToUpdate.name}".`,
+            });
+        } catch (e) {
+            console.error(e);
+            toast({
+                title: "خطأ في التعديل",
+                description: "لم يتم تحديث بيانات اللعبة.",
+                variant: 'destructive',
+            });
         }
     };
     
@@ -193,6 +248,25 @@ function GamesContent() {
             })
         }
     }
+    
+    const openForm = (game?: Game) => {
+        if (game) {
+            setIsEditMode(true);
+            setSelectedGame(game);
+        } else {
+            setIsEditMode(false);
+            setSelectedGame(null);
+        }
+        setFormOpen(true);
+    };
+
+    const handleFormSubmit = (gameData: Omit<Game, 'id'> | Game) => {
+        if (isEditMode) {
+            handleEditGame(gameData as Game);
+        } else {
+            handleAddGame(gameData as Omit<Game, 'id'>);
+        }
+    };
 
   return (
     <div className="flex flex-col gap-4">
@@ -202,7 +276,7 @@ function GamesContent() {
         </div>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الألعاب</h1>
         <div className="ms-auto flex items-center gap-2">
-          <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
+          <Button size="sm" className="h-8 gap-1" onClick={() => openForm()}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               إضافة لعبة
@@ -226,17 +300,17 @@ function GamesContent() {
                 </TableHead>
                 <TableHead>اسم اللعبة</TableHead>
                 <TableHead>الحالة</TableHead>
-                <TableHead className="hidden md:table-cell">
+                <TableHead className="hidden md:table-cell text-center">
                   السعر/ساعة
                 </TableHead>
-                <TableHead className="hidden md:table-cell">
+                <TableHead className="hidden md:table-cell text-center">
                   السعر/نصف ساعة
                 </TableHead>
                 <TableHead className="hidden md:table-cell">
                   الفروع المتاحة
                 </TableHead>
-                <TableHead>
-                  <span className="sr-only">الإجراءات</span>
+                <TableHead className="text-center">
+                  <span>الإجراءات</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -263,16 +337,16 @@ function GamesContent() {
                       {game.status === 'Available' ? 'متاح' : 'صيانة'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-center">
                     {`ج.م${game.hourly_rate}`}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-center">
                     {`ج.م${game.fractional_rate || (game.hourly_rate / 2)}`}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {game.branch}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -286,7 +360,7 @@ function GamesContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>تعديل</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openForm(game)}>تعديل</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeleteGame(game.id)}>حذف</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -297,7 +371,13 @@ function GamesContent() {
           </Table>
         </CardContent>
       </Card>
-      <AddGameDialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen} onAddGame={handleAddGame} />
+      <GameFormDialog 
+        open={isFormOpen} 
+        onOpenChange={setFormOpen} 
+        onSubmit={handleFormSubmit}
+        isEditMode={isEditMode}
+        initialData={selectedGame}
+      />
     </div>
   );
 }
