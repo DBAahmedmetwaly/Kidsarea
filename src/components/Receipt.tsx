@@ -3,6 +3,7 @@
 
 import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle } from 'lucide-react';
 import React from 'react';
+import { useFirebase } from '@/context/FirebaseContext';
 
 export interface ReceiptProps {
   childName: string;
@@ -29,13 +30,16 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
   entryFee,
   cashierName,
 }, ref) => {
+  const { policies } = useFirebase();
   const receiptId = `R-${checkOutTime.getTime().toString().slice(-6)}`;
+  const appName = policies?.appName || 'FunTrack';
+
   return (
     <div ref={ref} className="bg-white p-4 text-black printable-area font-sans">
       <div className="text-center mb-4">
         <div className="flex justify-center items-center gap-2">
             <Gamepad2 className="w-8 h-8" />
-            <h1 className="text-2xl font-bold">FunTrack</h1>
+            <h1 className="text-2xl font-bold">{appName}</h1>
         </div>
         <p className="text-xs">شكراً لزيارتكم!</p>
       </div>

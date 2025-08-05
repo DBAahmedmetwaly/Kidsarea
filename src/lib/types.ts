@@ -100,6 +100,7 @@ export interface PricingPolicy {
 export type DayOfWeek = 'saturday' | 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
 
 export interface Policies {
+    appName?: string;
     maxCapacity: number;
     enableWeekendPricing: boolean;
     pricingPolicies: PricingPolicy[];

@@ -152,7 +152,7 @@ function ReportsContent() {
             .sort((a, b) => b.visits - a.visits)
             .slice(0, 10); // Top 10 customers
 
-    }, [completedSessions, customers]);
+    }, [completedSessions]);
 
 
   return (
@@ -290,7 +290,7 @@ function ReportsContent() {
 
         <Card>
             <CardHeader>
-                <CardTitle>تقرير زيارات العملاء</CardTitle>
+                <CardTitle>تقرير العملاء الأكثر زيارة</CardTitle>
                 <CardDescription>عرض العملاء الأكثر زيارة بناءً على عدد الجلسات المسجلة.</CardDescription>
             </CardHeader>
             <CardContent>

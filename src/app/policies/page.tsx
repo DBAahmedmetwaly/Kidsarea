@@ -50,6 +50,7 @@ const pricingPolicySchema = z.object({
 });
 
 const policiesSchema = z.object({
+  appName: z.string().optional(),
   maxCapacity: z.coerce.number().int().min(0, 'السعة يجب أن تكون رقمًا صحيحًا موجبًا'),
   entryFee: z.coerce.number().min(0, 'رسوم الدخول يجب أن تكون رقمًا موجبًا'),
   roundingPolicy: z.enum(['none', 'quarter-hour', 'half-hour', 'hour']),
@@ -86,6 +87,7 @@ function PoliciesContent() {
   const form = useForm<PoliciesFormValues>({
     resolver: zodResolver(policiesSchema),
     defaultValues: {
+      appName: 'FunTrack',
       maxCapacity: 50,
       entryFee: 0,
       roundingPolicy: 'none',
@@ -114,6 +116,7 @@ function PoliciesContent() {
       const data = snapshot.val();
       if (data) {
         form.reset({
+            appName: data.appName || 'FunTrack',
             maxCapacity: data.maxCapacity || 50,
             entryFee: data.entryFee || 0,
             roundingPolicy: data.roundingPolicy || 'none',
@@ -191,6 +194,22 @@ function PoliciesContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="appName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>اسم التطبيق</FormLabel>
+                    <FormControl>
+                      <Input placeholder="FunTrack" {...field} />
+                    </FormControl>
+                     <FormDescription>
+                        هذا الاسم سيظهر في الشريط الجانبي والإيصالات.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="maxCapacity"

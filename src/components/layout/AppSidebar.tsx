@@ -38,7 +38,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { useEffect, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Employee } from '@/lib/types';
+import type { Employee, Policies } from '@/lib/types';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger as SheetTriggerComponent } from '@/components/ui/sheet';
 import { Button } from '../ui/button';
 
@@ -75,10 +75,20 @@ function SidebarItems() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
+  const [appName, setAppName] = useState('FunTrack');
   const { setOpenMobile } = useSidebar();
 
 
   useEffect(() => {
+    const policiesRef = ref(db, 'policies');
+    const unsubPolicies = onValue(policiesRef, (snapshot) => {
+        const data = snapshot.val() as Policies;
+        if (data && data.appName) {
+            setAppName(data.appName);
+            document.title = data.appName + ' Manager';
+        }
+    });
+
     if (!user || user.username === 'admin') {
       const allPermissions: Permissions = [...allMenuItems, ...settingsMenuItems].reduce((acc, item) => {
         acc[item.href] = true;
@@ -90,11 +100,11 @@ function SidebarItems() {
         'مشرف': allPermissions,
       };
       setPermissions(fullPermissions);
-      return;
+      return () => unsubPolicies();
     }
 
     const rolesRef = ref(db, 'roles');
-    const unsubscribe = onValue(rolesRef, (snapshot) => {
+    const unsubRoles = onValue(rolesRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
             const decodedPermissions: Partial<RolePermissions> = {};
@@ -113,7 +123,11 @@ function SidebarItems() {
             setPermissions(decodedPermissions as RolePermissions);
         }
     });
-    return () => unsubscribe();
+
+    return () => {
+        unsubPolicies();
+        unsubRoles();
+    };
   }, [user]);
 
   const getVisibleMenuItems = () => {
@@ -153,7 +167,7 @@ function SidebarItems() {
                 "duration-200 text-sidebar-foreground",
                 "group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8"
             )}>
-              FunTrack
+              {appName}
             </span>
         </Link>
          <div className="flex items-center">

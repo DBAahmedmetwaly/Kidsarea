@@ -9,6 +9,7 @@ import { FirebaseProvider } from '@/context/FirebaseContext';
 import { CustomerProvider } from '@/context/CustomerContext';
 import { SidebarProvider } from '@/components/ui/sidebar';
 
+
 export const metadata: Metadata = {
   title: 'FunTrack Manager',
   description: 'Kids Play Area Management System',
