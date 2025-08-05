@@ -59,7 +59,7 @@ import {
 import { useFieldArray, useForm } from 'react-hook-form';
 
 
-function CustomerFormDialog({
+export function CustomerFormDialog({
     open,
     onOpenChange,
     onSubmit,
@@ -289,25 +289,25 @@ function CustomersContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>اسم ولي الأمر</TableHead>
-                <TableHead>رقم الهاتف</TableHead>
-                <TableHead>الأطفال</TableHead>
-                <TableHead>تاريخ التسجيل</TableHead>
-                <TableHead><span>الإجراءات</span></TableHead>
+                <TableHead className="text-right">اسم ولي الأمر</TableHead>
+                <TableHead className="text-right">رقم الهاتف</TableHead>
+                <TableHead className="text-right">الأطفال</TableHead>
+                <TableHead className="text-center">تاريخ التسجيل</TableHead>
+                <TableHead className="text-center"><span>الإجراءات</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCustomers.map((customer) => (
                 <TableRow key={customer.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium text-right">
                      <Link href={`/customers/${customer.id}`} className="hover:underline text-primary">
                         {customer.parentName}
                      </Link>
                   </TableCell>
-                  <TableCell>{customer.phoneNumber}</TableCell>
-                  <TableCell>{customer.children.map(c => `${c.name} (${c.age})`).join(', ')}</TableCell>
-                  <TableCell>{new Date(customer.createdAt).toLocaleDateString('ar-EG')}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-right">{customer.phoneNumber}</TableCell>
+                  <TableCell className="text-right">{customer.children.map(c => `${c.name} (${c.age})`).join(', ')}</TableCell>
+                  <TableCell className="text-center">{new Date(customer.createdAt).toLocaleDateString('ar-EG')}</TableCell>
+                  <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /></Button>
@@ -362,3 +362,5 @@ export default function CustomersPage() {
         </SidebarProvider>
     );
 }
+
+    
