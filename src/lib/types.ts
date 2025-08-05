@@ -18,6 +18,7 @@ export interface CompletedSession extends Child {
     cost: number; // Total cost
     durationCost?: number;
     entryFee?: number;
+    subscriptionId?: string; // To link to a subscription if applicable
 }
 
 export interface Game {
@@ -119,4 +120,17 @@ export interface Customer {
     phoneNumber: string;
     children: CustomerChild[];
     createdAt: string;
+}
+
+export interface Subscription {
+    id: string;
+    customerId: string;
+    customerName: string;
+    childName: string;
+    startDate: string;
+    endDate: string;
+    price: number;
+    status: 'Active' | 'Expired';
+    createdAt: string;
+    cashierUsername: string;
 }

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle } from 'lucide-react';
+import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle, Star } from 'lucide-react';
 import React from 'react';
 import { useFirebase } from '@/context/FirebaseContext';
 
@@ -16,6 +16,7 @@ export interface ReceiptProps {
   durationCost?: number;
   entryFee?: number;
   cashierName: string;
+  isSubscription?: boolean;
 }
 
 export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
@@ -29,6 +30,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
   durationCost,
   entryFee,
   cashierName,
+  isSubscription,
 }, ref) => {
   const { policies } = useFirebase();
   const receiptId = `R-${checkOutTime.getTime().toString().slice(-6)}`;
@@ -71,23 +73,31 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
           <span className="font-medium">{duration}</span>
         </div>
         <hr className="border-dashed border-gray-400 my-2" />
-        <div className="space-y-1">
-            <div className="flex justify-between items-center">
-                <span className="flex items-center gap-1"><Tag size={12} /> تكلفة اللعب</span>
-                <span className="font-medium">{`ج.م ${(durationCost ?? totalCost).toFixed(2)}`}</span>
+        {isSubscription ? (
+             <div className="flex justify-center items-center text-sm font-bold p-2 bg-green-100 text-green-800 rounded-md">
+                <span className="flex items-center gap-1"><Star size={14} /> مدفوع بالاشتراك</span>
             </div>
-            {entryFee && entryFee > 0 && (
-                 <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-1"><PlusCircle size={12} /> رسوم دخول</span>
-                    <span className="font-medium">{`ج.م ${entryFee.toFixed(2)}`}</span>
+        ) : (
+            <>
+                <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                        <span className="flex items-center gap-1"><Tag size={12} /> تكلفة اللعب</span>
+                        <span className="font-medium">{`ج.م ${(durationCost ?? totalCost).toFixed(2)}`}</span>
+                    </div>
+                    {entryFee && entryFee > 0 && (
+                        <div className="flex justify-between items-center">
+                            <span className="flex items-center gap-1"><PlusCircle size={12} /> رسوم دخول</span>
+                            <span className="font-medium">{`ج.م ${entryFee.toFixed(2)}`}</span>
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
-        <hr className="border-dashed border-gray-400 my-2" />
-        <div className="flex justify-between items-center text-sm font-bold p-2 bg-gray-200">
-          <span>الإجمالي</span>
-          <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
-        </div>
+                <hr className="border-dashed border-gray-400 my-2" />
+                <div className="flex justify-between items-center text-sm font-bold p-2 bg-gray-200">
+                <span>الإجمالي</span>
+                <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
+                </div>
+            </>
+        )}
       </div>
 
        <div className="mt-4 text-[8px] text-gray-600 text-center space-y-0.5">

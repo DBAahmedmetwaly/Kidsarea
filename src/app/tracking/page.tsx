@@ -37,10 +37,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, History, Search, ChevronsUpDown, Check, PlusCircle } from 'lucide-react';
+import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, History, Search, ChevronsUpDown, Check, PlusCircle, Star } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee, Customer } from '@/lib/types';
+import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee, Customer, Subscription } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
@@ -140,6 +140,7 @@ function TrackingContent() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedChild, setSelectedChild] = useState<{name: string, age: number} | null>(null);
   const [openCombobox, setOpenCombobox] = useState(false);
+  const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null);
   
   // Common State
   const [selectedGame, setSelectedGame] = useState('');
@@ -174,6 +175,32 @@ function TrackingContent() {
       setSelectedBranchFilter(currentUser.branch);
     }
   }, [currentUser]);
+
+  // Check for active subscription when a child is selected
+  useEffect(() => {
+    if (selectedCustomer && selectedChild) {
+        const subscriptionsRef = ref(db, 'subscriptions');
+        onValue(subscriptionsRef, (snapshot) => {
+            const allSubscriptions = snapshot.val();
+            if (allSubscriptions) {
+                const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
+                const now = new Date();
+                const foundSubscription = customerSubscriptions.find(sub => 
+                    sub.customerId === selectedCustomer.id &&
+                    sub.childName === selectedChild.name &&
+                    sub.status === 'Active' &&
+                    now >= new Date(sub.startDate) &&
+                    now <= new Date(sub.endDate)
+                );
+                setActiveSubscription(foundSubscription || null);
+            } else {
+                setActiveSubscription(null);
+            }
+        }, { onlyOnce: true }); // Query only once
+    } else {
+        setActiveSubscription(null);
+    }
+  }, [selectedCustomer, selectedChild]);
 
 
   const hasActiveShift = useMemo(() => {
@@ -251,6 +278,7 @@ function TrackingContent() {
     const resetExistingCustomerForm = () => {
         setSelectedCustomer(null);
         setSelectedChild(null);
+        setActiveSubscription(null);
     }
   
     const handleCustomerSelect = (customer: Customer) => {
@@ -342,33 +370,63 @@ function TrackingContent() {
     const checkOutTime = Date.now();
     const durationMs = checkOutTime - child.checkInTime;
 
-    const gameDetails = games.find((g) => g.name === child.game);
-    let hourlyRate = gameDetails?.hourly_rate || 0;
+    // Check for an active subscription for the checked-out child
+    const subscriptionsRef = ref(db, 'subscriptions');
+    const subsSnapshot = await get(subscriptionsRef);
+    const allSubscriptions = subsSnapshot.val();
+    let finalCost = 0;
+    let finalDurationCost = 0;
+    let finalEntryFee = 0;
+    let subscriptionId: string | undefined = undefined;
 
-    if (policies?.enableWeekendPricing) {
-        const today = getDayOfWeek(new Date(checkOutTime));
-        if (policies.weekendDays[today]) {
-            const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-            if(weekendPolicy) {
-                hourlyRate = weekendPolicy.weekendRate;
-            }
-        } else {
-             const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-             if(weekdayPolicy) {
-                hourlyRate = weekdayPolicy.weekdayRate;
-             }
-        }
+    if (allSubscriptions) {
+        const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
+        const now = new Date();
+        const foundSubscription = customerSubscriptions.find(sub => 
+            sub.customerName === child.parentName &&
+            sub.childName === child.name &&
+            sub.status === 'Active' &&
+            now >= new Date(sub.startDate) &&
+            now <= new Date(sub.endDate)
+        );
+        subscriptionId = foundSubscription?.id;
     }
-    
-    const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
+
+    // If no active subscription, calculate cost
+    if (!subscriptionId) {
+        const gameDetails = games.find((g) => g.name === child.game);
+        let hourlyRate = gameDetails?.hourly_rate || 0;
+
+        if (policies?.enableWeekendPricing) {
+            const today = getDayOfWeek(new Date(checkOutTime));
+            if (policies.weekendDays[today]) {
+                const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+                if(weekendPolicy) {
+                    hourlyRate = weekendPolicy.weekendRate;
+                }
+            } else {
+                 const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+                 if(weekdayPolicy) {
+                    hourlyRate = weekdayPolicy.weekdayRate;
+                 }
+            }
+        }
+        
+        const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
+        finalCost = totalCost;
+        finalDurationCost = durationCost;
+        finalEntryFee = entryFee;
+    }
+
 
     const completedSession: CompletedSession = {
         ...child,
         checkOutTime,
         durationMs,
-        cost: totalCost,
-        durationCost: durationCost,
-        entryFee: entryFee,
+        cost: finalCost,
+        durationCost: finalDurationCost,
+        entryFee: finalEntryFee,
+        subscriptionId: subscriptionId
     };
     
     try {
@@ -399,7 +457,8 @@ function TrackingContent() {
         totalCost: session.cost,
         durationCost: session.durationCost,
         entryFee: session.entryFee,
-        cashierName: cashierName
+        cashierName: cashierName,
+        isSubscription: !!session.subscriptionId,
     });
     setShowPrintDialog(true);
   }
@@ -549,6 +608,15 @@ function TrackingContent() {
                                 </Select>
                             </div>
                         )}
+                        {activeSubscription && (
+                            <Alert className="bg-green-50 border-green-200">
+                                <Star className="h-4 w-4 text-green-600" />
+                                <AlertTitle className="text-green-800">اشتراك فعال</AlertTitle>
+                                <AlertDescription className="text-green-700">
+                                    هذا الطفل لديه اشتراك سارٍ حتى {new Date(activeSubscription.endDate).toLocaleDateString('ar-EG')}.
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         <div className="space-y-2">
                             <Label htmlFor="branch-select-existing">اختر الفرع</Label>
                             <Select value={checkInBranch} onValueChange={(value) => { setCheckInBranch(value); setSelectedGame(''); }} disabled={!hasActiveShift || currentUser?.branch !== 'كل الفروع'}>
@@ -665,7 +733,11 @@ function TrackingContent() {
                                     <TableRow key={session.id}>
                                         <TableCell className="font-medium text-right">{session.name}</TableCell>
                                         <TableCell className="text-right">{session.game}</TableCell>
-                                        <TableCell className="font-bold text-center">{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
+                                        <TableCell className="font-bold text-center">
+                                            {session.subscriptionId ? (
+                                                <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
+                                            ) : `ج.م ${session.cost.toFixed(2)}`}
+                                        </TableCell>
                                         <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
                                         <TableCell className="text-center">
                                             <Button
@@ -720,7 +792,7 @@ function TrackingContent() {
             isEditMode={false}
         />
         <div className="print-container">
-            {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
+            {receiptDetails && <Receipt ref={ref} {...receiptDetails} />}
         </div>
     </div>
   );

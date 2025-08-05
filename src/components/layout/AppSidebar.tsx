@@ -32,6 +32,7 @@ import {
   History,
   Contact,
   Menu,
+  Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -54,6 +55,7 @@ const allMenuItems = [
   { href: '/safes', label: 'الخزائن', icon: Landmark },
   { href: '/transactions', label: 'سجل الحركات', icon: List },
   { href: '/customers', label: 'العملاء', icon: Contact },
+  { href: '/subscriptions', label: 'الاشتراكات', icon: Star },
 ];
 
 const settingsMenuItems = [
