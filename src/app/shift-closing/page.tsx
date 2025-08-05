@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase, Banknote, ChevronsRight } from 'lucide-react';
 import { detectRevenueDiscrepancy } from '@/ai/flows/revenue-discrepancy-detection';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useSession } from '@/context/SessionContext';
 import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession } from '@/lib/types';
@@ -41,7 +42,6 @@ import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession } 
 const closeShiftSchema = z.object({
   cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
   branchName: z.string().min(1, 'اسم الفرع مطلوب'),
-  safeId: z.string().min(1, 'يجب اختيار الخزينة'),
   actualRevenue: z.coerce.number().min(0, 'يجب أن يكون مبلغًا موجبًا'),
   notes: z.string().optional(),
 });
@@ -54,12 +54,13 @@ const openShiftSchema = z.object({
 
 type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
 
+
 function ShiftClosingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expectedRevenue, setExpectedRevenue] = useState(0);
   const { toast } = useToast();
-  const { employees, safes, openShifts } = useFirebase();
+  const { employees, openShifts } = useFirebase();
   const { completedSessions } = useSession();
   const cashiers = employees.filter(emp => emp.role === 'كاشير');
 
@@ -68,23 +69,18 @@ function ShiftClosingForm() {
     defaultValues: {
       cashierUsername: '',
       branchName: '',
-      safeId: '',
       actualRevenue: '' as unknown as number,
       notes: '',
     },
   });
 
   const selectedCashierUsername = form.watch('cashierUsername');
-  const selectedBranchName = form.watch('branchName');
-
-  const filteredSafes = safes.filter(s => s.branchName === selectedBranchName);
 
   useEffect(() => {
     if (selectedCashierUsername) {
       const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
       if (openShift) {
         form.setValue('branchName', openShift.branchName, { shouldValidate: true });
-        form.setValue('safeId', ''); // Reset safe selection when cashier changes
         
         const shiftStartTime = new Date(openShift.startTime).getTime();
         const revenue = completedSessions
@@ -110,13 +106,6 @@ function ShiftClosingForm() {
         return;
     }
 
-    const safe = safes.find(s => s.id === values.safeId);
-    if (!safe) {
-        setError('لم يتم العثور على الخزينة.');
-        setLoading(false);
-        return;
-    }
-
     const recordsRef = ref(db, 'shiftRecords');
     const newRecordRef = push(recordsRef);
     const newRecordId = newRecordRef.key!;
@@ -127,63 +116,36 @@ function ShiftClosingForm() {
         expectedRevenue: expectedRevenue,
         date: new Date().toISOString(),
         difference: values.actualRevenue - expectedRevenue,
-        analysis: null, // Initially null
+        analysis: null,
+        safeId: '', // Will be set during settlement
+        status: 'Closed',
     };
     
     try {
-        // 1. Save the basic shift record first
         await set(newRecordRef, newRecord);
 
-        // 2. Update safe balance
-        const safeRef = ref(db, `safes/${values.safeId}`);
-        const safeSnapshot = await get(safeRef);
-        if (safeSnapshot.exists()) {
-            const currentBalance = safeSnapshot.val().balance;
-            await update(safeRef, { balance: currentBalance + values.actualRevenue });
-        }
-
-        // 3. Create a new safe transaction
-        const transactionRef = ref(db, 'safeTransactions');
-        const newTransactionRef = push(transactionRef);
-        const newTransaction: Omit<SafeTransaction, 'id'> = {
-            safeId: values.safeId,
-            shiftRecordId: newRecordId,
-            amount: values.actualRevenue,
-            type: 'deposit',
-            date: new Date().toISOString(),
-            cashierName: cashier.name,
-            notes: `إيداع من وردية: ${newRecordId}`,
-            branchName: safe.branchName,
-            safeName: safe.name,
-        };
-        await set(newTransactionRef, newTransaction);
-
-        // 4. Remove the open shift
         const openShiftToDelete = openShifts.find(s => s.cashierUsername === values.cashierUsername);
         if (openShiftToDelete) {
           await remove(ref(db, `openShifts/${openShiftToDelete.id}`));
         }
 
         toast({
-            title: 'تم إغلاق الوردية بنجاح',
-            description: 'تم تسجيل البيانات. سيتم محاولة تحليل التباين في الخلفية.',
+            title: 'تم استلام النقدية',
+            description: 'تم إغلاق الوردية ويمكن الآن ترحيلها في خطوة "إغلاق اليومية".',
         });
         form.reset();
         setExpectedRevenue(0);
         
-        // 5. Try AI analysis in the background (fire and forget)
-        const shiftDetails = `الوردية المسائية للكاشير ${cashier.name}. ملاحظات: ${values.notes || 'لا يوجد'}`;
         detectRevenueDiscrepancy({ 
             ...values, 
             expectedRevenue: expectedRevenue, 
             actualRevenue: values.actualRevenue, 
-            shiftDetails, 
+            shiftDetails: `الوردية المسائية للكاشير ${cashier.name}. ملاحظات: ${values.notes || 'لا يوجد'}`, 
             branchName: values.branchName 
         }).then(analysisResult => {
             update(newRecordRef, { analysis: analysisResult });
         }).catch(aiError => {
             console.error("AI analysis failed:", aiError);
-            // Optional: You could update the record to note that analysis failed.
             update(newRecordRef, { analysis: { hasDiscrepancy: true, discrepancyAnalysis: "فشل تحليل الذكاء الاصطناعي." } });
         });
 
@@ -198,8 +160,8 @@ function ShiftClosingForm() {
   return (
     <Card>
         <CardHeader>
-            <CardTitle>إغلاق وردية الكاشير</CardTitle>
-            <CardDescription>أدخل بيانات الوردية لإتمام عملية الإغلاق وترحيل النقدية إلى الخزينة.</CardDescription>
+            <CardTitle>الخطوة 1: استلام النقدية من الكاشير</CardTitle>
+            <CardDescription>أدخل بيانات الوردية لإتمام عملية الاستلام. الترحيل للخزينة يتم في الخطوة التالية.</CardDescription>
         </CardHeader>
         <CardContent>
             <Form {...form}>
@@ -243,30 +205,7 @@ function ShiftClosingForm() {
                         )}
                         />
                 </div>
-                 <FormField
-                    control={form.control}
-                    name="safeId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>اختر الخزينة للترحيل</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!selectedBranchName}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder={selectedBranchName ? "اختر خزينة..." : "اختر الكاشير أولاً"} />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {filteredSafes.map(safe => (
-                                <SelectItem key={safe.id} value={safe.id}>
-                                    {safe.name}
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormItem>
                         <FormLabel>الإيرادات المتوقعة (ج.م)</FormLabel>
@@ -315,7 +254,7 @@ function ShiftClosingForm() {
                     ) : (
                     <>
                      <LogOut className="me-2 h-4 w-4" />
-                    إغلاق الوردية وترحيل النقدية
+                    استلام النقدية وإغلاق الوردية
                     </>
                     )}
                 </Button>
@@ -458,13 +397,172 @@ function ActiveShiftsTable() {
     );
 }
 
+function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
+    const { safes } = useFirebase();
+    const { toast } = useToast();
+    const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
+    const [selectedSafeId, setSelectedSafeId] = useState<string>('');
+    const [loading, setLoading] = useState(false);
+
+    const shiftsToSettle = useMemo(() => {
+        return closedShifts.filter(s => selectedShiftIds.includes(s.id));
+    }, [closedShifts, selectedShiftIds]);
+
+    const totalToSettle = useMemo(() => {
+        return shiftsToSettle.reduce((sum, s) => sum + s.actualRevenue, 0);
+    }, [shiftsToSettle]);
+
+    const handleSettleShifts = async () => {
+        if (shiftsToSettle.length === 0 || !selectedSafeId) {
+             toast({
+                title: "بيانات غير مكتملة",
+                description: "يرجى تحديد وردية واحدة على الأقل وخزينة للترحيل.",
+                variant: 'destructive',
+            });
+            return;
+        }
+        setLoading(true);
+
+        const safe = safes.find(s => s.id === selectedSafeId);
+        if (!safe) {
+             toast({ title: "الخزينة المحددة غير موجودة", variant: 'destructive'});
+             setLoading(false);
+             return;
+        }
+
+        const settlementId = `settle-${Date.now()}`;
+
+        try {
+            // 1. Create one summary transaction
+            const transactionRef = ref(db, 'safeTransactions');
+            const newTransactionRef = push(transactionRef);
+            const newTransaction: Omit<SafeTransaction, 'id'> = {
+                safeId: selectedSafeId,
+                settlementId: settlementId,
+                amount: totalToSettle,
+                type: 'deposit',
+                date: new Date().toISOString(),
+                cashierName: 'System Settlement', // Or current admin user
+                notes: `إيداع إغلاق اليومية لعدد ${shiftsToSettle.length} وردية.`,
+                branchName: safe.branchName,
+                safeName: safe.name,
+            };
+            await set(newTransactionRef, newTransaction);
+            
+            // 2. Update safe balance
+            const safeRef = ref(db, `safes/${selectedSafeId}`);
+            await update(safeRef, { balance: safe.balance + totalToSettle });
+
+            // 3. Update status of each settled shift
+            const shiftUpdatePromises = shiftsToSettle.map(shift => {
+                const shiftRef = ref(db, `shiftRecords/${shift.id}`);
+                return update(shiftRef, { status: 'Settled', settlementId: settlementId, safeId: selectedSafeId });
+            });
+            await Promise.all(shiftUpdatePromises);
+
+            toast({
+                title: "تم إغلاق اليومية بنجاح",
+                description: `تم ترحيل مبلغ ${totalToSettle.toFixed(2)} ج.م إلى خزينة ${safe.name}.`,
+            });
+            setSelectedShiftIds([]);
+            setSelectedSafeId('');
+
+        } catch(e) {
+            console.error(e);
+            toast({ title: "خطأ أثناء ترحيل النقدية", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>الخطوة 2: إغلاق اليومية وترحيل النقدية</CardTitle>
+                <CardDescription>حدد الورديات المغلقة التي تريد ترحيلها إلى الخزينة.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                    <div className="max-h-60 overflow-y-auto border rounded-md">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[50px]">
+                                         <Checkbox
+                                            checked={selectedShiftIds.length > 0 && selectedShiftIds.length === closedShifts.length}
+                                            onCheckedChange={(checked) => {
+                                                setSelectedShiftIds(checked ? closedShifts.map(s => s.id) : []);
+                                            }}
+                                            aria-label="تحديد الكل"
+                                        />
+                                    </TableHead>
+                                    <TableHead>الكاشير</TableHead>
+                                    <TableHead>الفرع</TableHead>
+                                    <TableHead className="text-right">المبلغ المستلم</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {closedShifts.length > 0 ? closedShifts.map(shift => (
+                                    <TableRow key={shift.id} data-state={selectedShiftIds.includes(shift.id) && "selected"}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selectedShiftIds.includes(shift.id)}
+                                                onCheckedChange={(checked) => {
+                                                    setSelectedShiftIds(prev => checked ? [...prev, shift.id] : prev.filter(id => id !== shift.id))
+                                                }}
+                                                aria-label={`تحديد وردية ${shift.cashierName}`}
+                                            />
+                                        </TableCell>
+                                        <TableCell>{shift.cashierName}</TableCell>
+                                        <TableCell>{shift.branchName}</TableCell>
+                                        <TableCell className="text-right font-medium">{`ج.م ${shift.actualRevenue.toFixed(2)}`}</TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">لا توجد ورديات مغلقة بانتظار الترحيل.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-md bg-muted/50">
+                        <div className='flex-1'>
+                             <Select value={selectedSafeId} onValueChange={setSelectedSafeId} disabled={shiftsToSettle.length === 0}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="اختر خزينة للإيداع..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {safes.map(safe => (
+                                        <SelectItem key={safe.id} value={safe.id}>{safe.name} ({safe.branchName})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <ChevronsRight className="h-6 w-6 text-muted-foreground hidden sm:block" />
+                        <div className="flex-1 text-center sm:text-left">
+                            <p className="text-sm text-muted-foreground">الإجمالي للترحيل</p>
+                            <p className="text-2xl font-bold text-green-600">{`ج.م ${totalToSettle.toFixed(2)}`}</p>
+                        </div>
+                        <Button onClick={handleSettleShifts} disabled={loading || shiftsToSettle.length === 0 || !selectedSafeId} className="w-full sm:w-auto">
+                           {loading ? <Loader2 className="me-2 h-4 w-4 animate-spin"/> : <Banknote className="me-2 h-4 w-4"/>}
+                           ترحيل النقدية
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
     return (
         <Card>
             <CardHeader>
                 <CardTitle>سجل حركات استلام النقدية</CardTitle>
-                <CardDescription>عرض لجميع ورديات الكاشير التي تم إغلاقها.</CardDescription>
+                <CardDescription>عرض لجميع ورديات الكاشير التي تم إغلاقها أو ترحيلها.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -474,6 +572,7 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                             <TableHead>الكاشير</TableHead>
                             <TableHead>الفرع</TableHead>
                             <TableHead>المبلغ المستلم</TableHead>
+                             <TableHead>الحالة</TableHead>
                             <TableHead>الفرق</TableHead>
                             <TableHead>تحليل التباين</TableHead>
                         </TableRow>
@@ -486,6 +585,14 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                                     <TableCell>{record.cashierName}</TableCell>
                                     <TableCell>{record.branchName}</TableCell>
                                     <TableCell>{`ج.م ${record.actualRevenue.toFixed(2)}`}</TableCell>
+                                    <TableCell>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            record.status === 'Settled' ? 'bg-green-100 text-green-800' :
+                                            record.status === 'Closed' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
+                                        }`}>
+                                           {record.status === 'Settled' ? 'مرحّلة' : record.status === 'Closed' ? 'مغلقة' : 'مفتوحة'}
+                                        </span>
+                                    </TableCell>
                                     <TableCell className={record.difference < 0 ? 'text-red-500' : 'text-green-500'}>
                                         {`ج.م ${record.difference.toFixed(2)}`}
                                     </TableCell>
@@ -505,7 +612,7 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center">
+                                <TableCell colSpan={7} className="text-center">
                                     لا توجد سجلات لعرضها.
                                 </TableCell>
                             </TableRow>
@@ -544,6 +651,8 @@ function ShiftManagementContent() {
         }
     }, [setCompletedSessions])
 
+  const closedShifts = useMemo(() => shiftRecords.filter(r => r.status === 'Closed'), [shiftRecords]);
+
 
   return (
     <div className="flex flex-col gap-8">
@@ -552,18 +661,19 @@ function ShiftManagementContent() {
                 <SidebarTrigger />
             </div>
             <Briefcase className="h-8 w-8 text-primary" />
-            <h1 className="text-lg font-semibold md:text-2xl">إدارة الورديات</h1>
+            <h1 className="text-lg font-semibold md:text-2xl">إدارة الورديات واليومية</h1>
         </div>
-        <Tabs defaultValue="open" className="w-full">
+        <Tabs defaultValue="manage" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="open">فتح وردية</TabsTrigger>
-                <TabsTrigger value="close">إغلاق وردية</TabsTrigger>
+                <TabsTrigger value="manage">فتح / إغلاق وردية</TabsTrigger>
+                <TabsTrigger value="settle">إغلاق اليومية</TabsTrigger>
             </TabsList>
-            <TabsContent value="open" className='pt-4'>
+            <TabsContent value="manage" className='pt-4 grid md:grid-cols-2 gap-8 items-start'>
                 <OpenShiftForm />
-            </TabsContent>
-            <TabsContent value="close" className='pt-4'>
                 <ShiftClosingForm />
+            </TabsContent>
+            <TabsContent value="settle" className='pt-4'>
+                <DayEndClosing closedShifts={closedShifts} />
             </TabsContent>
         </Tabs>
         <ShiftHistoryTable records={shiftRecords} />

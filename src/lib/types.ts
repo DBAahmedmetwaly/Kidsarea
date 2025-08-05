@@ -61,6 +61,8 @@ export interface ShiftRecord {
   difference: number;
   analysis: any; // Consider creating a specific type for analysis output
   safeId: string;
+  status: 'Open' | 'Closed' | 'Settled';
+  settlementId?: string;
 }
 
 export interface OpenShift {
@@ -82,6 +84,7 @@ export interface SafeTransaction {
     id: string;
     safeId: string;
     shiftRecordId?: string; // Optional link to shift record
+    settlementId?: string;
     branchName: string; // Denormalized for easier filtering
     safeName: string; // Denormalized for easier filtering
     amount: number;
