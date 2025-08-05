@@ -43,7 +43,7 @@ import { useSession } from '@/context/SessionContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/AuthProvider';
 import { Receipt, type ReceiptProps } from '@/components/Receipt';
-import { useReactToPrint } from 'react-to-print';
+import ReactToPrint from 'react-to-print';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 
@@ -68,10 +68,6 @@ function SessionsContent() {
   const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-
-  const handlePrint = useReactToPrint({
-      content: () => receiptRef.current,
-  });
 
   useEffect(() => {
     const sessionsRef = ref(db, 'sessions/completed');
@@ -315,18 +311,27 @@ function SessionsContent() {
         </Card>
          <Dialog open={!!receiptDetails} onOpenChange={(isOpen) => !isOpen && setReceiptDetails(null)}>
             <DialogContent className="max-w-xs p-0 border-none">
-                {receiptDetails && <Receipt ref={receiptRef} {...receiptDetails} />}
-                 <DialogFooter className="p-4 bg-gray-100">
-                    <DialogClose asChild>
-                         <Button type="button" variant="secondary">
-                            إغلاق
-                        </Button>
-                    </DialogClose>
-                    <Button onClick={handlePrint}>
-                        <Printer className="me-2 h-4 w-4" />
-                        طباعة
-                    </Button>
-                </DialogFooter>
+                 {receiptDetails && (
+                    <>
+                        <Receipt ref={receiptRef} {...receiptDetails} />
+                        <DialogFooter className="p-4 bg-gray-100">
+                             <DialogClose asChild>
+                                <Button type="button" variant="secondary">
+                                    إغلاق
+                                </Button>
+                            </DialogClose>
+                            <ReactToPrint
+                                trigger={() => (
+                                    <Button>
+                                        <Printer className="me-2 h-4 w-4" />
+                                        طباعة
+                                    </Button>
+                                )}
+                                content={() => receiptRef.current}
+                            />
+                        </DialogFooter>
+                    </>
+                 )}
             </DialogContent>
         </Dialog>
     </div>
