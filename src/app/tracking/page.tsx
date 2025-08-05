@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -48,8 +49,8 @@ import { StatCard } from '@/components/StatCard';
 import { ref, set, onValue, get, update, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
-import { Receipt, type ReceiptProps } from '@/components/Receipt';
-import ReactToPrint from 'react-to-print';
+import { PosReceipt, type PosReceiptProps } from '@/components/Receipt';
+import { usePosPrint } from '@/hooks/use-pos-print';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -142,12 +143,48 @@ function CheckOutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   child: Child | null;
-  onConfirm: (child: Child) => void;
+  onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
 }) {
   const { games, policies } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
   const [isSubscription, setIsSubscription] = useState(false);
-  const receiptRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+  
+  const receiptComponent = useMemo(() => {
+      if(!child) return null;
+      // All the data needed for the receipt is calculated here and passed to PosReceipt
+      const durationMs = Date.now() - child.checkInTime;
+      const gameDetails = games.find((g) => g.name === child.game);
+      let hourlyRate = gameDetails?.hourly_rate || 0;
+      if (policies?.enableWeekendPricing) {
+          const today = getDayOfWeek(new Date());
+          if (policies.weekendDays[today]) {
+              const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+              if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
+          } else {
+              const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+              if(weekdayPolicy) hourlyRate = weekdayPolicy.weekdayRate;
+          }
+      }
+      const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
+      const finalCost = isSubscription ? 0 : totalCost;
+
+      return <PosReceipt 
+              childName={child.name}
+              parentName={child.parentName}
+              gameName={child.game}
+              checkInTime={new Date(child.checkInTime)}
+              checkOutTime={new Date()}
+              duration={formatDuration(durationMs)}
+              totalCost={finalCost}
+              durationCost={isSubscription ? 0 : durationCost}
+              entryFee={isSubscription ? 0 : entryFee}
+              cashierName={user?.username || 'N/A'}
+              isSubscription={isSubscription}
+            />;
+  }, [child, games, policies, isSubscription, user]);
+
+  const { print } = usePosPrint(receiptComponent as React.ReactElement);
 
 
   const checkoutData = useMemo(() => {
@@ -212,6 +249,12 @@ function CheckOutDialog({
     setAmountReceived('');
   }, [child]);
 
+  const handleConfirm = () => {
+    if(!child || !receiptComponent) return;
+    print();
+    onConfirm(child, receiptComponent.props);
+  }
+
   if (!child || !checkoutData) return null;
 
   const change = Number(amountReceived) - (isSubscription ? 0 : checkoutData.totalCost);
@@ -263,34 +306,10 @@ function CheckOutDialog({
           <DialogClose asChild>
             <Button variant="outline">إلغاء</Button>
           </DialogClose>
-            <ReactToPrint
-                trigger={() => (
-                     <Button disabled={!isSubscription && !amountReceived}>
-                        حفظ وطباعة
-                    </Button>
-                )}
-                content={() => receiptRef.current}
-                onAfterPrint={() => onConfirm(child)}
-            />
+            <Button onClick={handleConfirm} disabled={!isSubscription && !amountReceived}>
+                حفظ و طباعة
+            </Button>
         </DialogFooter>
-         <div className="print-container">
-            {child && checkoutData && (
-                <Receipt 
-                    ref={receiptRef}
-                    childName={child.name}
-                    parentName={child.parentName}
-                    gameName={child.game}
-                    checkInTime={new Date(child.checkInTime)}
-                    checkOutTime={new Date()}
-                    duration={checkoutData.duration}
-                    totalCost={isSubscription ? 0 : checkoutData.totalCost}
-                    durationCost={isSubscription ? 0 : checkoutData.durationCost}
-                    entryFee={isSubscription ? 0 : checkoutData.entryFee}
-                    cashierName={child.cashierUsername}
-                    isSubscription={isSubscription}
-                />
-            )}
-        </div>
       </DialogContent>
     </Dialog>
   )
@@ -519,17 +538,12 @@ function TrackingContent() {
     setCheckoutDialogOpen(true);
   }
 
-  const handleCheckOut = async (child: Child) => {
+  const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
     setCheckoutDialogOpen(false);
-    const checkOutTime = Date.now();
-    const durationMs = checkOutTime - child.checkInTime;
 
     const subscriptionsRef = ref(db, 'subscriptions');
     const subsSnapshot = await get(subscriptionsRef);
     const allSubscriptions = subsSnapshot.val();
-    let finalCost = 0;
-    let finalDurationCost = 0;
-    let finalEntryFee = 0;
     let subscriptionId: string | undefined = undefined;
 
     if (allSubscriptions) {
@@ -547,38 +561,13 @@ function TrackingContent() {
         }
     }
 
-    if (!subscriptionId) {
-        const gameDetails = games.find((g) => g.name === child.game);
-        let hourlyRate = gameDetails?.hourly_rate || 0;
-
-        if (policies?.enableWeekendPricing) {
-            const today = getDayOfWeek(new Date(checkOutTime));
-            if (policies.weekendDays[today]) {
-                const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-                if(weekendPolicy) {
-                    hourlyRate = weekendPolicy.weekendRate;
-                }
-            } else {
-                 const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-                 if(weekdayPolicy) {
-                    hourlyRate = weekdayPolicy.weekdayRate;
-                 }
-            }
-        }
-        
-        const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
-        finalCost = totalCost;
-        finalDurationCost = durationCost;
-        finalEntryFee = entryFee;
-    }
-
     const completedSession: Omit<CompletedSession, 'id'> = {
         ...child,
-        checkOutTime,
-        durationMs,
-        cost: finalCost,
-        durationCost: finalDurationCost,
-        entryFee: finalEntryFee,
+        checkOutTime: receiptDetails.checkOutTime.getTime(),
+        durationMs: receiptDetails.checkOutTime.getTime() - child.checkInTime,
+        cost: receiptDetails.totalCost,
+        durationCost: receiptDetails.durationCost,
+        entryFee: receiptDetails.entryFee,
     };
     
     if (subscriptionId) {
@@ -860,7 +849,6 @@ function TrackingContent() {
                                 <TableHead className="text-right">اللعبة</TableHead>
                                 <TableHead className="text-center">التكلفة</TableHead>
                                 <TableHead className="text-center">وقت الخروج</TableHead>
-                                <TableHead className="text-center">إجراء</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -875,21 +863,11 @@ function TrackingContent() {
                                             ) : `ج.م ${session.cost.toFixed(2)}`}
                                         </TableCell>
                                         <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
-                                        <TableCell className="text-center">
-                                            {/* We can re-enable this if needed with a robust solution */}
-                                            {/* <Button
-                                                variant="outline"
-                                                size="sm"
-                                            >
-                                                <Printer className="me-2 h-4 w-4" />
-                                                طباعة
-                                            </Button> */}
-                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
+                                    <TableCell colSpan={4} className="h-24 text-center">
                                         لم تكتمل أي جلسات اليوم بعد.
                                     </TableCell>
                                 </TableRow>

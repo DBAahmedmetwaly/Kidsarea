@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -42,8 +43,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/context/SessionContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/AuthProvider';
-import { Receipt, type ReceiptProps } from '@/components/Receipt';
-import ReactToPrint from 'react-to-print';
+import { PosReceipt, type PosReceiptProps } from '@/components/Receipt';
+import { usePosPrint } from '@/hooks/use-pos-print';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 
@@ -71,8 +72,15 @@ function SessionsContent() {
   const [toDate, setToDate] = useState<Date | undefined>();
   
   // Receipt State
-  const [receiptDetails, setReceiptDetails] = useState<ReceiptProps | null>(null);
-  const receiptRef = useRef<HTMLDivElement>(null);
+  const [receiptDetails, setReceiptDetails] = useState<PosReceiptProps | null>(null);
+  
+  const receiptComponent = useMemo(() => {
+    if (!receiptDetails) return null;
+    return <PosReceipt {...receiptDetails} />;
+  }, [receiptDetails]);
+
+  const { print } = usePosPrint(receiptComponent as React.ReactElement);
+
 
   useEffect(() => {
     if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -142,6 +150,13 @@ function SessionsContent() {
         isSubscription: !!session.subscriptionId,
     });
   }
+  
+  useEffect(() => {
+      if (receiptDetails) {
+          print();
+      }
+  }, [receiptDetails, print]);
+
 
   const renderContent = () => {
     if (loading) {
@@ -201,7 +216,7 @@ function SessionsContent() {
                     onClick={() => showReceiptForSession(session)}
                 >
                     <Printer className="me-2 h-4 w-4" />
-                    عرض الإيصال
+                    طباعة الإيصال
                 </Button>
                 </TableCell>
             </TableRow>
@@ -324,33 +339,6 @@ function SessionsContent() {
                 </Table>
             </CardContent>
         </Card>
-         <Dialog open={!!receiptDetails} onOpenChange={(isOpen) => !isOpen && setReceiptDetails(null)}>
-            <DialogContent className="max-w-xs p-0 border-none">
-                 {receiptDetails && (
-                    <>
-                        <div className="printable-area">
-                            <Receipt ref={receiptRef} {...receiptDetails} />
-                        </div>
-                        <DialogFooter className="p-4 bg-gray-100">
-                             <DialogClose asChild>
-                                <Button type="button" variant="secondary">
-                                    إغلاق
-                                </Button>
-                            </DialogClose>
-                            <ReactToPrint
-                                trigger={() => (
-                                    <Button>
-                                        <Printer className="me-2 h-4 w-4" />
-                                        طباعة
-                                    </Button>
-                                )}
-                                content={() => receiptRef.current}
-                            />
-                        </DialogFooter>
-                    </>
-                 )}
-            </DialogContent>
-        </Dialog>
     </div>
   );
 }

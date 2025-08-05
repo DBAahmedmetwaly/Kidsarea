@@ -86,23 +86,19 @@ body {
   }
 }
 
-.print-container {
-    display: none;
-}
-
+/* Standard A4 Printing Styles */
 @media print {
   body * {
     visibility: hidden;
   }
   .printable-area, .printable-area * {
-    visibility: visible !important;
+    visibility: visible;
   }
   .printable-area {
-    position: absolute !important;
+    position: absolute;
     left: 0;
     top: 0;
-    width: 80mm;
-    padding: 2mm;
-    margin: 0;
+    width: 100%;
+    height: auto;
   }
 }

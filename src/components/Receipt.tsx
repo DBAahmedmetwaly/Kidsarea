@@ -5,7 +5,7 @@ import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle, Star } f
 import React from 'react';
 import { useFirebase } from '@/context/FirebaseContext';
 
-export interface ReceiptProps {
+export interface PosReceiptProps {
   childName: string;
   parentName: string;
   gameName: string;
@@ -19,7 +19,7 @@ export interface ReceiptProps {
   isSubscription?: boolean;
 }
 
-export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
+export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   childName,
   parentName,
   gameName,
@@ -37,11 +37,11 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
   const appName = policies?.appName || 'FunTrack';
 
   return (
-    <div ref={ref} className="bg-white p-2 text-black printable-area font-mono">
+    <div ref={ref} className="bg-white p-2 text-black font-mono" style={{ width: '80mm', boxSizing: 'border-box' }}>
       <div className="text-center mb-4">
         <div className="flex justify-center items-center gap-2">
             <Gamepad2 className="w-10 h-10" />
-            <h1 className="text-3xl font-bold">{appName}</h1>
+            <h1 className="text-2xl font-bold">{appName}</h1>
         </div>
         <p className="text-sm">شكراً لزيارتكم!</p>
       </div>
@@ -109,4 +109,4 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({
   );
 });
 
-Receipt.displayName = 'Receipt';
+PosReceipt.displayName = 'PosReceipt';
