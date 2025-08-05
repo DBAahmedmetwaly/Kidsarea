@@ -35,6 +35,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, History, Search, ChevronsUpDown, Check, PlusCircle, Star } from 'lucide-react';
@@ -131,6 +132,148 @@ function getDayOfWeek(date: Date): DayOfWeek {
     return days[dayIndex];
 }
 
+function CheckOutDialog({
+  open,
+  onOpenChange,
+  child,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  child: Child | null;
+  onConfirm: (child: Child) => void;
+}) {
+  const { games, policies } = useFirebase();
+  const [amountReceived, setAmountReceived] = useState('');
+  const [isSubscription, setIsSubscription] = useState(false);
+
+  const checkoutData = useMemo(() => {
+    if (!child) return null;
+
+    const durationMs = Date.now() - child.checkInTime;
+
+    const gameDetails = games.find((g) => g.name === child.game);
+    let hourlyRate = gameDetails?.hourly_rate || 0;
+
+    if (policies?.enableWeekendPricing) {
+        const today = getDayOfWeek(new Date());
+        if (policies.weekendDays[today]) {
+            const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+            if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
+        } else {
+             const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+             if(weekdayPolicy) hourlyRate = weekdayPolicy.weekdayRate;
+        }
+    }
+    
+    const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
+    
+    return {
+        duration: formatDuration(durationMs),
+        totalCost,
+        durationCost,
+        entryFee
+    }
+
+  }, [child, games, policies]);
+
+  // Check for subscription when dialog opens
+  useEffect(() => {
+    if (child) {
+        const subscriptionsRef = ref(db, 'subscriptions');
+        onValue(subscriptionsRef, (snapshot) => {
+            const allSubscriptions = snapshot.val();
+            if (allSubscriptions) {
+                const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
+                const now = new Date();
+                const foundSubscription = customerSubscriptions.find(sub => 
+                    sub.customerName === child.parentName &&
+                    sub.childName === child.name &&
+                    sub.status === 'Active' &&
+                    now >= new Date(sub.startDate) &&
+                    now <= new Date(sub.endDate)
+                );
+                setIsSubscription(!!foundSubscription);
+            } else {
+                setIsSubscription(false);
+            }
+        }, { onlyOnce: true });
+    } else {
+        setIsSubscription(false);
+    }
+  }, [child]);
+
+
+  useEffect(() => {
+    // Reset amount received when a new child is selected for checkout
+    setAmountReceived('');
+  }, [child]);
+
+  if (!child || !checkoutData) return null;
+
+  const change = Number(amountReceived) - (isSubscription ? 0 : checkoutData.totalCost);
+
+  const handleConfirm = () => {
+    onConfirm(child);
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>تسوية حساب: {child.name}</DialogTitle>
+          <DialogDescription>
+            مدة اللعب: {checkoutData.duration}. قم بتأكيد المبلغ المستلم لإتمام العملية.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+            {isSubscription ? (
+                <Alert className="bg-green-50 border-green-200">
+                    <Star className="h-4 w-4 text-green-600" />
+                    <AlertTitle className="text-green-800">مشترك فعال</AlertTitle>
+                    <AlertDescription className="text-green-700">
+                        هذه الجلسة مغطاة باشتراك. التكلفة النهائية هي صفر.
+                    </AlertDescription>
+                </Alert>
+            ) : (
+                <>
+                    <div className="flex justify-between items-center text-lg p-3 bg-muted rounded-md">
+                        <span className="font-medium">التكلفة الإجمالية:</span>
+                        <span className="font-bold text-primary">{`ج.م ${checkoutData.totalCost.toFixed(2)}`}</span>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="amount-received">المبلغ المستلم من العميل</Label>
+                        <Input
+                        id="amount-received"
+                        type="number"
+                        value={amountReceived}
+                        onChange={(e) => setAmountReceived(e.target.value)}
+                        placeholder="أدخل المبلغ المستلم"
+                        />
+                    </div>
+                    {amountReceived && (
+                        <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            <span className="font-medium">الباقي:</span>
+                            <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">إلغاء</Button>
+          </DialogClose>
+          <Button onClick={handleConfirm} disabled={!isSubscription && !amountReceived}>
+            حفظ وطباعة
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 
 function TrackingContent() {
   const { activeChildren, setActiveChildren, completedSessions, setCompletedSessions } = useSession();
@@ -155,8 +298,12 @@ function TrackingContent() {
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
 
-  // Local state for my completed sessions to ensure immediate UI update
   const [myLocalCompletedSessions, setMyLocalCompletedSessions] = useState<CompletedSession[]>([]);
+
+  // Checkout Dialog State
+  const [isCheckoutDialogOpen, setCheckoutDialogOpen] = useState(false);
+  const [childToCheckout, setChildToCheckout] = useState<Child | null>(null);
+
 
   const handlePrint = useReactToPrint({
       content: () => receiptRef.current,
@@ -382,6 +529,11 @@ function TrackingContent() {
         toast({ title: 'خطأ في تسجيل الدخول', variant: 'destructive'})
     }
   };
+
+  const openCheckOutDialog = (child: Child) => {
+    setChildToCheckout(child);
+    setCheckoutDialogOpen(true);
+  }
 
   const handleCheckOut = async (child: Child) => {
     const checkOutTime = Date.now();
@@ -710,7 +862,7 @@ function TrackingContent() {
                             <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleCheckOut(child)}
+                            onClick={() => openCheckOutDialog(child)}
                             disabled={!hasActiveShift}
                             >
                             <Square className="me-2 h-4 w-4" />
@@ -787,7 +939,14 @@ function TrackingContent() {
         </div>
       </div>
        
-        <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+      <CheckOutDialog 
+        open={isCheckoutDialogOpen}
+        onOpenChange={setCheckoutDialogOpen}
+        child={childToCheckout}
+        onConfirm={handleCheckOut}
+      />
+
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
             <DialogContent className="sm:max-w-xs">
                 <DialogHeader>
                     <DialogTitle>معاينة الإيصال</DialogTitle>
@@ -833,3 +992,5 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
+
+    
