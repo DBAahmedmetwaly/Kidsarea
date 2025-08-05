@@ -33,6 +33,7 @@ import {
   Contact,
   Menu,
   Star,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -61,6 +62,7 @@ const allMenuItems = [
 const settingsMenuItems = [
     { href: '/roles', label: 'الصلاحيات', icon: Shield },
     { href: '/policies', label: 'السياسات', icon: FileCog },
+    { href: '/subscription-plans', label: 'باقات الاشتراكات', icon: Package },
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
 ]
 
@@ -245,3 +247,5 @@ export default function AppSidebar() {
         </Sheet>
   );
 }
+
+    

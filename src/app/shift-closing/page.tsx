@@ -36,7 +36,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useSession } from '@/context/SessionContext';
-import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession } from '@/lib/types';
+import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession, Subscription } from '@/lib/types';
 
 const closeShiftSchema = z.object({
   cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
@@ -59,7 +59,7 @@ function ShiftClosingForm() {
   const [error, setError] = useState<string | null>(null);
   const [expectedRevenue, setExpectedRevenue] = useState(0);
   const { toast } = useToast();
-  const { employees, openShifts } = useFirebase();
+  const { employees, openShifts, subscriptions } = useFirebase();
   const { completedSessions } = useSession();
   const cashiers = employees.filter(emp => emp.role === 'كاشير');
 
@@ -82,16 +82,22 @@ function ShiftClosingForm() {
         form.setValue('branchName', openShift.branchName, { shouldValidate: true });
         
         const shiftStartTime = new Date(openShift.startTime).getTime();
-        const revenue = completedSessions
-          .filter(session => session.cashierUsername === selectedCashierUsername && session.checkOutTime >= shiftStartTime)
+        
+        const sessionsRevenue = completedSessions
+          .filter(session => session.cashierUsername === selectedCashierUsername && new Date(session.checkOutTime).getTime() >= shiftStartTime)
           .reduce((total, session) => total + session.cost, 0);
-        setExpectedRevenue(revenue);
+
+        const subscriptionsRevenue = subscriptions
+            .filter(sub => sub.cashierUsername === selectedCashierUsername && new Date(sub.createdAt).getTime() >= shiftStartTime)
+            .reduce((total, sub) => total + sub.price, 0);
+
+        setExpectedRevenue(sessionsRevenue + subscriptionsRevenue);
       }
     } else {
         form.setValue('branchName', '');
         setExpectedRevenue(0);
     }
-  }, [selectedCashierUsername, form, openShifts, completedSessions]);
+  }, [selectedCashierUsername, form, openShifts, completedSessions, subscriptions]);
 
 
   async function onSubmit(values: CloseShiftFormValues) {
@@ -197,6 +203,9 @@ function ShiftClosingForm() {
                         <FormControl>
                             <Input type="number" value={expectedRevenue.toFixed(2)} readOnly className="font-bold text-green-600" />
                         </FormControl>
+                         <FormDescription>
+                           يشمل إيرادات الجلسات والاشتراكات.
+                        </FormDescription>
                         <FormMessage />
                     </FormItem>
                     <FormField
@@ -667,3 +676,5 @@ export default function ShiftManagementPage() {
     );
 }
 
+
+    

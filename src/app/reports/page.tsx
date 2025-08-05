@@ -16,6 +16,7 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { useCustomers } from '@/context/CustomerContext';
 import { useMemo } from 'react';
 import { getHours } from 'date-fns';
+import { Subscription } from '@/lib/types';
 
 const gameProfitChartConfig = {
   profit: {
@@ -55,7 +56,7 @@ const topCustomersChartConfig = {
 
 function ReportsContent() {
     const { completedSessions } = useSession();
-    const { games, employees, branches } = useFirebase();
+    const { games, employees, branches, subscriptions } = useFirebase();
     const { customers } = useCustomers();
 
     const gameProfitData = useMemo(() => {
@@ -87,11 +88,19 @@ function ReportsContent() {
             }
         });
 
+        // Add income from completed sessions
         completedSessions.forEach(session => {
             if (incomeByEmployee[session.cashierUsername] !== undefined) {
                 incomeByEmployee[session.cashierUsername] += session.cost;
             }
         });
+        
+        // Add income from subscriptions
+        subscriptions.forEach(sub => {
+            if (incomeByEmployee[sub.cashierUsername] !== undefined) {
+                incomeByEmployee[sub.cashierUsername] += sub.price;
+            }
+        })
 
         return Object.entries(incomeByEmployee).map(([username, income]) => {
             const employee = employees.find(e => e.username === username);
@@ -100,7 +109,7 @@ function ReportsContent() {
                 income,
             };
         }).filter(item => item.income > 0);
-    }, [completedSessions, employees]);
+    }, [completedSessions, employees, subscriptions]);
     
     const peakHoursData = useMemo(() => {
         const visitsByHour: { [key: number]: number } = {};
@@ -199,7 +208,7 @@ function ReportsContent() {
         <Card>
           <CardHeader>
             <CardTitle>تقرير صافي دخل الموظفين</CardTitle>
-            <CardDescription>عرض صافي الدخل الناتج عن كل كاشير.</CardDescription>
+            <CardDescription>عرض صافي الدخل الناتج عن كل كاشير (شامل مبيعات الاشتراكات).</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={employeeIncomeChartConfig} className="h-72 w-full">
@@ -333,3 +342,5 @@ export default function ReportsPage() {
         </SidebarProvider>
     );
 }
+
+    

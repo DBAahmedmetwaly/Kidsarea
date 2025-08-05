@@ -5,8 +5,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { add } from 'date-fns';
-import { ref, onValue, set, push, remove } from 'firebase/database';
+import { add, differenceInDays } from 'date-fns';
+import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCustomers } from '@/context/CustomerContext';
 import { useFirebase } from '@/context/FirebaseContext';
@@ -63,21 +63,22 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import type { Subscription, Customer } from '@/lib/types';
-import { Star, PlusCircle, Trash, ChevronsUpDown, Check } from 'lucide-react';
+import type { Subscription, Customer, SubscriptionPlan } from '@/lib/types';
+import { Star, PlusCircle, Trash, ChevronsUpDown, Check, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const subscriptionSchema = z.object({
   customerId: z.string().min(1, 'يجب اختيار العميل'),
   childName: z.string().min(1, 'يجب اختيار الطفل'),
-  price: z.coerce.number().min(1, 'السعر يجب أن يكون أكبر من صفر'),
+  planId: z.string().min(1, 'يجب اختيار باقة الاشتراك'),
 });
 
 type SubscriptionFormValues = z.infer<typeof subscriptionSchema>;
 
 function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
   const { customers } = useCustomers();
+  const { subscriptionPlans } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -88,7 +89,7 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
     defaultValues: {
         customerId: '',
         childName: '',
-        price: '' as unknown as number,
+        planId: '',
     },
   });
 
@@ -105,18 +106,24 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
         return;
     }
     const customer = customers.find(c => c.id === values.customerId);
-    if (!customer) return;
+    const plan = subscriptionPlans.find(p => p.id === values.planId);
+    if (!customer || !plan) {
+        toast({ title: "خطأ", description: "بيانات العميل أو الباقة غير صحيحة."});
+        return;
+    };
 
     const startDate = new Date();
-    const endDate = add(startDate, { days: 30 });
+    const endDate = add(startDate, { days: plan.duration });
 
     const newSubscription: Omit<Subscription, 'id'> = {
       customerId: customer.id,
       customerName: customer.parentName,
       childName: values.childName,
+      planId: plan.id,
+      planName: plan.name,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
-      price: values.price,
+      price: plan.price,
       status: 'Active',
       createdAt: new Date().toISOString(),
       cashierUsername: user.username,
@@ -140,8 +147,8 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if(!isOpen) { form.reset(); setSelectedCustomer(null); }}}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>إنشاء اشتراك شهري جديد</DialogTitle>
-          <DialogDescription>اختر العميل والطفل وأدخل سعر الاشتراك.</DialogDescription>
+          <DialogTitle>إنشاء اشتراك جديد</DialogTitle>
+          <DialogDescription>اختر العميل والطفل وباقة الاشتراك.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -215,19 +222,28 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
                 )}
               />
             )}
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>سعر الاشتراك (ج.م)</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="300" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+             <FormField
+                control={form.control}
+                name="planId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>اختر باقة الاشتراك</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر باقة..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {subscriptionPlans.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>{plan.name} ({plan.price} ج.م / {plan.duration} يوم)</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             <DialogFooter>
                 <DialogClose asChild>
                     <Button type="button" variant="secondary">إلغاء</Button>
@@ -245,7 +261,8 @@ function SubscriptionsContent() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
-  const [filter, setFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'EndingSoon' | 'Expired'>('all');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -258,7 +275,7 @@ function SubscriptionsContent() {
         const today = new Date();
         const updatedSubs = subsArray.map(sub => {
             if (sub.status === 'Active' && today > new Date(sub.endDate)) {
-                // Expire subscription
+                // Expire subscription in Firebase
                 const subRef = ref(db, `subscriptions/${sub.id}`);
                 update(subRef, { status: 'Expired' });
                 return { ...sub, status: 'Expired' };
@@ -283,16 +300,45 @@ function SubscriptionsContent() {
   };
 
   const filteredSubscriptions = useMemo(() => {
-    if (!filter) return subscriptions;
-    return subscriptions.filter(s => 
-        s.customerName.toLowerCase().includes(filter.toLowerCase()) || 
-        s.childName.toLowerCase().includes(filter.toLowerCase())
-    );
-  }, [subscriptions, filter]);
+    const today = new Date();
+    return subscriptions.filter(s => {
+        const customerMatch = s.customerName.toLowerCase().includes(searchFilter.toLowerCase()) || 
+                             s.childName.toLowerCase().includes(searchFilter.toLowerCase());
+
+        let statusMatch = true;
+        if (statusFilter !== 'all') {
+            const isEndingSoon = s.status === 'Active' && differenceInDays(new Date(s.endDate), today) <= 7;
+            if (statusFilter === 'Active') {
+                statusMatch = s.status === 'Active' && !isEndingSoon;
+            } else if (statusFilter === 'EndingSoon') {
+                statusMatch = isEndingSoon;
+            } else if (statusFilter === 'Expired') {
+                statusMatch = s.status === 'Expired';
+            }
+        }
+        
+        return customerMatch && statusMatch;
+    });
+  }, [subscriptions, searchFilter, statusFilter]);
+  
+  const getStatusBadge = (sub: Subscription) => {
+    const today = new Date();
+    if (sub.status === 'Expired') {
+      return <Badge variant="destructive">منتهي</Badge>;
+    }
+    if (sub.status === 'Active') {
+      const daysLeft = differenceInDays(new Date(sub.endDate), today);
+      if (daysLeft <= 7) {
+        return <Badge className="bg-orange-500 text-white">ينتهي قريباً</Badge>;
+      }
+      return <Badge className="bg-green-500 text-white">فعال</Badge>;
+    }
+    return <Badge variant="secondary">{sub.status}</Badge>
+  }
 
   const renderContent = () => {
     if (loading) {
-        return <TableBody>{[...Array(5)].map((_, i) => <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-8 w-full"/></TableCell></TableRow>)}</TableBody>
+        return <TableBody>{[...Array(5)].map((_, i) => <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-8 w-full"/></TableCell></TableRow>)}</TableBody>
     }
     return (
         <TableBody>
@@ -300,10 +346,9 @@ function SubscriptionsContent() {
             <TableRow key={sub.id}>
               <TableCell>{sub.customerName}</TableCell>
               <TableCell>{sub.childName}</TableCell>
+              <TableCell>{sub.planName}</TableCell>
               <TableCell className="text-center">
-                 <Badge variant={sub.status === 'Active' ? 'default' : 'secondary'} className={sub.status === 'Active' ? 'bg-green-500 text-white' : ''}>
-                  {sub.status === 'Active' ? 'فعال' : 'منتهي'}
-                </Badge>
+                 {getStatusBadge(sub)}
               </TableCell>
               <TableCell className="text-center">{new Date(sub.startDate).toLocaleDateString('ar-EG')}</TableCell>
               <TableCell className="text-center">{new Date(sub.endDate).toLocaleDateString('ar-EG')}</TableCell>
@@ -337,12 +382,6 @@ function SubscriptionsContent() {
         <div className="md:hidden"><SidebarTrigger /></div>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الاشتراكات</h1>
         <div className="ms-auto flex items-center gap-2">
-          <Input 
-            placeholder="ابحث بالاسم..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="w-full sm:w-64"
-          />
           <Button size="sm" className="h-8 gap-1" onClick={() => setFormOpen(true)}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">إضافة اشتراك</span>
@@ -351,8 +390,26 @@ function SubscriptionsContent() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>سجل الاشتراكات</CardTitle>
-          <CardDescription>عرض وإدارة جميع الاشتراكات الشهرية للعملاء.</CardDescription>
+          <CardTitle>فلترة سجل الاشتراكات</CardTitle>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+               <Input 
+                placeholder="ابحث باسم العميل أو الطفل..."
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                className="w-full"
+                />
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="فلترة حسب الحالة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">كل الحالات</SelectItem>
+                        <SelectItem value="Active">نشط</SelectItem>
+                        <SelectItem value="EndingSoon">ينتهي قريباً</SelectItem>
+                        <SelectItem value="Expired">منتهي</SelectItem>
+                    </SelectContent>
+                </Select>
+           </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -360,6 +417,7 @@ function SubscriptionsContent() {
               <TableRow>
                 <TableHead>اسم ولي الأمر</TableHead>
                 <TableHead>اسم الطفل</TableHead>
+                <TableHead>الباقة</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
                 <TableHead className="text-center">تاريخ البدء</TableHead>
                 <TableHead className="text-center">تاريخ الانتهاء</TableHead>
@@ -389,3 +447,5 @@ export default function SubscriptionsPage() {
         </SidebarProvider>
     );
 }
+
+    

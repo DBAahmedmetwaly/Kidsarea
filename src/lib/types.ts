@@ -127,6 +127,8 @@ export interface Subscription {
     customerId: string;
     customerName: string;
     childName: string;
+    planId: string;
+    planName: string;
     startDate: string;
     endDate: string;
     price: number;
@@ -134,3 +136,12 @@ export interface Subscription {
     createdAt: string;
     cashierUsername: string;
 }
+
+export interface SubscriptionPlan {
+    id: string;
+    name: string;
+    price: number;
+    duration: number; // in days
+}
+
+    
