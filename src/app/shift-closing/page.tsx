@@ -22,8 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase } from 'lucide-react';
-import { checkDiscrepancy } from '@/app/actions';
-import type { RevenueDiscrepancyOutput } from '@/ai/flows/revenue-discrepancy-detection';
+import { detectRevenueDiscrepancy } from '@/ai/flows/revenue-discrepancy-detection';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
@@ -55,7 +54,7 @@ const openShiftSchema = z.object({
 
 type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
 
-function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftRecord, 'id'>, newRecordId: string) => void }) {
+function ShiftClosingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expectedRevenue, setExpectedRevenue] = useState(0);
@@ -70,7 +69,7 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
       cashierUsername: '',
       branchName: '',
       safeId: '',
-      actualRevenue: '' as unknown as number, // Fix: Use empty string instead of undefined
+      actualRevenue: '' as unknown as number,
       notes: '',
     },
   });
@@ -87,7 +86,6 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
         form.setValue('branchName', openShift.branchName, { shouldValidate: true });
         form.setValue('safeId', ''); // Reset safe selection when cashier changes
         
-        // Calculate expected revenue
         const shiftStartTime = new Date(openShift.startTime).getTime();
         const revenue = completedSessions
           .filter(session => session.cashierUsername === selectedCashierUsername && session.checkOutTime >= shiftStartTime)
@@ -118,72 +116,80 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
         setLoading(false);
         return;
     }
+
+    const recordsRef = ref(db, 'shiftRecords');
+    const newRecordRef = push(recordsRef);
+    const newRecordId = newRecordRef.key!;
+
+    const newRecord: Omit<ShiftRecord, 'id'> = {
+        ...values,
+        cashierName: cashier.name,
+        expectedRevenue: expectedRevenue,
+        date: new Date().toISOString(),
+        difference: values.actualRevenue - expectedRevenue,
+        analysis: null, // Initially null
+    };
     
-    const shiftDetails = `الوردية المسائية للكاشير ${cashier.name}. ملاحظات: ${values.notes || 'لا يوجد'}`;
-    const response = await checkDiscrepancy({ ...values, expectedRevenue: expectedRevenue, actualRevenue: values.actualRevenue, shiftDetails, branchName: values.branchName });
-    
-    if (response.success && response.data) {
-        const recordsRef = ref(db, 'shiftRecords');
-        const newRecordRef = push(recordsRef);
-        const newRecordId = newRecordRef.key!;
+    try {
+        // 1. Save the basic shift record first
+        await set(newRecordRef, newRecord);
 
-        const newRecord: Omit<ShiftRecord, 'id'> = {
-            ...values,
-            cashierName: cashier.name,
-            expectedRevenue: expectedRevenue,
-            date: new Date().toISOString(),
-            difference: values.actualRevenue - expectedRevenue,
-            analysis: response.data,
-        };
-        
-        try {
-            // Use onShiftClose to optimistically update UI and write to DB
-            onShiftClose(newRecord, newRecordId);
-
-            // Update safe balance
-            const safeRef = ref(db, `safes/${values.safeId}`);
-            const safeSnapshot = await get(safeRef);
-            if (safeSnapshot.exists()) {
-                const currentBalance = safeSnapshot.val().balance;
-                await update(safeRef, { balance: currentBalance + values.actualRevenue });
-            }
-
-            // Create a new safe transaction
-            const transactionRef = ref(db, 'safeTransactions');
-            const newTransactionRef = push(transactionRef);
-            const newTransaction: Omit<SafeTransaction, 'id'> = {
-                safeId: values.safeId,
-                shiftRecordId: newRecordId,
-                amount: values.actualRevenue,
-                type: 'deposit',
-                date: new Date().toISOString(),
-                cashierName: cashier.name,
-                notes: `إيداع من وردية: ${newRecordId}`,
-                branchName: safe.branchName,
-                safeName: safe.name,
-            };
-            await set(newTransactionRef, newTransaction);
-
-
-            const openShiftToDelete = openShifts.find(s => s.cashierUsername === values.cashierUsername);
-            if (openShiftToDelete) {
-              await remove(ref(db, `openShifts/${openShiftToDelete.id}`));
-            }
-
-            toast({
-                title: 'تم إغلاق الوردية بنجاح',
-                description: 'تم تسجيل بيانات الوردية وإضافة المبلغ إلى الخزينة.',
-            });
-            form.reset();
-            setExpectedRevenue(0);
-
-        } catch (dbError) {
-             setError('فشل حفظ البيانات في قاعدة البيانات.');
-             console.error(dbError);
+        // 2. Update safe balance
+        const safeRef = ref(db, `safes/${values.safeId}`);
+        const safeSnapshot = await get(safeRef);
+        if (safeSnapshot.exists()) {
+            const currentBalance = safeSnapshot.val().balance;
+            await update(safeRef, { balance: currentBalance + values.actualRevenue });
         }
 
-    } else {
-      setError(response.error || 'حدث خطأ غير متوقع في تحليل التباين.');
+        // 3. Create a new safe transaction
+        const transactionRef = ref(db, 'safeTransactions');
+        const newTransactionRef = push(transactionRef);
+        const newTransaction: Omit<SafeTransaction, 'id'> = {
+            safeId: values.safeId,
+            shiftRecordId: newRecordId,
+            amount: values.actualRevenue,
+            type: 'deposit',
+            date: new Date().toISOString(),
+            cashierName: cashier.name,
+            notes: `إيداع من وردية: ${newRecordId}`,
+            branchName: safe.branchName,
+            safeName: safe.name,
+        };
+        await set(newTransactionRef, newTransaction);
+
+        // 4. Remove the open shift
+        const openShiftToDelete = openShifts.find(s => s.cashierUsername === values.cashierUsername);
+        if (openShiftToDelete) {
+          await remove(ref(db, `openShifts/${openShiftToDelete.id}`));
+        }
+
+        toast({
+            title: 'تم إغلاق الوردية بنجاح',
+            description: 'تم تسجيل البيانات. سيتم محاولة تحليل التباين في الخلفية.',
+        });
+        form.reset();
+        setExpectedRevenue(0);
+        
+        // 5. Try AI analysis in the background (fire and forget)
+        const shiftDetails = `الوردية المسائية للكاشير ${cashier.name}. ملاحظات: ${values.notes || 'لا يوجد'}`;
+        detectRevenueDiscrepancy({ 
+            ...values, 
+            expectedRevenue: expectedRevenue, 
+            actualRevenue: values.actualRevenue, 
+            shiftDetails, 
+            branchName: values.branchName 
+        }).then(analysisResult => {
+            update(newRecordRef, { analysis: analysisResult });
+        }).catch(aiError => {
+            console.error("AI analysis failed:", aiError);
+            // Optional: You could update the record to note that analysis failed.
+            update(newRecordRef, { analysis: { hasDiscrepancy: true, discrepancyAnalysis: "فشل تحليل الذكاء الاصطناعي." } });
+        });
+
+    } catch (dbError) {
+         setError('فشل حفظ البيانات الأساسية في قاعدة البيانات.');
+         console.error(dbError);
     }
     
     setLoading(false);
@@ -304,7 +310,7 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
                     {loading ? (
                     <>
                         <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                        جاري التحليل والإغلاق...
+                        جاري الإغلاق...
                     </>
                     ) : (
                     <>
@@ -328,7 +334,7 @@ function ShiftClosingForm({ onShiftClose }: { onShiftClose: (record: Omit<ShiftR
   );
 }
 
-function OpenShiftForm({ onShiftOpen }: { onShiftOpen: (shift: Omit<OpenShift, 'id'>) => void}) {
+function OpenShiftForm() {
     const { toast } = useToast();
     const { employees, openShifts } = useFirebase();
     const cashiers = employees.filter(e => e.role === 'كاشير');
@@ -342,7 +348,7 @@ function OpenShiftForm({ onShiftOpen }: { onShiftOpen: (shift: Omit<OpenShift, '
 
     const availableCashiers = cashiers.filter(c => c.username && !openShifts.some(s => s.cashierUsername === c.username));
 
-    function onSubmit(values: OpenShiftFormValues) {
+    async function onSubmit(values: OpenShiftFormValues) {
         const cashier = cashiers.find(c => c.username === values.cashierUsername);
         if (!cashier || !cashier.username) return;
 
@@ -353,12 +359,23 @@ function OpenShiftForm({ onShiftOpen }: { onShiftOpen: (shift: Omit<OpenShift, '
             startTime: new Date().toISOString(),
         };
 
-        onShiftOpen(newShift);
-        toast({
-            title: 'تم فتح الوردية',
-            description: `تم فتح وردية جديدة للكاشير ${cashier.name}.`,
-        });
-        form.reset();
+        try {
+            const openShiftsRef = ref(db, 'openShifts');
+            const newShiftRef = push(openShiftsRef);
+            await set(newShiftRef, newShift);
+             toast({
+                title: 'تم فتح الوردية',
+                description: `تم فتح وردية جديدة للكاشير ${cashier.name}.`,
+            });
+            form.reset();
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: "خطأ",
+                description: "لم يتم فتح الوردية",
+                variant: 'destructive'
+            })
+        }
     }
 
     return (
@@ -482,7 +499,7 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                                                 )}
                                                 <span className="text-xs text-muted-foreground">{record.analysis.hasDiscrepancy ? 'يوجد تباين' : 'لا يوجد تباين'}</span>
                                             </div>
-                                        ) : 'N/A'}
+                                        ) : 'جاري التحليل...'}
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -503,8 +520,7 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
 
 function ShiftManagementContent() {
     const [shiftRecords, setShiftRecords] = useState<ShiftRecord[]>([]);
-    const { toast } = useToast();
-    const { completedSessions, setCompletedSessions } = useSession(); // Import from context
+    const { setCompletedSessions } = useSession();
 
     useEffect(() => {
         // Sync completed sessions for revenue calculation
@@ -528,34 +544,6 @@ function ShiftManagementContent() {
         }
     }, [setCompletedSessions])
 
-    const handleNewShiftRecord = async (record: Omit<ShiftRecord, 'id'>, newRecordId: string) => {
-       try {
-            const recordRef = ref(db, `shiftRecords/${newRecordId}`);
-            await set(recordRef, record);
-        } catch(e) {
-            console.error(e);
-            toast({
-                title: "خطأ",
-                description: "لم يتم حفظ سجل الوردية",
-                variant: 'destructive'
-            })
-        }
-    }
-
-    const handleNewOpenShift = async (shift: Omit<OpenShift, 'id'>) => {
-        try {
-            const openShiftsRef = ref(db, 'openShifts');
-            const newShiftRef = push(openShiftsRef);
-            await set(newShiftRef, shift);
-        } catch(e) {
-            console.error(e);
-            toast({
-                title: "خطأ",
-                description: "لم يتم فتح الوردية",
-                variant: 'destructive'
-            })
-        }
-    }
 
   return (
     <div className="flex flex-col gap-8">
@@ -572,10 +560,10 @@ function ShiftManagementContent() {
                 <TabsTrigger value="close">إغلاق وردية</TabsTrigger>
             </TabsList>
             <TabsContent value="open" className='pt-4'>
-                <OpenShiftForm onShiftOpen={handleNewOpenShift}/>
+                <OpenShiftForm />
             </TabsContent>
             <TabsContent value="close" className='pt-4'>
-                <ShiftClosingForm onShiftClose={handleNewShiftRecord} />
+                <ShiftClosingForm />
             </TabsContent>
         </Tabs>
         <ShiftHistoryTable records={shiftRecords} />
@@ -596,3 +584,4 @@ export default function ShiftManagementPage() {
         </SidebarProvider>
     );
 }
+

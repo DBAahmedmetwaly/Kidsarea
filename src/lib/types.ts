@@ -107,3 +107,4 @@ export interface Policies {
     entryFee: number;
     weekendDays: Record<DayOfWeek, boolean>;
 }
+
