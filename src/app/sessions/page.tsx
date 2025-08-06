@@ -56,7 +56,7 @@ function formatDuration(durationMs: number) {
 }
 
 function SessionsContent() {
-  const { branches, employees } = useFirebase();
+  const { branches, employees, policies } = useFirebase();
   const { completedSessions, setCompletedSessions } = useSession();
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -137,6 +137,7 @@ function SessionsContent() {
         : cashier?.name || session.cashierUsername || 'N/A';
 
     setReceiptDetails({
+        appName: policies?.appName || 'FunTrack',
         childName: session.name,
         parentName: session.parentName,
         gameName: session.game,

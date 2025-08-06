@@ -3,9 +3,9 @@
 
 import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle, Star } from 'lucide-react';
 import React from 'react';
-import { useFirebase } from '@/context/FirebaseContext';
 
 export interface PosReceiptProps {
+  appName: string;
   childName: string;
   parentName: string;
   gameName: string;
@@ -20,6 +20,7 @@ export interface PosReceiptProps {
 }
 
 export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
+  appName,
   childName,
   parentName,
   gameName,
@@ -32,9 +33,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   cashierName,
   isSubscription,
 }, ref) => {
-  const { policies } = useFirebase();
   const receiptId = `R-${checkOutTime.getTime().toString().slice(-6)}`;
-  const appName = policies?.appName || 'FunTrack';
 
   return (
     <div ref={ref} className="bg-white p-2 text-black font-mono" style={{ width: '80mm', boxSizing: 'border-box' }}>

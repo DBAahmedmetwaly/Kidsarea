@@ -170,6 +170,7 @@ function CheckOutDialog({
       const finalCost = isSubscription ? 0 : totalCost;
 
       return <PosReceipt 
+              appName={policies?.appName || 'FunTrack'}
               childName={child.name}
               parentName={child.parentName}
               gameName={child.game}
