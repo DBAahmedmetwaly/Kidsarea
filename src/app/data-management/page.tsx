@@ -132,7 +132,22 @@ function DataManagementContent() {
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
     try {
-      const dataPathsToDelete = ['branches', 'openShifts', 'policies', 'roles', 'safes', 'safeTransactions', 'sessions', 'shiftRecords'];
+      const dataPathsToDelete = [
+        'branches', 
+        'customers',
+        'games',
+        'gameCategories',
+        'openShifts', 
+        'policies', 
+        'receiptSettings',
+        'roles', 
+        'safes', 
+        'safeTransactions', 
+        'sessions', 
+        'shiftRecords',
+        'subscriptions',
+        'subscriptionPlans',
+      ];
       const promises = dataPathsToDelete.map(path => remove(ref(db, path)));
       await Promise.all(promises);
       
