@@ -56,7 +56,7 @@ function formatDuration(durationMs: number) {
 }
 
 function SessionsContent() {
-  const { branches, employees, policies } = useFirebase();
+  const { branches, employees, policies, receiptSettings } = useFirebase();
   const { completedSessions, setCompletedSessions } = useSession();
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -129,6 +129,7 @@ function SessionsContent() {
         : cashier?.name || session.cashierUsername || 'N/A';
 
     const receiptDetails: PosReceiptProps = {
+        settings: receiptSettings,
         appName: policies?.appName || 'FunTrack',
         children: session.children,
         parentName: session.parentName,
