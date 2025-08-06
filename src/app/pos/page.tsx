@@ -299,7 +299,10 @@ function CheckOutDialog({
           <DialogClose asChild>
             <Button variant="outline">إلغاء</Button>
           </DialogClose>
-            <Button onClick={handleConfirm} disabled={!amountReceived && checkoutData.totalCost > 0}>
+            <Button 
+              onClick={handleConfirm} 
+              disabled={(checkoutData.totalCost > 0 && !amountReceived) || (Number(amountReceived) < checkoutData.totalCost)}
+            >
                 حفظ و طباعة
             </Button>
         </DialogFooter>
