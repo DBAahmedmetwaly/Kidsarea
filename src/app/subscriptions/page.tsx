@@ -67,6 +67,8 @@ import type { Subscription, Customer, SubscriptionPlan } from '@/lib/types';
 import { Star, PlusCircle, Trash, ChevronsUpDown, Check, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePosPrint } from '@/hooks/use-pos-print';
+import { SubscriptionReceipt } from '@/components/SubscriptionReceipt';
 
 const subscriptionSchema = z.object({
   customerId: z.string().min(1, 'يجب اختيار العميل'),
@@ -78,11 +80,25 @@ type SubscriptionFormValues = z.infer<typeof subscriptionSchema>;
 
 function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
   const { customers } = useCustomers();
-  const { subscriptionPlans } = useFirebase();
+  const { subscriptionPlans, employees, policies } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [openCombobox, setOpenCombobox] = useState(false);
+  const [receiptDetails, setReceiptDetails] = useState<any | null>(null);
+
+  const receiptComponent = useMemo(() => {
+    if (!receiptDetails) return null;
+    return <SubscriptionReceipt {...receiptDetails} />;
+  }, [receiptDetails]);
+
+  const { print } = usePosPrint(receiptComponent as React.ReactElement);
+
+   useEffect(() => {
+      if (receiptDetails) {
+          print();
+      }
+  }, [receiptDetails, print]);
 
   const form = useForm<SubscriptionFormValues>({
     resolver: zodResolver(subscriptionSchema),
@@ -134,6 +150,24 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
         const subscriptionsRef = ref(db, 'subscriptions');
         const newSubRef = push(subscriptionsRef);
         await set(newSubRef, newSubscription);
+        
+        const cashier = employees.find(e => e.username === user.username);
+        const cashierName = user?.username === 'admin' 
+            ? 'Admin' 
+            : cashier?.name || user?.username || 'N/A';
+
+        // Prepare and trigger receipt printing
+        setReceiptDetails({
+            appName: policies?.appName || 'FunTrack',
+            customerName: customer.parentName,
+            childName: values.childName,
+            planName: plan.name,
+            startDate: startDate,
+            endDate: endDate,
+            price: plan.price,
+            cashierName: cashierName,
+        });
+
         toast({ title: "تم إنشاء الاشتراك بنجاح!"});
         onOpenChange(false);
         form.reset();
