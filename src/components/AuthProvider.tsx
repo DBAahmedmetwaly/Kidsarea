@@ -58,8 +58,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
                 setIsAuthenticated(false);
                 setUser(null);
             } finally {
-                // Add a small delay to let the splash screen be visible
-                setTimeout(() => setLoading(false), 2500);
+                setLoading(false);
             }
         };
         checkAuth();
@@ -91,12 +90,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  if (loading && pathname !== '/') {
-    // The FirebaseProvider is needed for the SplashScreen to get the app name
+  if (loading) {
     return (
-        <FirebaseProvider>
-            <SplashScreen />
-        </FirebaseProvider>
+        <div className="flex items-center justify-center min-h-screen bg-background w-full">
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        </div>
     );
   }
   
@@ -107,5 +105,3 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
-    
