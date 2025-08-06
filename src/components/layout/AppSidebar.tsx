@@ -14,6 +14,7 @@ import {
   SidebarFooter,
   SidebarTrigger,
   useSidebar,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
   Building2,
@@ -48,22 +49,31 @@ import type { Employee, Policies } from '@/lib/types';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger as SheetTriggerComponent } from '@/components/ui/sheet';
 import { Button } from '../ui/button';
 
-const allMenuItems = [
+const mainItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/pos', label: 'نقاط البيع', icon: ShoppingBag },
   { href: '/sessions', label: 'سجل الجلسات', icon: History },
-  { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
-  { href: '/reports', label: 'التقارير', icon: BarChart3 },
-  // { href: '/branches', label: 'الفروع', icon: Building2 },
+];
+
+const managementItems = [
+  { href: '/branches', label: 'الفروع', icon: Building2 },
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/game-categories', label: 'تصنيفات الألعاب', icon: Layers },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
-  { href: '/transactions', label: 'سجل الحركات المالية', icon: List },
-  { href: '/customers', label: 'العملاء', icon: Contact },
   { href: '/subscriptions', label: 'الاشتراكات', icon: Star },
   { href: '/subscription-plans', label: 'باقات الاشتراكات', icon: Package },
 ];
+
+const financialItems = [
+  { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
+  { href: '/transactions', label: 'سجل الحركات المالية', icon: List },
+  { href: '/reports', label: 'التقارير', icon: BarChart3 },
+];
+
+const customerItems = [
+    { href: '/customers', label: 'العملاء', icon: Contact },
+]
 
 const settingsMenuItems = [
     { href: '/roles', label: 'الصلاحيات', icon: Shield },
@@ -71,6 +81,8 @@ const settingsMenuItems = [
     { href: '/receipt-designer', label: 'تصميم الإيصال', icon: FileText },
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
 ]
+
+const allMenuItems = [...mainItems, ...managementItems, ...financialItems, ...customerItems, ...settingsMenuItems];
 
 type Permissions = Record<string, boolean>;
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -106,7 +118,7 @@ function SidebarItems() {
     
     // Handle admin user
     if (user.username === 'admin') {
-      const allPermissions: Permissions = [...allMenuItems, ...settingsMenuItems].reduce((acc, item) => {
+      const allPermissions: Permissions = [...allMenuItems].reduce((acc, item) => {
         acc[item.href] = true;
         return acc;
       }, {} as Permissions);
@@ -157,43 +169,37 @@ function SidebarItems() {
     };
   }, [user]);
 
-  const getVisibleMenuItems = () => {
-    if (!user || !permissions) return [];
-    
+  const hasPermission = (href: string) => {
+    if (!user || !permissions) return false;
+
     let userRole: Role | 'admin';
-    
     if (user.username === 'admin') {
         userRole = 'admin';
     } else if ('role' in user) {
         userRole = (user as Employee).role;
     } else {
-        return [];
+        return false;
     }
 
     const userPermissions = userRole === 'admin' ? permissions['مدير فرع'] : permissions[userRole];
-    
-    if (!userPermissions) return [];
+    if (!userPermissions) return false;
 
-    const finalPermissions = {...userPermissions};
+     // Allow access to details pages if the main page is accessible
+    const detailPaths = [
+        {detail: '/subscriptions/[subscriptionId]', main: '/subscriptions'},
+        {detail: '/customers/[customerId]', main: '/customers'},
+        {detail: '/games/[gameName]', main: '/games'},
+        {detail: '/safes/[safeId]', main: '/safes'},
+    ];
     
-    // Allow access to details pages if the main page is accessible
-     if (finalPermissions['/subscriptions']) {
-        finalPermissions['/subscriptions/[subscriptionId]'] = true;
+    for (const path of detailPaths) {
+        if (href.startsWith(path.main) && userPermissions[path.main]) {
+            return true;
+        }
     }
-    if (finalPermissions['/customers']) {
-        finalPermissions['/customers/[customerId]'] = true;
-    }
-     if (finalPermissions['/games']) {
-        finalPermissions['/games/[gameName]'] = true;
-    }
-     if (finalPermissions['/safes']) {
-        finalPermissions['/safes/[safeId]'] = true;
-    }
-
-    return [...allMenuItems, ...settingsMenuItems].filter(item => finalPermissions[item.href]);
+    
+    return userPermissions[href];
   };
-
-  const menuItems = getVisibleMenuItems();
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
@@ -211,6 +217,23 @@ function SidebarItems() {
       return '/pos';
     }
     return '/';
+  }
+
+  const renderMenuItems = (items: typeof allMenuItems) => {
+    return items.filter(item => hasPermission(item.href)).map(item => (
+        <SidebarMenuItem key={item.href} onClick={handleLinkClick}>
+            <SidebarMenuButton
+            asChild
+            isActive={isActive(item.href)}
+            tooltip={{ children: item.label, side: 'left' }}
+            >
+            <Link href={item.href}>
+                <item.icon />
+                <span>{item.label}</span>
+            </Link>
+            </SidebarMenuButton>
+        </SidebarMenuItem>
+    ))
   }
 
   return (
@@ -233,44 +256,26 @@ function SidebarItems() {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {menuItems.filter(item => !settingsMenuItems.some(s => s.href === item.href) && !item.href.includes('[')).map((item) => (
-            <SidebarMenuItem key={item.href} onClick={handleLinkClick}>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive(item.href)}
-                tooltip={{ children: item.label, side: 'left' }}
-              >
-                <Link href={item.href}>
-                  <item.icon />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+            {renderMenuItems(mainItems)}
+            <SidebarSeparator />
+            {renderMenuItems(managementItems)}
+            <SidebarSeparator />
+            {renderMenuItems(financialItems)}
+             <SidebarSeparator />
+            {renderMenuItems(customerItems)}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
           <SidebarMenu>
-             {menuItems.filter(item => settingsMenuItems.some(s => s.href === item.href)).length > 0 && (
-                 <>
-                    {menuItems.filter(item => settingsMenuItems.some(s => s.href === item.href)).map((item) => (
-                        <SidebarMenuItem key={item.href} onClick={handleLinkClick}>
-                            <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={{children: item.label, side: 'left'}}>
-                                <Link href={item.href}>
-                                    <item.icon />
-                                    <span>{item.label}</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    ))}
-                 </>
-             )}
-               <SidebarMenuItem>
-                  <SidebarMenuButton onClick={logout} tooltip={{children: 'تسجيل الخروج', side: 'left'}}>
-                        <LogOut />
-                        <span>تسجيل الخروج</span>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
+             {renderMenuItems(settingsMenuItems).length > 0 && <SidebarSeparator />}
+             {renderMenuItems(settingsMenuItems)}
+             <SidebarSeparator />
+             <SidebarMenuItem>
+                <SidebarMenuButton onClick={logout} tooltip={{children: 'تسجيل الخروج', side: 'left'}}>
+                    <LogOut />
+                    <span>تسجيل الخروج</span>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
       </SidebarFooter>
     </>
