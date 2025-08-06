@@ -139,13 +139,15 @@ function CheckOutDialog({
   onOpenChange,
   child,
   onConfirm,
+  receiptSettings
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   child: Child | null;
   onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
+  receiptSettings: ReceiptSettings | null;
 }) {
-  const { games, policies, employees, receiptSettings, subscriptions } = useFirebase();
+  const { games, policies, employees, subscriptions } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
   const [discount, setDiscount] = useState('');
   const [activeSubscriptions, setActiveSubscriptions] = useState<Subscription[]>([]);
@@ -335,7 +337,7 @@ function TrackingContent() {
   const [checkInBranch, setCheckInBranch] = useState('');
   
   const { toast } = useToast();
-  const { games, policies, openShifts, employees, branches, subscriptions } = useFirebase();
+  const { games, policies, openShifts, employees, branches, subscriptions, receiptSettings } = useFirebase();
   const { user } = useAuth();
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
@@ -390,7 +392,7 @@ function TrackingContent() {
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
             return branchMatch && s.checkOutTime >= todayStart;
         })
-        .reduce((sum, s) => sum + (s.children?.length || 0), 0);
+        .reduce((sum, s) => sum + (s.children?.length || 1), 0);
     
     // This isn't perfect as it double counts if a child checks in and out today
     // A more accurate way would be to count unique parent+child combinations
@@ -842,6 +844,7 @@ function TrackingContent() {
         onOpenChange={setCheckoutDialogOpen}
         child={childToCheckout}
         onConfirm={handleCheckOut}
+        receiptSettings={receiptSettings}
       />
 
         <CustomerFormDialog 
