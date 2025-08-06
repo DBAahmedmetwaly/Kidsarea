@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings } from '@/lib/types';
@@ -489,6 +489,8 @@ function PosTrackingContent() {
   const [isCheckoutDialogOpen, setCheckoutDialogOpen] = useState(false);
   const [childToCheckout, setChildToCheckout] = useState<Child | null>(null);
 
+  const [activeSearch, setActiveSearch] = useState('');
+
   const currentUser = useMemo(() => {
     if (!user) return null;
     return employees.find(e => e.username === user.username);
@@ -512,10 +514,19 @@ function PosTrackingContent() {
     return openShifts.some(shift => shift.cashierUsername === user.username);
   }, [user, openShifts]);
 
-  const filteredActiveChildren = useMemo(() => {
+  const activeChildrenByBranch = useMemo(() => {
     if (selectedBranchFilter === 'all') return activeChildren;
     return activeChildren.filter(child => child.branchName === selectedBranchFilter);
   }, [activeChildren, selectedBranchFilter]);
+
+  const searchedActiveChildren = useMemo(() => {
+    if (!activeSearch) return activeChildrenByBranch;
+    return activeChildrenByBranch.filter(child => 
+        child.parentName.toLowerCase().includes(activeSearch.toLowerCase()) ||
+        child.children.some(c => c.name.toLowerCase().includes(activeSearch.toLowerCase()))
+    );
+  }, [activeChildrenByBranch, activeSearch]);
+
 
   const gamesForSelectedCategory = useMemo(() => {
     if (!selectedCategory) return [];
@@ -542,7 +553,7 @@ function PosTrackingContent() {
   }, [completedSessions, selectedBranchFilter, user, openShifts]);
 
     const dailyStats = useMemo(() => {
-        const activeCount = filteredActiveChildren.length;
+        const activeCount = activeChildrenByBranch.length;
         
         const todaysSessions = completedSessions.filter(s => {
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
@@ -554,7 +565,7 @@ function PosTrackingContent() {
 
         return { activeCount, visitorsToday, sessionsToday };
 
-    }, [filteredActiveChildren, completedSessions, selectedBranchFilter]);
+    }, [activeChildrenByBranch, completedSessions, selectedBranchFilter]);
 
   const openCheckInDialog = (game: Game) => {
     setSelectedGame(game);
@@ -784,9 +795,15 @@ function PosTrackingContent() {
             <Card>
                 <CardHeader>
                     <CardTitle>الأطفال النشطون حاليًا</CardTitle>
-                    <CardDescription>
-                    قائمة بالأطفال الذين يلعبون حاليًا.
-                    </CardDescription>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="ابحث بالطفل أو ولي الأمر..."
+                            value={activeSearch}
+                            onChange={(e) => setActiveSearch(e.target.value)}
+                            className="w-full pl-8"
+                        />
+                    </div>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
                     <Table>
@@ -800,8 +817,8 @@ function PosTrackingContent() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredActiveChildren.length > 0 ? (
-                            filteredActiveChildren.map((session) => (
+                            {searchedActiveChildren.length > 0 ? (
+                            searchedActiveChildren.map((session) => (
                                 <TableRow key={session.id}>
                                 <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                 <TableCell className="text-right">{session.parentName}</TableCell>
@@ -825,7 +842,7 @@ function PosTrackingContent() {
                             ) : (
                             <TableRow>
                                 <TableCell colSpan={5} className="h-24 text-center">
-                                لا يوجد أطفال نشطون حاليًا.
+                                لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
                                 </TableCell>
                             </TableRow>
                             )}
@@ -903,4 +920,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 

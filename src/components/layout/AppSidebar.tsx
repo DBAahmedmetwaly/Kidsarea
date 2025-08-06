@@ -59,7 +59,7 @@ const allMenuItems = [
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/game-categories', label: 'تصنيفات الألعاب', icon: Layers },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
-  { href: '/transactions', label: 'سجل الحركات', icon: List },
+  { href: '/transactions', label: 'سجل الحركات المالية', icon: List },
   { href: '/customers', label: 'العملاء', icon: Contact },
   { href: '/subscriptions', label: 'الاشتراكات', icon: Star },
   { href: '/subscription-plans', label: 'باقات الاشتراكات', icon: Package },
