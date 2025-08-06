@@ -66,9 +66,9 @@ const settingsMenuItems = [
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
 ]
 
-
 type Permissions = Record<string, boolean>;
-type RolePermissions = Record<Employee['role'], Permissions>;
+type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
+type RolePermissions = Record<Role, Permissions>;
 
 // Firebase keys cannot contain '.', '#', '$', '/', '[', or ']'
 const encodeKey = (key: string) => key.replace(/\//g, '__slash__');
@@ -113,7 +113,6 @@ function SidebarItems() {
       return () => unsubPolicies();
     }
 
-    // Handle employee users only if their role is loaded
     if ('role' in user && user.role) {
       const rolesRef = ref(db, 'roles');
       const unsubRoles = onValue(rolesRef, (snapshot) => {
@@ -122,14 +121,14 @@ function SidebarItems() {
               const decodedPermissions: Partial<RolePermissions> = {};
               for (const role in data) {
                   if (Object.prototype.hasOwnProperty.call(data, role)) {
-                      const rolePermissions = data[role as Employee['role']];
+                      const rolePermissions = data[role as Role];
                       const decodedRolePermissions: Permissions = {};
                       for (const encodedKey in rolePermissions) {
                           if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
                              decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
                           }
                       }
-                      decodedPermissions[role as Employee['role']] = decodedRolePermissions;
+                      decodedPermissions[role as Role] = decodedRolePermissions;
                   }
               }
               setPermissions(decodedPermissions as RolePermissions);
@@ -143,7 +142,6 @@ function SidebarItems() {
         unsubRoles();
       };
     } else {
-        // User data is not fully loaded yet, wait for the next effect run
         setPermissions(null);
     }
     
@@ -156,35 +154,46 @@ function SidebarItems() {
   const getVisibleMenuItems = () => {
     if (!user || !permissions) return [];
     
-    let userRole: Employee['role'] | 'admin' = 'مشرف'; // default
+    let userRole: Role | 'admin';
+    
     if (user.username === 'admin') {
         userRole = 'admin';
     } else if ('role' in user) {
         userRole = (user as Employee).role;
+    } else {
+        return [];
     }
 
     const userPermissions = userRole === 'admin' ? permissions['مدير فرع'] : permissions[userRole];
+    
     if (!userPermissions) return [];
 
-    // Add /sessions to permissions if they can see /tracking
-    if (userPermissions['/tracking'] && !userPermissions['/sessions']) {
-        userPermissions['/sessions'] = true;
-    }
+    const finalPermissions = {...userPermissions};
     
     // Allow access to details pages if the main page is accessible
-    if (userPermissions['/subscriptions']) {
-        userPermissions['/subscriptions/[subscriptionId]'] = true;
+     if (finalPermissions['/subscriptions']) {
+        finalPermissions['/subscriptions/[subscriptionId]'] = true;
+    }
+    if (finalPermissions['/customers']) {
+        finalPermissions['/customers/[customerId]'] = true;
+    }
+     if (finalPermissions['/games']) {
+        finalPermissions['/games/[gameName]'] = true;
+    }
+     if (finalPermissions['/safes']) {
+        finalPermissions['/safes/[safeId]'] = true;
     }
 
-
-    return [...allMenuItems, ...settingsMenuItems].filter(item => userPermissions[item.href]);
+    return [...allMenuItems, ...settingsMenuItems].filter(item => finalPermissions[item.href]);
   };
 
   const menuItems = getVisibleMenuItems();
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
-    return pathname.startsWith(path);
+    // For detail pages, also match the parent path
+    if (pathname.startsWith(path + '/')) return true;
+    return pathname.startsWith(path) && (pathname.length === path.length || pathname[path.length] === '/');
   };
   
   const handleLinkClick = () => {

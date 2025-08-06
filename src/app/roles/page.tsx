@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -27,6 +27,9 @@ const ALL_SCREENS = [
   { href: '/roles', label: 'الصلاحيات' },
   { href: '/policies', label: 'السياسات' },
   { href: '/transactions', label: 'سجل الحركات'},
+  { href: '/customers', label: 'العملاء' },
+  { href: '/subscriptions', label: 'الاشتراكات' },
+  { href: '/subscription-plans', label: 'باقات الاشتراكات' },
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -52,29 +55,55 @@ function RolesContent() {
       if (data) {
         // Decode keys from Firebase
         const decodedPermissions: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
-        for (const role in data) {
-            if (Object.prototype.hasOwnProperty.call(data, role)) {
-                const rolePermissions = data[role as Role];
+        for (const role of ROLES) {
+            const rolePermissions = data[role];
+            if (rolePermissions) {
                 const decodedRolePermissions: Permissions = {};
                 for (const encodedKey in rolePermissions) {
                     if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
                        decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
                     }
                 }
-                decodedPermissions[role as Role] = decodedRolePermissions;
+                decodedPermissions[role] = decodedRolePermissions;
             }
         }
         setPermissions(decodedPermissions);
+        setLoading(false);
       } else {
-        // Initialize with default permissions if none exist
+        // Initialize and SAVE default permissions if none exist
         const defaultPermissions: RolePermissions = {
-          'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {}),
-          'كاشير': { '/tracking': true, '/shift-closing': true, '/sessions': true },
-          'مشرف': { '/tracking': true, '/sessions': true },
+          'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {}),
+          'كاشير': {
+             [encodeKey('/tracking')]: true,
+             [encodeKey('/sessions')]: true,
+             [encodeKey('/shift-closing')]: true,
+             [encodeKey('/customers')]: true,
+             [encodeKey('/subscriptions')]: true,
+             [encodeKey('/subscription-plans')]: true,
+          },
+          'مشرف': { 
+            [encodeKey('/tracking')]: true,
+            [encodeKey('/sessions')]: true,
+           },
         };
-        setPermissions(defaultPermissions);
+        set(rolesRef, defaultPermissions).then(() => {
+            // After setting, we need to decode for the current session's state
+            const decodedForState: RolePermissions = {
+                 'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {}),
+                 'كاشير': {
+                    '/tracking': true,
+                    '/sessions': true,
+                    '/shift-closing': true,
+                    '/customers': true,
+                    '/subscriptions': true,
+                    '/subscription-plans': true,
+                },
+                'مشرف': { '/tracking': true, '/sessions': true },
+            }
+            setPermissions(decodedForState);
+            setLoading(false);
+        });
       }
-      setLoading(false);
     }, (error) => {
         console.error(error);
         setLoading(false);
@@ -88,6 +117,10 @@ function RolesContent() {
         if (!prev) return null;
         const newPermissions = JSON.parse(JSON.stringify(prev)); // Deep copy
         
+        if (!newPermissions[selectedRole]) {
+            newPermissions[selectedRole] = {};
+        }
+
         newPermissions[selectedRole][screenHref] = checked;
 
         // Logic: if /tracking is enabled, /sessions should be too.
@@ -99,6 +132,16 @@ function RolesContent() {
              newPermissions[selectedRole]['/tracking'] = false;
         }
 
+        // Auto-enable dependent screens
+        if (checked) {
+            if(screenHref.startsWith('/subscriptions/')) {
+                 newPermissions[selectedRole]['/subscriptions'] = true;
+            }
+             if(screenHref.startsWith('/customers/')) {
+                 newPermissions[selectedRole]['/customers'] = true;
+            }
+        }
+
 
         return newPermissions;
     });
@@ -107,23 +150,20 @@ function RolesContent() {
   const handleSaveChanges = async () => {
     if (!permissions) return;
     try {
-      const rolesRef = ref(db, 'roles');
-      // Encode keys for Firebase
-      const encodedPermissions: Partial<RolePermissions> = {};
-        for (const role in permissions) {
-            if (Object.prototype.hasOwnProperty.call(permissions, role)) {
-                const rolePermissions = permissions[role as Role];
-                const encodedRolePermissions: Permissions = {};
-                for (const key in rolePermissions) {
-                    if (Object.prototype.hasOwnProperty.call(rolePermissions, key)) {
-                       encodedRolePermissions[encodeKey(key)] = rolePermissions[key];
-                    }
-                }
-                encodedPermissions[role as Role] = encodedRolePermissions;
-            }
-        }
+      // We only need to update the permissions for the selected role
+      const rolePermissions = permissions[selectedRole];
+      if (!rolePermissions) return;
+
+      const encodedRolePermissions: Permissions = {};
+      for (const key in rolePermissions) {
+          if (Object.prototype.hasOwnProperty.call(rolePermissions, key)) {
+             encodedRolePermissions[encodeKey(key)] = rolePermissions[key];
+          }
+      }
       
-      await update(rolesRef, encodedPermissions);
+      const roleRef = ref(db, `roles/${selectedRole}`);
+      await update(roleRef, encodedRolePermissions);
+
       toast({
         title: 'تم الحفظ بنجاح',
         description: `تم تحديث صلاحيات دور "${selectedRole}".`,
@@ -137,6 +177,11 @@ function RolesContent() {
       });
     }
   };
+  
+  const allScreensWithDetails = ALL_SCREENS.map(screen => ({
+      ...screen,
+      isDetail: screen.href.includes('[')
+  }))
 
   return (
     <div className="flex flex-col gap-8">
@@ -183,14 +228,18 @@ function RolesContent() {
                   {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-1/2" />)}
                 </div>
               ) : (
-                <div className="space-y-4">
-                    {ALL_SCREENS.map(screen => (
+                <div className="grid grid-cols-2 gap-4">
+                    {allScreensWithDetails.filter(s => !s.isDetail).map(screen => (
                         <div key={screen.href} className="flex items-center space-x-2">
                             <Checkbox
                                 id={`${selectedRole}-${screen.href}`}
                                 checked={permissions?.[selectedRole]?.[screen.href] || false}
                                 onCheckedChange={(checked) => handlePermissionChange(screen.href, !!checked)}
-                                disabled={screen.href === '/sessions' && permissions?.[selectedRole]?.['/tracking']}
+                                disabled={
+                                    (screen.href === '/sessions' && permissions?.[selectedRole]?.['/tracking']) ||
+                                    (screen.href === '/subscriptions' && permissions?.[selectedRole]?.['/subscriptions/[subscriptionId]']) ||
+                                    (screen.href === '/customers' && permissions?.[selectedRole]?.['/customers/[customerId]'])
+                                }
                             />
                             <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                 {screen.label}
