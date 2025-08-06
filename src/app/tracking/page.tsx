@@ -145,7 +145,7 @@ function CheckOutDialog({
   child: Child | null;
   onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
 }) {
-  const { games, policies } = useFirebase();
+  const { games, policies, employees } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
   const [isSubscription, setIsSubscription] = useState(false);
   const { user } = useAuth();
@@ -188,7 +188,7 @@ function CheckOutDialog({
               cashierName={cashierName}
               isSubscription={isSubscription}
             />;
-  }, [child, games, policies, isSubscription, user]);
+  }, [child, games, policies, isSubscription, user, employees]);
 
   const { print } = usePosPrint(receiptComponent as React.ReactElement);
 
@@ -263,7 +263,6 @@ function CheckOutDialog({
 
   if (!child || !checkoutData) return null;
 
-  const { employees } = useFirebase();
 
   const change = Number(amountReceived) - (isSubscription ? 0 : checkoutData.totalCost);
 
@@ -325,7 +324,7 @@ function CheckOutDialog({
 
 
 function TrackingContent() {
-  const { activeChildren, setActiveChildren } = useSession();
+  const { activeChildren, setActiveChildren, completedSessions, setCompletedSessions } = useSession();
   const { customers, setCustomers } = useCustomers();
   
   // Existing Customer State
@@ -344,8 +343,6 @@ function TrackingContent() {
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
   
-  const [myCompletedSessions, setMyCompletedSessions] = useState<CompletedSession[]>([]);
-
   // Checkout Dialog State
   const [isCheckoutDialogOpen, setCheckoutDialogOpen] = useState(false);
   const [childToCheckout, setChildToCheckout] = useState<Child | null>(null);
@@ -415,7 +412,7 @@ function TrackingContent() {
         return branchMatch && s.checkInTime >= todayStart;
     });
 
-    const todaysSessions = myCompletedSessions.filter(s => {
+    const todaysSessions = completedSessions.filter(s => {
         const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
         return branchMatch && s.checkOutTime >= todayStart;
     });
@@ -426,16 +423,24 @@ function TrackingContent() {
     ]);
     
     return uniqueIds.size;
-  }, [activeChildren, myCompletedSessions, selectedBranchFilter]);
+  }, [activeChildren, completedSessions, selectedBranchFilter]);
 
 
   const todaysCompletedSessions = useMemo(() => {
-    const today = startOfDay(new Date()).getTime();
-    return myCompletedSessions.filter(s => {
+    if (!user || !user.username) return [];
+
+    const todayStart = startOfDay(new Date());
+    const openShift = openShifts.find(s => s.cashierUsername === user.username);
+    // If there's an open shift, filter from shift start time. Otherwise, from beginning of today.
+    const filterStartTime = openShift ? new Date(openShift.startTime) : todayStart;
+
+    return completedSessions.filter(s => {
+        const cashierMatch = s.cashierUsername === user.username;
         const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
-        return branchMatch && s.checkOutTime >= today;
+        const timeMatch = new Date(s.checkOutTime) >= filterStartTime;
+        return cashierMatch && branchMatch && timeMatch;
     });
-  }, [myCompletedSessions, selectedBranchFilter]);
+  }, [completedSessions, selectedBranchFilter, user, openShifts]);
 
 
   // Sync with Firebase for active children
@@ -585,9 +590,6 @@ function TrackingContent() {
     try {
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
-        
-        // Add to local state immediately
-        setMyCompletedSessions(prev => [{ id: child.id, ...completedSession } as CompletedSession, ...prev]);
         
     } catch(err) {
         console.error(err);
