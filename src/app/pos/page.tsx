@@ -46,6 +46,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { PosReceipt, type PosReceiptProps } from '@/components/Receipt';
 import { usePosPrint } from '@/hooks/use-pos-print';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -476,7 +477,7 @@ function PosTrackingContent() {
   const { toast } = useToast();
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState<GameCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   
   const [isCheckInDialogOpen, setCheckInDialogOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -496,7 +497,7 @@ function PosTrackingContent() {
         }
         // Select the first category by default
         if (gameCategories.length > 0 && !selectedCategory) {
-            setSelectedCategory(gameCategories[0]);
+            setSelectedCategory(gameCategories[0].id);
         }
 
     }, [currentUser, gameCategories, selectedCategory]);
@@ -515,7 +516,7 @@ function PosTrackingContent() {
   const gamesForSelectedCategory = useMemo(() => {
     if (!selectedCategory) return [];
     return games.filter(g => 
-        g.categoryId === selectedCategory.id && 
+        g.categoryId === selectedCategory && 
         g.status === 'Available' &&
         (selectedBranchFilter === 'all' || g.branch === selectedBranchFilter || g.branch === 'كل الفروع')
     );
@@ -565,10 +566,10 @@ function PosTrackingContent() {
         discount: receiptDetails.discount,
     };
     
-    const completedSession: Omit<CompletedSession, 'id'> = {
-        ...baseSession,
-        ...(activeSubs.length > 0 && { subscriptionId: activeSubs.map(s => s.id).join(',') }),
-    };
+    let completedSession: Omit<CompletedSession, 'id'> = { ...baseSession };
+    if (activeSubs.length > 0) {
+        completedSession.subscriptionId = activeSubs.map(s => s.id).join(',');
+    }
 
     try {
         if (completedSession.subscriptionId === undefined) {
@@ -664,58 +665,47 @@ function PosTrackingContent() {
             </Alert>
         )}
       
-      <div className="grid gap-4 md:grid-cols-12 items-start">
-        {/* Categories */}
-        <div className="md:col-span-3">
-            <Card>
-                <CardHeader>
-                    <CardTitle>التصنيفات</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2">
-                    {gameCategories.map(category => (
-                         <Button 
-                            key={category.id} 
-                            variant={selectedCategory?.id === category.id ? 'default' : 'outline'}
-                            onClick={() => setSelectedCategory(category)}
-                            className="w-full justify-start text-base py-6"
-                         >
-                            {category.name}
-                         </Button>
-                    ))}
-                </CardContent>
-            </Card>
+      <div className="grid gap-8 md:grid-cols-2 items-start">
+        {/* Left Side: Games and Categories */}
+        <div className="space-y-4">
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              {gameCategories.map(category => (
+                <TabsTrigger key={category.id} value={category.id}>{category.name}</TabsTrigger>
+              ))}
+            </TabsList>
+            {gameCategories.map(category => (
+                <TabsContent key={category.id} value={category.id}>
+                    <Card className="min-h-[400px]">
+                        <CardHeader>
+                            <CardTitle>ألعاب: {category.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {gamesForSelectedCategory.map(game => (
+                                <button 
+                                    key={game.id} 
+                                    onClick={() => openCheckInDialog(game)} 
+                                    disabled={!hasActiveShift}
+                                    className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                >
+                                    <p className="font-semibold text-sm">{game.name}</p>
+                                    <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
+                                </button>
+                            ))}
+                            {gamesForSelectedCategory.length === 0 && (
+                                <div className="col-span-full text-center text-muted-foreground py-16">
+                                    لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            ))}
+          </Tabs>
         </div>
 
-        {/* Games */}
-        <div className="md:col-span-5">
-            <Card className="min-h-[400px]">
-                <CardHeader>
-                    <CardTitle>{selectedCategory?.name || 'الألعاب'}</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
-                     {gamesForSelectedCategory.map(game => (
-                         <button 
-                            key={game.id} 
-                            onClick={() => openCheckInDialog(game)} 
-                            disabled={!hasActiveShift}
-                            className="aspect-square border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                         >
-                            <Image src={game.image} alt={game.name} width={64} height={64} className="rounded-md object-cover" />
-                            <p className="font-semibold text-sm">{game.name}</p>
-                            <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
-                         </button>
-                     ))}
-                     {gamesForSelectedCategory.length === 0 && (
-                        <div className="col-span-full text-center text-muted-foreground py-16">
-                            لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
-                        </div>
-                     )}
-                </CardContent>
-            </Card>
-        </div>
-
-        {/* Live Data */}
-        <div className="md:col-span-4 space-y-4">
+        {/* Right Side: Live Data */}
+        <div className="space-y-4">
              <Card>
                 <CardHeader>
                     <CardTitle>الأطفال النشطون حاليًا</CardTitle>
@@ -833,7 +823,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
-
-    
