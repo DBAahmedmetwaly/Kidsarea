@@ -47,29 +47,29 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
 
       <div className="space-y-3 text-sm">
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-2"><Smile size={16} /> اسم الطفل</span>
           <span className="font-bold">{childName}</span>
+          <span className="flex items-center gap-2"><Smile size={16} /> اسم الطفل</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-2"><User size={16} /> ولي الأمر</span>
           <span className="font-bold">{parentName}</span>
+          <span className="flex items-center gap-2"><User size={16} /> ولي الأمر</span>
         </div>
         <hr className="border-dashed border-gray-400 my-2" />
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-2"><Gamepad2 size={16} /> اللعبة</span>
           <span className="font-bold">{gameName}</span>
+          <span className="flex items-center gap-2"><Gamepad2 size={16} /> اللعبة</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-2"><Calendar size={16} /> دخول</span>
-          <span className="font-bold text-right">{checkInTime.toLocaleTimeString('ar-EG')}</span>
+          <span className="font-bold text-left">{checkInTime.toLocaleTimeString('ar-EG')}</span>
+           <span className="flex items-center gap-2"><Calendar size={16} /> دخول</span>
         </div>
         <div className="flex justify-between items-center">
+          <span className="font-bold text-left">{checkOutTime.toLocaleTimeString('ar-EG')}</span>
           <span className="flex items-center gap-2"><Calendar size={16} /> خروج</span>
-          <span className="font-bold text-right">{checkOutTime.toLocaleTimeString('ar-EG')}</span>
         </div>
          <div className="flex justify-between items-center">
-          <span className="flex items-center gap-2"><Clock size={16} /> المدة</span>
           <span className="font-bold">{duration}</span>
+          <span className="flex items-center gap-2"><Clock size={16} /> المدة</span>
         </div>
         <hr className="border-dashed border-gray-400 my-2" />
         {isSubscription ? (
@@ -80,20 +80,20 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
             <>
                 <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                        <span className="flex items-center gap-2"><Tag size={16} /> تكلفة اللعب</span>
                         <span className="font-bold">{`ج.م ${(durationCost ?? totalCost).toFixed(2)}`}</span>
+                        <span className="flex items-center gap-2"><Tag size={16} /> تكلفة اللعب</span>
                     </div>
                     {entryFee && entryFee > 0 && (
                         <div className="flex justify-between items-center">
-                            <span className="flex items-center gap-2"><PlusCircle size={16} /> رسوم دخول</span>
                             <span className="font-bold">{`ج.م ${entryFee.toFixed(2)}`}</span>
+                            <span className="flex items-center gap-2"><PlusCircle size={16} /> رسوم دخول</span>
                         </div>
                     )}
                 </div>
                 <hr className="border-dashed border-gray-400 my-2" />
                 <div className="flex justify-between items-center text-xl font-bold p-2 bg-gray-200">
-                <span>الإجمالي</span>
                 <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
+                <span>الإجمالي</span>
                 </div>
             </>
         )}

@@ -34,8 +34,8 @@ export const usePosPrint = () => {
                         <link rel="stylesheet" href="/_next/static/css/app/layout.css" media="all">
                         <style>
                             @page { size: 80mm auto; margin: 0; }
-                            body { margin: 0; font-family: 'PT Sans', sans-serif; direction: rtl; color: black !important; -webkit-print-color-adjust: exact; }
-                            * { color: black !important; }
+                            body { margin: 0; font-family: 'PT Sans', sans-serif !important; direction: rtl; color: black !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                            * { color: black !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'PT Sans', sans-serif !important; }
                             .lucide { display: inline-block; width: 1em; height: 1em; }
                         </style>
                     </head>

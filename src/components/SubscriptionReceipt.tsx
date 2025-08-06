@@ -39,30 +39,30 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
 
       <div className="space-y-3 text-sm">
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-2"><User size={16} /> ولي الأمر</span>
           <span className="font-bold">{customerName}</span>
+          <span className="flex items-center gap-2"><User size={16} /> ولي الأمر</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-2"><Smile size={16} /> اسم الطفل</span>
           <span className="font-bold">{childName}</span>
+          <span className="flex items-center gap-2"><Smile size={16} /> اسم الطفل</span>
         </div>
         <hr className="border-dashed border-gray-400 my-2" />
         <div className="flex justify-between items-center">
-          <span className="flex items-center gap-2"><Star size={16} /> الباقة</span>
           <span className="font-bold">{planName}</span>
+          <span className="flex items-center gap-2"><Star size={16} /> الباقة</span>
         </div>
         <div className="flex justify-between items-center">
+          <span className="font-bold text-left">{startDate.toLocaleDateString('ar-EG')}</span>
           <span className="flex items-center gap-2"><Calendar size={16} /> تاريخ البدء</span>
-          <span className="font-bold text-right">{startDate.toLocaleDateString('ar-EG')}</span>
         </div>
         <div className="flex justify-between items-center">
+          <span className="font-bold text-left">{endDate.toLocaleDateString('ar-EG')}</span>
           <span className="flex items-center gap-2"><Calendar size={16} /> تاريخ الانتهاء</span>
-          <span className="font-bold text-right">{endDate.toLocaleDateString('ar-EG')}</span>
         </div>
         <hr className="border-dashed border-gray-400 my-2" />
         <div className="flex justify-between items-center text-xl font-bold p-2 bg-gray-200">
-            <span>الإجمالي المدفوع</span>
             <span>{`ج.م ${price.toFixed(2)}`}</span>
+            <span>الإجمالي المدفوع</span>
         </div>
       </div>
 
