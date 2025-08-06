@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ref, push, set, update, remove } from 'firebase/database';
@@ -53,6 +53,14 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { GameCategory } from '@/lib/types';
@@ -81,13 +89,7 @@ function CategoryFormDialog({
   initialData?: GameCategory | null;
   isEditMode: boolean;
 }) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { errors },
-  } = useForm<CategoryFormValues>({
+  const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
       name: '',
@@ -95,15 +97,15 @@ function CategoryFormDialog({
     }
   });
   
-  const watchedColor = watch('color');
+  const watchedColor = form.watch('color');
 
   useEffect(() => {
     if (isEditMode && initialData) {
-      reset(initialData);
+      form.reset(initialData);
     } else {
-      reset({ name: '', color: '#4ab7e2' });
+      form.reset({ name: '', color: '#4ab7e2' });
     }
-  }, [initialData, isEditMode, open, reset]);
+  }, [initialData, isEditMode, open, form]);
 
   const handleFormSubmit = (data: CategoryFormValues) => {
     onSubmit(isEditMode && initialData ? { ...data, id: initialData.id } : data);
@@ -116,28 +118,54 @@ function CategoryFormDialog({
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'تعديل التصنيف' : 'إضافة تصنيف جديد'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="name">اسم التصنيف</Label>
-            <Input id="name" {...register('name')} placeholder="مثال: ألعاب حركية" />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
-          </div>
-           <div>
-            <Label htmlFor="color">لون التصنيف</Label>
-            <div className="flex items-center gap-2">
-                 <Input id="color" type="color" {...register('color')} className="w-16 h-10 p-1" />
-                 <Input id="color-text" {...register('color')} placeholder="#4ab7e2" className="flex-1" />
-                 <div className="w-8 h-8 rounded-md" style={{ backgroundColor: watchedColor }} />
-            </div>
-            {errors.color && <p className="text-red-500 text-xs mt-1">{errors.color.message}</p>}
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">إلغاء</Button>
-            </DialogClose>
-            <Button type="submit">{isEditMode ? 'حفظ التغييرات' : 'إضافة التصنيف'}</Button>
-          </DialogFooter>
-        </form>
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
+            <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>اسم التصنيف</FormLabel>
+                        <FormControl>
+                            <Input placeholder="مثال: ألعاب حركية" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>لون التصنيف</FormLabel>
+                            <div className="flex items-center gap-2">
+                                <FormControl>
+                                    <Input 
+                                        type="color" 
+                                        className="w-16 h-10 p-1" 
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <Input 
+                                    {...field}
+                                    placeholder="#4ab7e2" 
+                                    className="flex-1" 
+                                />
+                                <div className="w-8 h-8 rounded-md border" style={{ backgroundColor: watchedColor }} />
+                            </div>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <DialogFooter>
+                <DialogClose asChild>
+                <Button type="button" variant="secondary">إلغاء</Button>
+                </DialogClose>
+                <Button type="submit">{isEditMode ? 'حفظ التغييرات' : 'إضافة التصنيف'}</Button>
+            </DialogFooter>
+            </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
