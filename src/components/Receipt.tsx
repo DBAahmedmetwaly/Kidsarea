@@ -36,7 +36,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   const receiptId = `R-${checkOutTime.getTime().toString().slice(-6)}`;
 
   return (
-    <div ref={ref} className="bg-white p-2 text-black font-mono" style={{ width: '80mm', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white p-2 text-black font-sans" style={{ width: '80mm', boxSizing: 'border-box' }}>
       <div className="text-center mb-4">
         <div className="flex justify-center items-center gap-2">
             <Gamepad2 className="w-10 h-10" />

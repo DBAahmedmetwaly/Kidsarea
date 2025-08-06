@@ -25,10 +25,17 @@ export const usePosPrint = () => {
                 <html>
                     <head>
                         <title>Print Receipt</title>
+                         <link rel="preconnect" href="https://fonts.googleapis.com" />
+                        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                        <link
+                        href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+                        rel="stylesheet"
+                        />
                         <link rel="stylesheet" href="/_next/static/css/app/layout.css" media="all">
                         <style>
                             @page { size: 80mm auto; margin: 0; }
-                            body { margin: 0; font-family: 'PT Sans', sans-serif; direction: rtl; }
+                            body { margin: 0; font-family: 'PT Sans', sans-serif; direction: rtl; color: black !important; -webkit-print-color-adjust: exact; }
+                            * { color: black !important; }
                             .lucide { display: inline-block; width: 1em; height: 1em; }
                         </style>
                     </head>
@@ -37,13 +44,15 @@ export const usePosPrint = () => {
             `);
             iframeDoc.close();
 
-            iframe.onload = () => {
+            const handleLoad = () => {
                 iframe.contentWindow?.focus();
                 iframe.contentWindow?.print();
                 setTimeout(() => {
                     document.body.removeChild(iframe);
                 }, 500); // Cleanup iframe
-            };
+                iframe.removeEventListener('load', handleLoad);
+            }
+            iframe.addEventListener('load', handleLoad);
         }
     }, []);
 
