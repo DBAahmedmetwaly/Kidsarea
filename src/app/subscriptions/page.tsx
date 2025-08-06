@@ -65,7 +65,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import type { Subscription, Customer, SubscriptionPlan } from '@/lib/types';
-import { Star, PlusCircle, Trash, ChevronsUpDown, Check, Filter } from 'lucide-react';
+import { Star, PlusCircle, Trash, ChevronsUpDown, Check, Filter, RotateCw, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePosPrint } from '@/hooks/use-pos-print';
@@ -79,9 +79,17 @@ const subscriptionSchema = z.object({
 
 type SubscriptionFormValues = z.infer<typeof subscriptionSchema>;
 
-function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+function SubscriptionFormDialog({ 
+    open, 
+    onOpenChange,
+    initialData
+}: { 
+    open: boolean, 
+    onOpenChange: (open: boolean) => void,
+    initialData?: Partial<SubscriptionFormValues>
+}) {
   const { customers } = useCustomers();
-  const { subscriptionPlans, employees, policies } = useFirebase();
+  const { subscriptionPlans, subscriptions, employees, policies } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -110,6 +118,19 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
     },
   });
 
+   useEffect(() => {
+    if (open && initialData) {
+        form.reset(initialData);
+        if (initialData.customerId) {
+            const customer = customers.find(c => c.id === initialData.customerId);
+            setSelectedCustomer(customer || null);
+        }
+    } else if (!open) {
+        form.reset({ customerId: '', childName: '', planId: '' });
+        setSelectedCustomer(null);
+    }
+  }, [open, initialData, form, customers]);
+
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
     form.setValue('customerId', customer.id);
@@ -128,6 +149,23 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
         toast({ title: "خطأ", description: "بيانات العميل أو الباقة غير صحيحة."});
         return;
     };
+
+    // Prevent duplicate active subscriptions
+    const hasActiveSubscription = subscriptions.some(sub => 
+        sub.customerId === values.customerId &&
+        sub.childName === values.childName &&
+        sub.status === 'Active'
+    );
+
+    if (hasActiveSubscription) {
+        toast({
+            title: "اشتراك مكرر",
+            description: "هذا الطفل لديه اشتراك فعال بالفعل.",
+            variant: 'destructive'
+        });
+        return;
+    }
+
 
     const startDate = new Date();
     const endDate = add(startDate, { days: plan.duration });
@@ -241,7 +279,7 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>اختر الطفل</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر من أطفال العميل..." />
@@ -264,7 +302,7 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>اختر باقة الاشتراك</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر باقة..." />
@@ -294,9 +332,11 @@ function SubscriptionFormDialog({ open, onOpenChange }: { open: boolean, onOpenC
 }
 
 function SubscriptionsContent() {
+  const { subscriptions: firebaseSubscriptions } = useFirebase();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
+  const [formInitialData, setFormInitialData] = useState<Partial<SubscriptionFormValues> | undefined>();
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'EndingSoon' | 'Expired'>('all');
   const { toast } = useToast();
@@ -309,9 +349,10 @@ function SubscriptionsContent() {
         const subsArray: Subscription[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as any) })) : [];
         
         const today = new Date();
+        let needsUpdate = false;
         const updatedSubs = subsArray.map(sub => {
             if (sub.status === 'Active' && today > new Date(sub.endDate)) {
-                // Expire subscription in Firebase
+                needsUpdate = true;
                 const subRef = ref(db, `subscriptions/${sub.id}`);
                 update(subRef, { status: 'Expired' });
                 return { ...sub, status: 'Expired' };
@@ -333,6 +374,15 @@ function SubscriptionsContent() {
     } catch(e) {
         toast({ title: "خطأ", description: "فشل حذف الاشتراك", variant: 'destructive'});
     }
+  };
+
+  const handleRenew = (sub: Subscription) => {
+    setFormInitialData({
+        customerId: sub.customerId,
+        childName: sub.childName,
+        planId: sub.planId,
+    });
+    setFormOpen(true);
   };
 
   const filteredSubscriptions = useMemo(() => {
@@ -397,21 +447,38 @@ function SubscriptionsContent() {
               <TableCell className="text-center">{new Date(sub.endDate).toLocaleDateString('ar-EG')}</TableCell>
               <TableCell className="text-center font-medium">{`ج.م ${sub.price.toFixed(2)}`}</TableCell>
               <TableCell className="text-center">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                     <Button variant="ghost" size="icon" className="text-red-500"><Trash className="h-4 w-4" /></Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-                        <AlertDialogDescription>سيؤدي هذا إلى حذف سجل الاشتراك بشكل دائم. لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteSubscription(sub.id)}>متابعة الحذف</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleRenew(sub)}>
+                           <RotateCw className="me-2 h-4 w-4"/>
+                           تجديد الاشتراك
+                        </DropdownMenuItem>
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                                    <Trash className="me-2 h-4 w-4"/>
+                                    حذف
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                                <AlertDialogDescription>سيؤدي هذا إلى حذف سجل الاشتراك بشكل دائم. لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteSubscription(sub.id)}>متابعة الحذف</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}
@@ -425,7 +492,7 @@ function SubscriptionsContent() {
         <div className="md:hidden"><SidebarTrigger /></div>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الاشتراكات</h1>
         <div className="ms-auto flex items-center gap-2">
-          <Button size="sm" className="h-8 gap-1" onClick={() => setFormOpen(true)}>
+          <Button size="sm" className="h-8 gap-1" onClick={() => { setFormInitialData(undefined); setFormOpen(true);}}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">إضافة اشتراك</span>
           </Button>
@@ -471,7 +538,7 @@ function SubscriptionsContent() {
           </Table>
         </CardContent>
       </Card>
-      <SubscriptionFormDialog open={isFormOpen} onOpenChange={setFormOpen} />
+      <SubscriptionFormDialog open={isFormOpen} onOpenChange={setFormOpen} initialData={formInitialData} />
     </div>
   );
 }
