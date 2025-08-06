@@ -614,6 +614,19 @@ function PosTrackingContent() {
         return;
     }
 
+    // Check if any of the selected children are already in an active session
+    const activeChildNames = activeChildren.flatMap(ac => ac.children.map(c => c.name));
+    const alreadyActiveChildren = children.filter(c => activeChildNames.includes(c.name));
+
+    if (alreadyActiveChildren.length > 0) {
+        toast({
+            title: 'طفل نشط بالفعل',
+            description: `الطفل "${alreadyActiveChildren[0].name}" موجود بالفعل في جلسة نشطة.`,
+            variant: 'destructive',
+        });
+        return;
+    }
+
     if (!user || !user.username) {
         toast({
             title: 'خطأ',
