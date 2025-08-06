@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/sidebar';
 import {
   Building2,
+  ChevronDown,
   Clock,
   Gamepad2,
   LayoutDashboard,
@@ -39,6 +40,8 @@ import {
   Layers,
   ShoppingBag,
   FileText,
+  PanelTopOpen,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -48,6 +51,12 @@ import { db } from '@/lib/firebase';
 import type { Employee, Policies } from '@/lib/types';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger as SheetTriggerComponent } from '@/components/ui/sheet';
 import { Button } from '../ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+
 
 const mainItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -92,6 +101,49 @@ type RolePermissions = Record<Role, Permissions>;
 const encodeKey = (key: string) => key.replace(/\//g, '__slash__');
 const decodeKey = (key: string) => key.replace(/__slash__/g, '/');
 
+
+function CollapsibleMenuGroup({
+    title,
+    icon: TitleIcon,
+    items,
+    renderMenuItems
+}: {
+    title: string;
+    icon: LucideIcon;
+    items: typeof allMenuItems;
+    renderMenuItems: (items: typeof allMenuItems) => React.ReactNode;
+}) {
+    const renderedItems = renderMenuItems(items);
+
+    if (!Array.isArray(renderedItems) || renderedItems.length === 0) {
+        return null;
+    }
+
+    return (
+        <Collapsible>
+            <CollapsibleTrigger asChild>
+                <button className="flex items-center justify-between w-full p-2 text-sm font-medium text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent">
+                   <div className='flex items-center gap-2'>
+                     <TitleIcon className="h-4 w-4" />
+                     <span className={cn(
+                        "duration-200",
+                        "group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8"
+                     )}>{title}</span>
+                   </div>
+                    <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180 group-data-[collapsible=icon]:hidden" />
+                </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+                 <SidebarMenu className="ms-4 mt-2 border-s border-sidebar-border">
+                    <div className='ps-4 space-y-1'>
+                        {renderedItems}
+                    </div>
+                 </SidebarMenu>
+            </CollapsibleContent>
+             <SidebarSeparator />
+        </Collapsible>
+    )
+}
 
 function SidebarItems() {
   const pathname = usePathname();
@@ -258,17 +310,14 @@ function SidebarItems() {
         <SidebarMenu>
             {renderMenuItems(mainItems)}
             <SidebarSeparator />
-            {renderMenuItems(managementItems)}
-            <SidebarSeparator />
-            {renderMenuItems(financialItems)}
-             <SidebarSeparator />
-            {renderMenuItems(customerItems)}
+            <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} />
+            <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} />
+            <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} />
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
           <SidebarMenu>
-             {renderMenuItems(settingsMenuItems).length > 0 && <SidebarSeparator />}
-             {renderMenuItems(settingsMenuItems)}
+             <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} />
              <SidebarSeparator />
              <SidebarMenuItem>
                 <SidebarMenuButton onClick={logout} tooltip={{children: 'تسجيل الخروج', side: 'left'}}>
