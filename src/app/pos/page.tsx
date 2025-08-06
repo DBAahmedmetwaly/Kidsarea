@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings } from '@/lib/types';
@@ -41,12 +41,13 @@ import { CustomerFormDialog } from '../customers/page';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { startOfDay } from 'date-fns';
+import { startOfDay, isToday } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { PosReceipt, type PosReceiptProps } from '@/components/Receipt';
 import { usePosPrint } from '@/hooks/use-pos-print';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StatCard } from '@/components/StatCard';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -537,6 +538,21 @@ function PosTrackingContent() {
         }).slice(0, 5); // Show last 5
   }, [completedSessions, selectedBranchFilter, user, openShifts]);
 
+    const dailyStats = useMemo(() => {
+        const activeCount = filteredActiveChildren.length;
+        
+        const todaysSessions = completedSessions.filter(s => {
+            const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
+            return branchMatch && isToday(new Date(s.checkOutTime));
+        });
+
+        const visitorsToday = todaysSessions.reduce((sum, s) => sum + (s.children?.length || 1), 0);
+        const sessionsToday = todaysSessions.length;
+
+        return { activeCount, visitorsToday, sessionsToday };
+
+    }, [filteredActiveChildren, completedSessions, selectedBranchFilter]);
+
   const openCheckInDialog = (game: Game) => {
     setSelectedGame(game);
     setCheckInDialogOpen(true);
@@ -566,14 +582,14 @@ function PosTrackingContent() {
         discount: receiptDetails.discount,
     };
     
-    let completedSession: Omit<CompletedSession, 'id'> = { ...baseSession };
+    let completedSession: Partial<CompletedSession> = { ...baseSession };
     if (activeSubs.length > 0) {
         completedSession.subscriptionId = activeSubs.map(s => s.id).join(',');
     }
 
     try {
         if (completedSession.subscriptionId === undefined) {
-            delete (completedSession as Partial<CompletedSession>).subscriptionId;
+            delete completedSession.subscriptionId;
         }
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
@@ -676,6 +692,27 @@ function PosTrackingContent() {
                 </AlertDescription>
             </Alert>
         )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 z-10">
+             <StatCard
+                title="الأطفال النشطون حاليًا"
+                value={`${dailyStats.activeCount}`}
+                icon={Users}
+                description={selectedBranchName === 'كل الفروع' ? `في كل الفروع` : `في ${selectedBranchName}`}
+            />
+            <StatCard
+                title="زوار اليوم"
+                value={`${dailyStats.visitorsToday}`}
+                icon={UserCheck}
+                description="إجمالي عدد الأطفال الذين خرجوا اليوم"
+            />
+             <StatCard
+                title="جلسات اليوم المنتهية"
+                value={`${dailyStats.sessionsToday}`}
+                icon={Clock}
+                description="إجمالي عدد الجلسات المنتهية اليوم"
+            />
+        </div>
       
         <div className="space-y-8 z-10">
             {/* Games Section */}
@@ -841,3 +878,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
