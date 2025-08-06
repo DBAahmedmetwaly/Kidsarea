@@ -571,6 +571,9 @@ function PosTrackingContent() {
     };
 
     try {
+        if (completedSession.subscriptionId === undefined) {
+            delete (completedSession as Partial<CompletedSession>).subscriptionId;
+        }
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
         
@@ -725,7 +728,7 @@ function PosTrackingContent() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="text-right">الطفل</TableHead>
-                                <TableHead className="text-right">اللعبة</TableHead>
+                                <TableHead className="text-right">ولي الأمر</TableHead>
                                 <TableHead className="text-center">الوقت</TableHead>
                                 <TableHead className="text-center">إجراء</TableHead>
                             </TableRow>
@@ -735,7 +738,7 @@ function PosTrackingContent() {
                             filteredActiveChildren.map((session) => (
                                 <TableRow key={session.id}>
                                 <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
-                                <TableCell className="text-right">{session.game}</TableCell>
+                                <TableCell className="text-right">{session.parentName}</TableCell>
                                 <TableCell className="text-center">
                                     <TimeCounter startTime={session.checkInTime} />
                                 </TableCell>

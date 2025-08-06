@@ -548,6 +548,9 @@ function TrackingContent() {
 
 
     try {
+        if (completedSession.subscriptionId === undefined) {
+            delete (completedSession as Partial<CompletedSession>).subscriptionId;
+        }
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
         
@@ -609,7 +612,7 @@ function TrackingContent() {
         />
         <StatCard
           title="إجمالي زوار اليوم"
-          value={totalVisitorsToday.toString()}
+          value={(totalVisitorsToday || 0).toString()}
           icon={Users}
           description={selectedBranchFilter === 'all' ? `في كل الفروع` : `في ${selectedBranchFilter}`}
         />
@@ -752,9 +755,9 @@ function TrackingContent() {
                 <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="text-right">اسم الطفل</TableHead>
+                        <TableHead className="text-right">الطفل</TableHead>
+                        <TableHead className="text-right">ولي الأمر</TableHead>
                         <TableHead className="text-right">اللعبة</TableHead>
-                        <TableHead className="text-right">الفرع</TableHead>
                         <TableHead className="text-center">مدة اللعب</TableHead>
                         <TableHead className="text-center">إجراء</TableHead>
                     </TableRow>
@@ -764,8 +767,8 @@ function TrackingContent() {
                     filteredActiveChildren.map((child) => (
                         <TableRow key={child.id}>
                         <TableCell className="font-medium text-right">{child.children.map(c => c.name).join(', ')}</TableCell>
+                        <TableCell className="text-right">{child.parentName}</TableCell>
                         <TableCell className="text-right">{child.game}</TableCell>
-                        <TableCell className="text-right">{child.branchName}</TableCell>
                         <TableCell className="text-center">
                             <TimeCounter startTime={child.checkInTime} />
                         </TableCell>
@@ -872,3 +875,4 @@ export default function TrackingPage() {
 }
 
     
+
