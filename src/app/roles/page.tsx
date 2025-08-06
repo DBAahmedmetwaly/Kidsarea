@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const ALL_SCREENS = [
   { href: '/', label: 'لوحة التحكم' },
+  { href: '/pos', label: 'نقاط البيع' },
   { href: '/tracking', label: 'تتبع الوقت' },
   { href: '/sessions', label: 'سجل الجلسات' },
   { href: '/shift-closing', label: 'إدارة الورديات' },
@@ -23,6 +24,7 @@ const ALL_SCREENS = [
   { href: '/branches', label: 'الفروع' },
   { href: '/employees', label: 'الموظفين' },
   { href: '/games', label: 'الألعاب' },
+  { href: '/game-categories', label: 'تصنيفات الألعاب' },
   { href: '/safes', label: 'الخزائن' },
   { href: '/roles', label: 'الصلاحيات' },
   { href: '/policies', label: 'السياسات' },
@@ -74,6 +76,7 @@ function RolesContent() {
         const defaultPermissions: RolePermissions = {
           'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {}),
           'كاشير': {
+             [encodeKey('/pos')]: true,
              [encodeKey('/tracking')]: true,
              [encodeKey('/sessions')]: true,
              [encodeKey('/shift-closing')]: true,
@@ -91,6 +94,7 @@ function RolesContent() {
             const decodedForState: RolePermissions = {
                  'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {}),
                  'كاشير': {
+                    '/pos': true,
                     '/tracking': true,
                     '/sessions': true,
                     '/shift-closing': true,

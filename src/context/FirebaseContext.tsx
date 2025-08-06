@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan } from '@/lib/types';
+import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -26,6 +26,7 @@ interface FirebaseContextType {
   transactions: SafeTransaction[];
   subscriptions: Subscription[];
   subscriptionPlans: SubscriptionPlan[];
+  gameCategories: GameCategory[];
   loading: boolean;
   error: Error | null;
 }
@@ -50,6 +51,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const [gameCategories, setGameCategories] = useState<GameCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const pathname = usePathname();
@@ -65,6 +67,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       { key: 'safeTransactions', setter: setTransactions, isArray: true },
       { key: 'subscriptions', setter: setSubscriptions, isArray: true },
       { key: 'subscriptionPlans', setter: setSubscriptionPlans, isArray: true },
+      { key: 'gameCategories', setter: setGameCategories, isArray: true },
     ];
 
     let isMounted = true;
@@ -112,7 +115,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, openShifts, transactions, subscriptions, subscriptionPlans, loading, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, loading, error }}>
       {children}
     </FirebaseContext.Provider>
   );

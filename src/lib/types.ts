@@ -28,6 +28,8 @@ export interface Game {
     branch: string;
     image: string;
     status: 'Available' | 'Maintenance';
+    categoryId: string;
+    categoryName: string;
 }
 
 export interface Employee {
@@ -144,4 +146,9 @@ export interface SubscriptionPlan {
     price: number;
     duration: number; // in days
     description?: string;
+}
+
+export interface GameCategory {
+    id: string;
+    name: string;
 }

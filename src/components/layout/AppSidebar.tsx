@@ -34,6 +34,8 @@ import {
   Menu,
   Star,
   Package,
+  Layers,
+  ShoppingBag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -46,6 +48,7 @@ import { Button } from '../ui/button';
 
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/pos', label: 'نقاط البيع', icon: ShoppingBag },
   { href: '/tracking', label: 'تتبع الوقت', icon: Clock },
   { href: '/sessions', label: 'سجل الجلسات', icon: History },
   { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
@@ -53,6 +56,7 @@ const allMenuItems = [
   { href: '/branches', label: 'الفروع', icon: Building2 },
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
+  { href: '/game-categories', label: 'تصنيفات الألعاب', icon: Layers },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
   { href: '/transactions', label: 'سجل الحركات', icon: List },
   { href: '/customers', label: 'العملاء', icon: Contact },
@@ -202,7 +206,7 @@ function SidebarItems() {
 
   const getHomeLink = () => {
     if (user && 'role' in user && user.role === 'كاشير') {
-      return '/tracking';
+      return '/pos';
     }
     return '/';
   }

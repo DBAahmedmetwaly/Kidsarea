@@ -82,7 +82,7 @@ function GameFormDialog({
     initialData: Game | null;
 }) {
     const { toast } = useToast();
-    const { branches, employees } = useFirebase();
+    const { branches, employees, gameCategories } = useFirebase();
     const { user } = useAuth();
     const currentUser = employees.find(e => e.username === user?.username);
 
@@ -90,6 +90,7 @@ function GameFormDialog({
     const [hourlyRate, setHourlyRate] = useState('');
     const [branch, setBranch] = useState('');
     const [status, setStatus] = useState<'Available' | 'Maintenance'>('Available');
+    const [categoryId, setCategoryId] = useState('');
     
     useEffect(() => {
         if (isEditMode && initialData) {
@@ -97,21 +98,22 @@ function GameFormDialog({
             setHourlyRate(String(initialData.hourly_rate));
             setBranch(initialData.branch);
             setStatus(initialData.status);
+            setCategoryId(initialData.categoryId || '');
         } else {
             setName('');
             setHourlyRate('');
-            // If user is not "all branches", set their branch by default
             if (currentUser && currentUser.branch !== 'كل الفروع') {
                 setBranch(currentUser.branch);
             } else {
                 setBranch('');
             }
             setStatus('Available');
+            setCategoryId('');
         }
     }, [initialData, isEditMode, open, currentUser]);
 
     const handleSubmit = () => {
-        if (!name || !hourlyRate || !branch || !status) {
+        if (!name || !hourlyRate || !branch || !status || !categoryId) {
             toast({
                 title: "خطأ في الإدخال",
                 description: "يرجى تعبئة جميع الحقول.",
@@ -120,12 +122,16 @@ function GameFormDialog({
             return;
         }
 
+        const category = gameCategories.find(c => c.id === categoryId);
+
         const gameData: Omit<Game, 'id'> | Game = {
             ...(isEditMode && initialData ? { id: initialData.id } : {}),
             name,
             hourly_rate: parseFloat(hourlyRate),
             branch,
             status,
+            categoryId,
+            categoryName: category?.name || '',
             image: initialData?.image || 'https://placehold.co/64x64.png',
         };
         onSubmit(gameData);
@@ -147,6 +153,21 @@ function GameFormDialog({
                             الاسم
                         </Label>
                         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="اسم اللعبة" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="category" className="text-right">
+                            التصنيف
+                        </Label>
+                        <Select value={categoryId} onValueChange={setCategoryId}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="اختر التصنيف" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {gameCategories.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="hourly_rate" className="text-right">
@@ -310,6 +331,7 @@ function GamesContent() {
                   <span className="sr-only">صورة اللعبة</span>
                 </TableHead>
                 <TableHead className="text-right">اسم اللعبة</TableHead>
+                <TableHead className="text-right">التصنيف</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
                 <TableHead className="hidden md:table-cell text-center">
                   السعر/ساعة
@@ -340,6 +362,7 @@ function GamesContent() {
                         {game.name}
                      </Link>
                   </TableCell>
+                  <TableCell className="text-right">{game.categoryName}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={game.status === 'Available' ? 'default' : 'destructive'} className={game.status === 'Available' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}>
                       {game.status === 'Available' ? 'متاح' : 'صيانة'}
