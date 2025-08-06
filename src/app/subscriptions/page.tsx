@@ -73,11 +73,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import type { Subscription, Customer, SubscriptionPlan } from '@/lib/types';
-import { Star, PlusCircle, Trash, ChevronsUpDown, Check, Filter, RotateCw, MoreHorizontal } from 'lucide-react';
+import { Star, PlusCircle, Trash, ChevronsUpDown, Check, Filter, RotateCw, MoreHorizontal, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePosPrint } from '@/hooks/use-pos-print';
 import { SubscriptionReceipt, SubscriptionReceiptProps } from '@/components/SubscriptionReceipt';
+import { SubscriptionCard, type SubscriptionCardProps } from '@/components/SubscriptionCard';
 
 const subscriptionSchema = z.object({
   customerId: z.string().min(1, 'يجب اختيار العميل'),
@@ -332,7 +333,7 @@ function SubscriptionFormDialog({
 }
 
 function SubscriptionsContent() {
-  const { subscriptions: firebaseSubscriptions } = useFirebase();
+  const { subscriptions: firebaseSubscriptions, policies } = useFirebase();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
@@ -340,6 +341,7 @@ function SubscriptionsContent() {
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'EndingSoon' | 'Expired'>('all');
   const { toast } = useToast();
+  const { printReceipt } = usePosPrint();
 
   useEffect(() => {
     // Sync and update subscription statuses
@@ -384,6 +386,17 @@ function SubscriptionsContent() {
     });
     setFormOpen(true);
   };
+  
+  const handlePrintCard = (sub: Subscription) => {
+      const cardDetails: SubscriptionCardProps = {
+        appName: policies?.appName || 'FunTrack',
+        customerName: sub.customerName,
+        childName: sub.childName,
+        planName: sub.planName,
+        endDate: new Date(sub.endDate),
+      };
+      printReceipt(<SubscriptionCard {...cardDetails} />);
+  }
 
   const filteredSubscriptions = useMemo(() => {
     const today = new Date();
@@ -455,6 +468,10 @@ function SubscriptionsContent() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handlePrintCard(sub)}>
+                           <Printer className="me-2 h-4 w-4"/>
+                           طباعة الكارت
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleRenew(sub)}>
                            <RotateCw className="me-2 h-4 w-4"/>
                            تجديد الاشتراك
