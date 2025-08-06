@@ -381,14 +381,14 @@ function TrackingContent() {
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
             return branchMatch && s.checkInTime >= todayStart;
         })
-        .reduce((sum, s) => sum + s.children.length, 0);
+        .reduce((sum, s) => sum + (s.children?.length || 0), 0);
 
     const todaysCompletedCount = completedSessions
         .filter(s => {
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
             return branchMatch && s.checkOutTime >= todayStart;
         })
-        .reduce((sum, s) => sum + s.children.length, 0);
+        .reduce((sum, s) => sum + (s.children?.length || 0), 0);
     
     // This isn't perfect as it double counts if a child checks in and out today
     // A more accurate way would be to count unique parent+child combinations
