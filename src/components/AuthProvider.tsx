@@ -59,7 +59,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(null);
             } finally {
                 // Add a small delay to let the splash screen be visible
-                setTimeout(() => setLoading(false), 1500);
+                setTimeout(() => setLoading(false), 2500);
             }
         };
         checkAuth();
@@ -72,7 +72,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             router.push('/login');
         } else if (isAuthenticated && pathname === '/login') {
             if (user && 'role' in user && user.role === 'كاشير') {
-                router.push('/tracking');
+                router.push('/pos');
             } else {
                 router.push('/');
             }

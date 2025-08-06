@@ -699,14 +699,7 @@ function PosTrackingContent() {
              </div>
         )}
 
-        <div className="flex flex-col gap-8">
-            {/* Background Image */}
-            <div 
-                className="absolute inset-0 bg-repeat bg-center opacity-5 pointer-events-none"
-                style={{backgroundImage: 'url(https://placehold.co/300x300.png)', backgroundSize: '300px'}}
-                data-ai-hint="game pattern"
-            ></div>
-
+        <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row items-center gap-4 z-10">
                 <div className="md:hidden">
                     <SidebarTrigger />
@@ -751,7 +744,7 @@ function PosTrackingContent() {
                 />
             </div>
           
-            <div className="space-y-8 z-10">
+            <div className="space-y-4 z-10">
                 {/* Games Section */}
                 <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
@@ -770,7 +763,7 @@ function PosTrackingContent() {
                         </TabsTrigger>
                     ))}
                     </TabsList>
-                     <Card className="min-h-[200px] mt-4">
+                     <Card className="min-h-[150px] mt-4">
                         <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
                             {gamesForSelectedCategory.map(game => (
                                 <button 
