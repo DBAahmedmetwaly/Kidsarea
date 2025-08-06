@@ -443,13 +443,13 @@ function SubscriptionsContent() {
         <TableBody>
           {filteredSubscriptions.map((sub) => (
             <TableRow key={sub.id}>
-              <TableCell>
+              <TableCell className="text-right">
                  <Link href={`/subscriptions/${sub.id}`} className="hover:underline text-primary">
                     <div>{sub.customerName}</div>
                     <div className='text-xs text-muted-foreground'>{sub.childName}</div>
                  </Link>
               </TableCell>
-              <TableCell>
+              <TableCell className="text-right">
                  <div>{sub.planName}</div>
                  <div className='text-xs text-muted-foreground truncate max-w-xs'>{sub.planDescription}</div>
               </TableCell>
@@ -542,8 +542,8 @@ function SubscriptionsContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>العميل والطفل</TableHead>
-                <TableHead>الباقة</TableHead>
+                <TableHead className="text-right">العميل والطفل</TableHead>
+                <TableHead className="text-right">الباقة</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
                 <TableHead className="text-center">تاريخ البدء</TableHead>
                 <TableHead className="text-center">تاريخ الانتهاء</TableHead>

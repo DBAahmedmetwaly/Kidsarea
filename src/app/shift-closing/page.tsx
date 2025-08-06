@@ -383,17 +383,17 @@ function ActiveShiftsTable() {
              <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>الموظف</TableHead>
-                        <TableHead>الفرع</TableHead>
-                        <TableHead>وقت البدء</TableHead>
+                        <TableHead className="text-right">الموظف</TableHead>
+                        <TableHead className="text-right">الفرع</TableHead>
+                        <TableHead className="text-right">وقت البدء</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {openShifts.map((record) => (
                         <TableRow key={record.id}>
-                            <TableCell>{record.cashierName}</TableCell>
-                            <TableCell>{record.branchName}</TableCell>
-                            <TableCell>{new Date(record.startTime).toLocaleString('ar-EG')}</TableCell>
+                            <TableCell className="text-right">{record.cashierName}</TableCell>
+                            <TableCell className="text-right">{record.branchName}</TableCell>
+                            <TableCell className="text-right">{new Date(record.startTime).toLocaleString('ar-EG')}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -495,7 +495,7 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[50px]">
+                                    <TableHead className="w-[50px] text-right">
                                          <Checkbox
                                             checked={selectedShiftIds.length > 0 && selectedShiftIds.length === closedShifts.length}
                                             onCheckedChange={(checked) => {
@@ -504,8 +504,8 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
                                             aria-label="تحديد الكل"
                                         />
                                     </TableHead>
-                                    <TableHead>الموظف</TableHead>
-                                    <TableHead>الفرع</TableHead>
+                                    <TableHead className="text-right">الموظف</TableHead>
+                                    <TableHead className="text-right">الفرع</TableHead>
                                     <TableHead className="text-right">المبلغ المستلم</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -521,8 +521,8 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
                                                 aria-label={`تحديد وردية ${shift.cashierName}`}
                                             />
                                         </TableCell>
-                                        <TableCell>{shift.cashierName}</TableCell>
-                                        <TableCell>{shift.branchName}</TableCell>
+                                        <TableCell className="text-right">{shift.cashierName}</TableCell>
+                                        <TableCell className="text-right">{shift.branchName}</TableCell>
                                         <TableCell className="text-right font-medium">{`ج.م ${shift.actualRevenue.toFixed(2)}`}</TableCell>
                                     </TableRow>
                                 )) : (
@@ -575,23 +575,23 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>التاريخ والوقت</TableHead>
-                            <TableHead>الموظف</TableHead>
-                            <TableHead>الفرع</TableHead>
-                            <TableHead>المبلغ المستلم</TableHead>
-                             <TableHead>الحالة</TableHead>
-                            <TableHead>الفرق</TableHead>
+                            <TableHead className="text-right">التاريخ والوقت</TableHead>
+                            <TableHead className="text-right">الموظف</TableHead>
+                            <TableHead className="text-right">الفرع</TableHead>
+                            <TableHead className="text-right">المبلغ المستلم</TableHead>
+                             <TableHead className="text-center">الحالة</TableHead>
+                            <TableHead className="text-right">الفرق</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {records.length > 0 ? (
                             records.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{new Date(record.date).toLocaleString('ar-EG')}</TableCell>
-                                    <TableCell>{record.cashierName}</TableCell>
-                                    <TableCell>{record.branchName}</TableCell>
-                                    <TableCell>{`ج.م ${record.actualRevenue.toFixed(2)}`}</TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-right">{new Date(record.date).toLocaleString('ar-EG')}</TableCell>
+                                    <TableCell className="text-right">{record.cashierName}</TableCell>
+                                    <TableCell className="text-right">{record.branchName}</TableCell>
+                                    <TableCell className="text-right">{`ج.م ${record.actualRevenue.toFixed(2)}`}</TableCell>
+                                    <TableCell className="text-center">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                             record.status === 'Settled' ? 'bg-green-100 text-green-800' :
                                             record.status === 'Closed' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
@@ -599,7 +599,7 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                                            {record.status === 'Settled' ? 'مرحّلة' : record.status === 'Closed' ? 'مغلقة' : 'مفتوحة'}
                                         </span>
                                     </TableCell>
-                                    <TableCell className={record.difference < 0 ? 'text-red-500' : 'text-green-500'}>
+                                    <TableCell className={`text-right ${record.difference < 0 ? 'text-red-500' : 'text-green-500'}`}>
                                         {`ج.م ${record.difference.toFixed(2)}`}
                                     </TableCell>
                                 </TableRow>

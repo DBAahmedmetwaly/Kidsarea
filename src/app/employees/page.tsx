@@ -306,16 +306,16 @@ function EmployeesContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="hidden w-[100px] sm:table-cell">
-                  <span className="sr-only">الصورة الرمزية</span>
+                <TableHead className="hidden w-[100px] sm:table-cell text-right">
+                  <span>الصورة</span>
                 </TableHead>
-                <TableHead>الاسم</TableHead>
-                <TableHead>الدور</TableHead>
-                <TableHead className="hidden md:table-cell">الفرع</TableHead>
-                <TableHead className="hidden md:table-cell">الحالة</TableHead>
-                <TableHead className="hidden md:table-cell">اسم المستخدم</TableHead>
-                <TableHead>
-                  <span className="sr-only">الإجراءات</span>
+                <TableHead className="text-right">الاسم</TableHead>
+                <TableHead className="text-right">الدور</TableHead>
+                <TableHead className="hidden md:table-cell text-right">الفرع</TableHead>
+                <TableHead className="hidden md:table-cell text-center">الحالة</TableHead>
+                <TableHead className="hidden md:table-cell text-right">اسم المستخدم</TableHead>
+                <TableHead className="text-center">
+                  <span>الإجراءات</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -328,22 +328,22 @@ function EmployeesContent() {
                         <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium text-right">
                     {employee.name}
                   </TableCell>
-                  <TableCell>{employee.role}</TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="text-right">{employee.role}</TableCell>
+                  <TableCell className="hidden md:table-cell text-right">
                     {employee.branch}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-center">
                     <Badge variant={employee.status === 'Active' ? 'default' : 'secondary'} className={employee.status === 'Active' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}>
                       {employee.status === 'Active' ? 'نشط' : 'في إجازة'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-right">
                     {employee.username || 'N/A'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button

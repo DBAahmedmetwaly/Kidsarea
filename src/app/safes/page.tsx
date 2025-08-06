@@ -202,27 +202,27 @@ function SafesContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>اسم الخزينة</TableHead>
-                <TableHead>الفرع</TableHead>
-                <TableHead>الرصيد الحالي</TableHead>
-                <TableHead>
-                  <span className="sr-only">الإجراءات</span>
+                <TableHead className="text-right">اسم الخزينة</TableHead>
+                <TableHead className="text-right">الفرع</TableHead>
+                <TableHead className="text-right">الرصيد الحالي</TableHead>
+                <TableHead className="text-center">
+                  <span>الإجراءات</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {safes.map((safe) => (
                 <TableRow key={safe.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium text-right">
                      <Link href={`/safes/${safe.id}`} className="hover:underline text-primary">
                         {safe.name}
                      </Link>
                   </TableCell>
-                   <TableCell>{safe.branchName}</TableCell>
-                  <TableCell className="font-bold text-green-600">
+                   <TableCell className="text-right">{safe.branchName}</TableCell>
+                  <TableCell className="font-bold text-green-600 text-right">
                     {`ج.م ${safe.balance.toFixed(2)}`}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button

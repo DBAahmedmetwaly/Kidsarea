@@ -327,8 +327,8 @@ function GamesContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="hidden w-[100px] sm:table-cell">
-                  <span className="sr-only">صورة اللعبة</span>
+                <TableHead className="hidden w-[100px] sm:table-cell text-right">
+                  <span>صورة اللعبة</span>
                 </TableHead>
                 <TableHead className="text-right">اسم اللعبة</TableHead>
                 <TableHead className="text-right">التصنيف</TableHead>
@@ -347,7 +347,7 @@ function GamesContent() {
             <TableBody>
               {games.map((game) => (
                 <TableRow key={game.id}>
-                  <TableCell className="hidden sm:table-cell">
+                  <TableCell className="hidden sm:table-cell text-right">
                      <Image
                       alt="صورة اللعبة"
                       className="aspect-square rounded-md object-cover"

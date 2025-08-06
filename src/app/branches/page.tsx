@@ -210,35 +210,35 @@ function BranchesContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>اسم الفرع</TableHead>
-                <TableHead>الحالة</TableHead>
-                <TableHead className="hidden md:table-cell">
+                <TableHead className="text-right">اسم الفرع</TableHead>
+                <TableHead className="text-center">الحالة</TableHead>
+                <TableHead className="hidden md:table-cell text-center">
                   عدد الموظفين
                 </TableHead>
-                <TableHead className="hidden md:table-cell">
+                <TableHead className="hidden md:table-cell text-right">
                   المدير المسؤول
                 </TableHead>
-                <TableHead>
-                  <span className="sr-only">الإجراءات</span>
+                <TableHead className="text-center">
+                  <span>الإجراءات</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {branches.map((branch) => (
                 <TableRow key={branch.id}>
-                  <TableCell className="font-medium">{branch.name}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium text-right">{branch.name}</TableCell>
+                  <TableCell className="text-center">
                     <Badge variant={branch.status === 'Active' ? 'default' : 'secondary'} className={branch.status === 'Active' ? 'bg-green-500 text-white' : ''}>
                       {branch.status === 'Active' ? 'نشط' : 'غير نشط'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-center">
                     {getEmployeeCountForBranch(branch.name)}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-right">
                     {branch.manager}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
