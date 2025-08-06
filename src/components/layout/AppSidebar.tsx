@@ -93,7 +93,12 @@ function SidebarItems() {
         }
     });
 
-    if (!user || !('role' in user)) {
+    if (!user) {
+        return () => unsubPolicies();
+    }
+    
+    // Handle admin user
+    if (user.username === 'admin') {
       const allPermissions: Permissions = [...allMenuItems, ...settingsMenuItems].reduce((acc, item) => {
         acc[item.href] = true;
         return acc;
@@ -107,6 +112,7 @@ function SidebarItems() {
       return () => unsubPolicies();
     }
 
+    // Handle employee users
     const rolesRef = ref(db, 'roles');
     const unsubRoles = onValue(rolesRef, (snapshot) => {
         const data = snapshot.val();
