@@ -28,7 +28,7 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
   const receiptId = `SUB-${new Date().getTime().toString().slice(-6)}`;
 
   return (
-    <div ref={ref} className="bg-white p-2 text-black font-sans" style={{ width: '80mm', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white p-2 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
       <div className="text-center mb-4">
         <div className="flex justify-center items-center gap-2">
             <Gamepad2 className="w-10 h-10" />
@@ -37,7 +37,7 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
         <p className="text-sm">إيصال اشتراك</p>
       </div>
 
-      <div className="space-y-3 text-sm">
+      <div className="space-y-3 text-sm text-center">
         <div className="flex justify-between items-center">
           <span className="font-bold">{customerName}</span>
           <span className="flex items-center gap-2"><User size={16} /> ولي الأمر</span>
@@ -52,11 +52,11 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
           <span className="flex items-center gap-2"><Star size={16} /> الباقة</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-bold text-left">{startDate.toLocaleDateString('ar-EG')}</span>
+          <span className="font-bold">{startDate.toLocaleDateString('ar-EG')}</span>
           <span className="flex items-center gap-2"><Calendar size={16} /> تاريخ البدء</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-bold text-left">{endDate.toLocaleDateString('ar-EG')}</span>
+          <span className="font-bold">{endDate.toLocaleDateString('ar-EG')}</span>
           <span className="flex items-center gap-2"><Calendar size={16} /> تاريخ الانتهاء</span>
         </div>
         <hr className="border-dashed border-gray-400 my-2" />
@@ -76,3 +76,5 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
 });
 
 SubscriptionReceipt.displayName = 'SubscriptionReceipt';
+
+    

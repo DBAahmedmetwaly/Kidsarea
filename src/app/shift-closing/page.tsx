@@ -77,11 +77,11 @@ function ShiftClosingForm() {
 
   const selectedCashierUsername = form.watch('cashierUsername');
   
-  const expectedRevenue = useMemo(() => {
-    if (!selectedCashierUsername) return 0;
+  const {sessionsRevenue, subscriptionsRevenue, expectedRevenue} = useMemo(() => {
+    if (!selectedCashierUsername) return { sessionsRevenue: 0, subscriptionsRevenue: 0, expectedRevenue: 0 };
     
     const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
-    if (!openShift) return 0;
+    if (!openShift) return { sessionsRevenue: 0, subscriptionsRevenue: 0, expectedRevenue: 0 };
     
     const shiftStartTime = new Date(openShift.startTime).getTime();
     
@@ -93,7 +93,7 @@ function ShiftClosingForm() {
       .filter(sub => sub.cashierUsername === selectedCashierUsername && new Date(sub.createdAt).getTime() >= shiftStartTime)
       .reduce((total, sub) => total + sub.price, 0);
 
-    return sessionsRevenue + subscriptionsRevenue;
+    return { sessionsRevenue, subscriptionsRevenue, expectedRevenue: sessionsRevenue + subscriptionsRevenue };
   }, [selectedCashierUsername, openShifts, completedSessions, subscriptions]);
 
   useEffect(() => {
@@ -201,31 +201,35 @@ function ShiftClosingForm() {
                         />
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormItem>
-                        <FormLabel>الإيرادات المتوقعة (ج.م)</FormLabel>
-                        <FormControl>
-                            <Input type="number" value={expectedRevenue.toFixed(2)} readOnly className="font-bold text-green-600" />
-                        </FormControl>
-                         <FormDescription>
-                           يشمل إيرادات الجلسات والاشتراكات.
-                        </FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                    <FormField
-                    control={form.control}
-                    name="actualRevenue"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>النقدية المستلمة (ج.م)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="0" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                <div className="space-y-4 rounded-lg border p-4">
+                    <h3 className="text-md font-medium text-center mb-4">ملخص الإيرادات</h3>
+                     <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">إيرادات الجلسات</span>
+                        <span className="font-mono font-semibold">{`ج.م ${sessionsRevenue.toFixed(2)}`}</span>
+                    </div>
+                     <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">إيرادات الاشتراكات</span>
+                        <span className="font-mono font-semibold">{`ج.م ${subscriptionsRevenue.toFixed(2)}`}</span>
+                    </div>
+                     <div className="flex justify-between items-center text-md font-bold pt-2 border-t">
+                        <span className="text-primary">الإجمالي المتوقع</span>
+                        <span className="font-mono text-primary">{`ج.م ${expectedRevenue.toFixed(2)}`}</span>
+                    </div>
                 </div>
+
+                <FormField
+                control={form.control}
+                name="actualRevenue"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>النقدية الفعلية بالدرج (ج.م)</FormLabel>
+                    <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
                 
                 <FormField
                     control={form.control}
@@ -673,3 +677,6 @@ export default function ShiftManagementPage() {
     );
 }
 
+
+
+    

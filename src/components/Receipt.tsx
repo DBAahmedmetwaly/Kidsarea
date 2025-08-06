@@ -36,7 +36,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   const receiptId = `R-${checkOutTime.getTime().toString().slice(-6)}`;
 
   return (
-    <div ref={ref} className="bg-white p-2 text-black font-sans" style={{ width: '80mm', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white p-2 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
       <div className="text-center mb-4">
         <div className="flex justify-center items-center gap-2">
             <Gamepad2 className="w-10 h-10" />
@@ -45,7 +45,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         <p className="text-sm">شكراً لزيارتكم!</p>
       </div>
 
-      <div className="space-y-3 text-sm">
+      <div className="space-y-3 text-sm text-center">
         <div className="flex justify-between items-center">
           <span className="font-bold">{childName}</span>
           <span className="flex items-center gap-2"><Smile size={16} /> اسم الطفل</span>
@@ -60,11 +60,11 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
           <span className="flex items-center gap-2"><Gamepad2 size={16} /> اللعبة</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-bold text-left">{checkInTime.toLocaleTimeString('ar-EG')}</span>
+          <span className="font-bold">{checkInTime.toLocaleTimeString('ar-EG')}</span>
            <span className="flex items-center gap-2"><Calendar size={16} /> دخول</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-bold text-left">{checkOutTime.toLocaleTimeString('ar-EG')}</span>
+          <span className="font-bold">{checkOutTime.toLocaleTimeString('ar-EG')}</span>
           <span className="flex items-center gap-2"><Calendar size={16} /> خروج</span>
         </div>
          <div className="flex justify-between items-center">
@@ -109,3 +109,5 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
 });
 
 PosReceipt.displayName = 'PosReceipt';
+
+    
