@@ -132,28 +132,24 @@ function DataManagementContent() {
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
     try {
+      // This will delete only transactional data, keeping setup data like employees, branches, games.
       const dataPathsToDelete = [
-        'branches', 
         'customers',
-        'games',
-        'gameCategories',
         'openShifts', 
-        'policies', 
-        'receiptSettings',
-        'roles', 
         'safes', 
         'safeTransactions', 
         'sessions', 
         'shiftRecords',
         'subscriptions',
         'subscriptionPlans',
+        // We keep 'employees', 'branches', 'games', 'gameCategories', 'policies', 'roles', 'receiptSettings'
       ];
       const promises = dataPathsToDelete.map(path => remove(ref(db, path)));
       await Promise.all(promises);
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف جميع بيانات المعاملات من قاعدة البيانات بنجاح.',
+        description: 'تم حذف جميع بيانات المعاملات (العملاء, الجلسات, الورديات, الحركات المالية, الاشتراكات) من قاعدة البيانات بنجاح.',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -258,7 +254,7 @@ function DataManagementContent() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>حذف جميع بيانات المعاملات</AlertTitle>
                     <AlertDescription>
-                        سيؤدي هذا الإجراء إلى حذف جميع بيانات المعاملات في قاعدة البيانات بشكل نهائي، بما في ذلك الفروع والجلسات والسجلات المالية. سيتم الاحتفاظ ببيانات الموظفين والألعاب.
+                        سيؤدي هذا الإجراء إلى حذف جميع بيانات المعاملات في قاعدة البيانات بشكل نهائي. سيتم الاحتفاظ ببيانات الإعداد الأساسية (الموظفين، الفروع، الألعاب، السياسات، إلخ).
                     </AlertDescription>
                 </Alert>
               <AlertDialog>

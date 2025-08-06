@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings } from '@/lib/types';
+import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings, Child, CompletedSession } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -29,6 +29,8 @@ interface FirebaseContextType {
   subscriptions: Subscription[];
   subscriptionPlans: SubscriptionPlan[];
   gameCategories: GameCategory[];
+  activeChildren: Child[];
+  completedSessions: CompletedSession[];
   loading: boolean;
   error: Error | null;
 }
@@ -55,6 +57,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [gameCategories, setGameCategories] = useState<GameCategory[]>([]);
+  const [activeChildren, setActiveChildren] = useState<Child[]>([]);
+  const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const pathname = usePathname();
@@ -72,6 +76,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       { key: 'subscriptions', setter: setSubscriptions, isArray: true },
       { key: 'subscriptionPlans', setter: setSubscriptionPlans, isArray: true },
       { key: 'gameCategories', setter: setGameCategories, isArray: true },
+      { key: 'sessions/active', setter: setActiveChildren, isArray: true },
+      { key: 'sessions/completed', setter: setCompletedSessions, isArray: true, sort: (a: any, b: any) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime() },
     ];
 
     let isMounted = true;
@@ -85,18 +91,22 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const createUnsubscribe = (dbRefKey: string, setter: Dispatch<SetStateAction<any>>, isArray: boolean) => {
+    const createUnsubscribe = (dbRefKey: string, setter: Dispatch<SetStateAction<any>>, isArray: boolean, sortFunc?: (a: any, b: any) => number) => {
       const dbRef = ref(db, dbRefKey);
       return onValue(
         dbRef,
         (snapshot) => {
           const data = snapshot.val();
-          let processedData = isArray ? [] : null;
-          if (data) {
-            processedData = isArray
-              ? Object.entries(data).map(([id, value]) => ({ id, ...(value as object) }))
-              : data;
-          }
+          let processedData: any;
+           if (isArray) {
+                processedData = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as object) })) : [];
+                if (sortFunc) {
+                    processedData.sort(sortFunc);
+                }
+            } else {
+                processedData = data || null;
+            }
+
           if (isMounted) setter(processedData);
           handleLoad();
         },
@@ -108,8 +118,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       );
     };
 
-    const unsubscribes = dataRefs.map(({ key, setter, isArray }) =>
-      createUnsubscribe(key, setter, isArray)
+    const unsubscribes = dataRefs.map(({ key, setter, isArray, sort }) =>
+      createUnsubscribe(key, setter, isArray, sort)
     );
 
     return () => {
@@ -119,7 +129,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, receiptSettings, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, loading, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, receiptSettings, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, activeChildren, completedSessions, loading, error }}>
       {children}
     </FirebaseContext.Provider>
   );

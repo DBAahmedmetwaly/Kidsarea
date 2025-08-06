@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push } from 'firebase/database';
@@ -42,6 +42,9 @@ import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { startOfDay } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { PosReceipt, type PosReceiptProps } from '@/components/Receipt';
+import { usePosPrint } from '@/hooks/use-pos-print';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -74,6 +77,231 @@ const TimeCounter = ({ startTime }: { startTime: number }) => {
     </span>
   );
 };
+
+function formatDuration(durationMs: number) {
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    return `${hours} ساعة و ${minutes} دقيقة`;
+}
+
+function calculateCost(durationMs: number, hourlyRate: number, policies: Policies | null, numberOfChildren: number) {
+    const durationHours = durationMs / (1000 * 60 * 60);
+    let roundedHours = durationHours;
+
+    if (policies?.roundingPolicy && policies.roundingPolicy !== 'none') {
+        const minutes = durationHours * 60;
+        switch(policies.roundingPolicy) {
+            case 'quarter-hour':
+                roundedHours = Math.ceil(minutes / 15) * 15 / 60;
+                break;
+            case 'half-hour':
+                roundedHours = Math.ceil(minutes / 30) * 30 / 60;
+                break;
+            case 'hour':
+                roundedHours = Math.ceil(minutes / 60);
+                break;
+        }
+    }
+    
+    // Cost is per child
+    const durationCost = (roundedHours * hourlyRate) * numberOfChildren;
+
+    const entryFee = (policies?.entryFee || 0) * numberOfChildren;
+    const totalCost = durationCost + entryFee;
+
+    return { totalCost, durationCost, entryFee };
+}
+
+function getDayOfWeek(date: Date): DayOfWeek {
+    const dayIndex = date.getDay(); // Sunday = 0, Monday = 1, etc.
+    const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[dayIndex];
+}
+
+function CheckOutDialog({
+  open,
+  onOpenChange,
+  child,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  child: Child | null;
+  onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
+}) {
+  const { games, policies, employees, receiptSettings, subscriptions } = useFirebase();
+  const [amountReceived, setAmountReceived] = useState('');
+  const [discount, setDiscount] = useState('');
+  const [activeSubscriptions, setActiveSubscriptions] = useState<Subscription[]>([]);
+  const { user } = useAuth();
+  const { printReceipt } = usePosPrint();
+  
+
+  const checkoutData = useMemo(() => {
+    if (!child) return null;
+
+    const durationMs = Date.now() - child.checkInTime;
+
+    const gameDetails = games.find((g) => g.name === child.game);
+    let hourlyRate = gameDetails?.hourly_rate || 0;
+
+    if (policies?.enableWeekendPricing) {
+        const today = getDayOfWeek(new Date());
+        if (policies.weekendDays[today]) {
+            const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+            if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
+        } else {
+             const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+             if(weekdayPolicy) hourlyRate = weekdayPolicy.weekdayRate;
+        }
+    }
+    
+    const nonSubscribedChildrenCount = child.children.filter(c => 
+        !activeSubscriptions.some(s => s.childName === c.name)
+    ).length;
+
+    const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies, nonSubscribedChildrenCount);
+    
+    const discountAmount = parseFloat(discount) || 0;
+    const finalCost = totalCost - discountAmount > 0 ? totalCost - discountAmount : 0;
+
+    return {
+        duration: formatDuration(durationMs),
+        totalCost: finalCost,
+        durationCost,
+        entryFee,
+        discount: discountAmount,
+    }
+
+  }, [child, games, policies, discount, activeSubscriptions]);
+
+  // Check for subscription when dialog opens
+  useEffect(() => {
+    if (child) {
+        const now = new Date();
+        const foundSubscriptions = subscriptions.filter(sub => 
+            sub.customerName === child.parentName &&
+            child.children.some(c => c.name === sub.childName) &&
+            sub.status === 'Active' &&
+            now >= new Date(sub.startDate) &&
+            now <= new Date(sub.endDate)
+        );
+        setActiveSubscriptions(foundSubscriptions);
+    } else {
+        setActiveSubscriptions([]);
+    }
+  }, [child, subscriptions]);
+
+
+  useEffect(() => {
+    // Reset amount received when a new child is selected for checkout
+    setAmountReceived('');
+    setDiscount('');
+  }, [child]);
+
+  const handleConfirm = () => {
+    if(!child || !checkoutData) return;
+    
+    const cashier = employees.find(e => e.username === user?.username);
+    const cashierName = user?.username === 'admin' 
+        ? 'Admin' 
+        : cashier?.name || user?.username || 'N/A';
+        
+    const finalCost = checkoutData.totalCost;
+    const isFullySubscribed = child.children.every(c => activeSubscriptions.some(s => s.childName === c.name));
+    
+    const receiptDetails: PosReceiptProps = {
+        settings: receiptSettings,
+        appName: policies?.appName || 'FunTrack',
+        children: child.children,
+        parentName: child.parentName,
+        gameName: child.game,
+        checkInTime: new Date(child.checkInTime),
+        checkOutTime: new Date(),
+        duration: checkoutData.duration,
+        totalCost: finalCost,
+        durationCost: checkoutData.durationCost,
+        entryFee: checkoutData.entryFee,
+        discount: checkoutData.discount,
+        cashierName: cashierName,
+        isSubscription: isFullySubscribed,
+    };
+    
+    printReceipt(<PosReceipt {...receiptDetails} />);
+    onConfirm(child, receiptDetails);
+  }
+
+  if (!child || !checkoutData) return null;
+
+
+  const change = Number(amountReceived) - checkoutData.totalCost;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>تسوية حساب: {child.children.map(c=>c.name).join(', ')}</DialogTitle>
+          <DialogDescription>
+            مدة اللعب: {checkoutData.duration}. قم بتأكيد المبلغ المستلم لإتمام العملية.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+            {activeSubscriptions.length > 0 && (
+                <Alert className="bg-green-50 border-green-200">
+                    <Star className="h-4 w-4 text-green-600" />
+                    <AlertTitle className="text-green-800">لديهم اشتراك فعال</AlertTitle>
+                    <AlertDescription className="text-green-700">
+                       الأطفال: {activeSubscriptions.map(s => s.childName).join(', ')}. سيتم خصم تكلفتهم من الإجمالي.
+                    </AlertDescription>
+                </Alert>
+            )}
+            
+            <div className="flex justify-between items-center text-lg p-3 bg-muted rounded-md">
+                <span className="font-medium">التكلفة الإجمالية:</span>
+                <span className="font-bold text-primary">{`ج.م ${checkoutData.totalCost.toFixed(2)}`}</span>
+            </div>
+                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="discount">الخصم (ج.م)</Label>
+                    <Input
+                    id="discount"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                    placeholder="أدخل الخصم"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="amount-received">المبلغ المستلم</Label>
+                    <Input
+                    id="amount-received"
+                    type="number"
+                    value={amountReceived}
+                    onChange={(e) => setAmountReceived(e.target.value)}
+                    placeholder="أدخل المبلغ المستلم"
+                    />
+                </div>
+            </div>
+            {amountReceived && (
+                <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className="font-medium">الباقي:</span>
+                    <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
+                </div>
+            )}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">إلغاء</Button>
+          </DialogClose>
+            <Button onClick={handleConfirm} disabled={!amountReceived && checkoutData.totalCost > 0}>
+                حفظ و طباعة
+            </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 
 function CheckInDialog({
@@ -239,7 +467,7 @@ function CheckInDialog({
 
 
 function PosTrackingContent() {
-  const { activeChildren, completedSessions } = useSession();
+  const { activeChildren, completedSessions, subscriptions } = useFirebase();
   const { games, policies, openShifts, employees, branches, gameCategories } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -249,6 +477,9 @@ function PosTrackingContent() {
   
   const [isCheckInDialogOpen, setCheckInDialogOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  
+  const [isCheckoutDialogOpen, setCheckoutDialogOpen] = useState(false);
+  const [childToCheckout, setChildToCheckout] = useState<Child | null>(null);
 
   const currentUser = useMemo(() => {
     if (!user) return null;
@@ -306,6 +537,43 @@ function PosTrackingContent() {
     setSelectedGame(game);
     setCheckInDialogOpen(true);
   }
+  
+  const openCheckOutDialog = (child: Child) => {
+    setChildToCheckout(child);
+    setCheckoutDialogOpen(true);
+  }
+  
+  const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
+    setCheckoutDialogOpen(false);
+    
+    const activeSubs = subscriptions.filter(sub => 
+        sub.customerName === child.parentName &&
+        child.children.some(c => c.name === sub.childName) &&
+        sub.status === 'Active'
+    );
+
+    const completedSession: Omit<CompletedSession, 'id'> = {
+        ...child,
+        checkOutTime: receiptDetails.checkOutTime.getTime(),
+        durationMs: receiptDetails.checkOutTime.getTime() - child.checkInTime,
+        cost: receiptDetails.totalCost,
+        durationCost: receiptDetails.durationCost,
+        entryFee: receiptDetails.entryFee,
+        discount: receiptDetails.discount,
+        subscriptionId: activeSubs.length > 0 ? activeSubs.map(s => s.id).join(',') : undefined,
+    };
+
+    try {
+        await set(ref(db, `sessions/completed/${child.id}`), completedSession);
+        await set(ref(db, `sessions/active/${child.id}`), null);
+        
+    } catch(err) {
+        console.error(err);
+        toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
+    }
+
+  };
+
 
   const handleCheckIn = async (data: { customer: Customer, children: CustomerChild[], game: Game, branch: string }) => {
     const { customer, children, game, branch } = data;
@@ -452,6 +720,7 @@ function PosTrackingContent() {
                                 <TableHead className="text-right">الطفل</TableHead>
                                 <TableHead className="text-right">اللعبة</TableHead>
                                 <TableHead className="text-center">الوقت</TableHead>
+                                <TableHead className="text-center">إجراء</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -463,11 +732,22 @@ function PosTrackingContent() {
                                 <TableCell className="text-center">
                                     <TimeCounter startTime={session.checkInTime} />
                                 </TableCell>
+                                <TableCell className="text-center">
+                                    <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => openCheckOutDialog(session)}
+                                    disabled={!hasActiveShift}
+                                    >
+                                    <Square className="me-2 h-4 w-4" />
+                                    خروج
+                                    </Button>
+                                </TableCell>
                                 </TableRow>
                             ))
                             ) : (
                             <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center">
+                                <TableCell colSpan={4} className="h-24 text-center">
                                 لا يوجد أطفال نشطون حاليًا.
                                 </TableCell>
                             </TableRow>
@@ -519,6 +799,12 @@ function PosTrackingContent() {
         onOpenChange={setCheckInDialogOpen}
         selectedGame={selectedGame}
         onConfirm={handleCheckIn}
+      />
+      <CheckOutDialog 
+        open={isCheckoutDialogOpen}
+        onOpenChange={setCheckoutDialogOpen}
+        child={childToCheckout}
+        onConfirm={handleCheckOut}
       />
     </div>
   );
