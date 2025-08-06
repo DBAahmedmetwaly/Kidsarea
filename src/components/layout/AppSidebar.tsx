@@ -41,6 +41,7 @@ import {
   ShoppingBag,
   FileText,
   PanelTopOpen,
+  Home,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -59,7 +60,7 @@ import {
 
 
 const mainItems = [
-  { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/pos', label: 'نقاط البيع', icon: ShoppingBag },
   { href: '/sessions', label: 'سجل الجلسات', icon: History },
 ];
@@ -170,7 +171,7 @@ function SidebarItems() {
     
     // Handle admin user
     if (user.username === 'admin') {
-      const allPermissions: Permissions = [...allMenuItems].reduce((acc, item) => {
+      const allPermissions: Permissions = [...allMenuItems, { href: '/', label: 'الرئيسية', icon: Home }].reduce((acc, item) => {
         acc[item.href] = true;
         return acc;
       }, {} as Permissions);
@@ -265,9 +266,6 @@ function SidebarItems() {
   }
 
   const getHomeLink = () => {
-    if (user && 'role' in user && user.role === 'كاشير') {
-      return '/pos';
-    }
     return '/';
   }
 
@@ -308,6 +306,11 @@ function SidebarItems() {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
+            <SidebarMenuItem onClick={handleLinkClick}>
+                <SidebarMenuButton asChild isActive={isActive('/')} tooltip={{children: 'الرئيسية', side: 'left'}}>
+                    <Link href={'/'}><Home/><span>الرئيسية</span></Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
             {renderMenuItems(mainItems)}
             <SidebarSeparator />
             <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} />
@@ -353,3 +356,5 @@ export default function AppSidebar() {
         </Sheet>
   );
 }
+
+    

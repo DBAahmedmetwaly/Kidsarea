@@ -15,8 +15,10 @@ export default function SplashScreen() {
                 <Gamepad2 className="h-24 w-24 text-primary mx-auto animate-bounce" />
                 <p className="mt-8 text-lg text-muted-foreground">مرحباً بكم في</p>
                 <h1 className="mt-2 text-4xl font-bold">{appName}</h1>
-                 <p className="mt-8 text-sm text-muted-foreground animate-pulse">{loading ? 'جاري التحميل...' : 'جاهز للإنطلاق!'}</p>
+                 <p className="mt-8 text-sm text-muted-foreground animate-pulse">{loading ? 'جاري تحميل البيانات...' : 'جاهز للإنطلاق!'}</p>
             </div>
         </div>
     );
 }
+
+    

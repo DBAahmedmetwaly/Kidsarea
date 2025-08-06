@@ -71,11 +71,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
        if (!isAuthenticated && pathname !== '/login') {
             router.push('/login');
         } else if (isAuthenticated && pathname === '/login') {
-            if (user && 'role' in user && user.role === 'كاشير') {
-                router.push('/pos');
-            } else {
-                router.push('/');
-            }
+             router.push('/');
         }
     }
   }, [isAuthenticated, pathname, router, loading, user]);
@@ -95,7 +91,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  if (loading) {
+  if (loading && pathname !== '/') {
     // The FirebaseProvider is needed for the SplashScreen to get the app name
     return (
         <FirebaseProvider>
@@ -111,3 +107,5 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
+
+    
