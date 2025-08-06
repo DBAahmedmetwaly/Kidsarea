@@ -676,233 +676,233 @@ function PosTrackingContent() {
   
   const selectedBranchName = selectedBranchFilter === 'all' ? 'كل الفروع' : selectedBranchFilter;
 
-  if (!hasActiveShift) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-4 z-10">
-        <Alert variant="destructive" className="max-w-md">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
-            <AlertDescription>
-                لا يمكنك استخدام نقاط البيع لأنه لا توجد وردية مفتوحة لحسابك. يرجى الذهاب إلى شاشة إدارة الورديات لبدء وردية جديدة.
-            </AlertDescription>
-        </Alert>
-        <Link href="/shift-closing" className='mt-6'>
-            <Button>
-                <Briefcase className="me-2 h-4 w-4" />
-                الانتقال إلى إدارة الورديات
-            </Button>
-        </Link>
-      </div>
-    );
-  }
-
-
   return (
-    <div className="flex flex-col gap-8 relative overflow-hidden">
-        {/* Background Image */}
-        <div 
-            className="absolute inset-0 bg-repeat bg-center opacity-5 pointer-events-none"
-            style={{backgroundImage: 'url(https://placehold.co/300x300.png)', backgroundSize: '300px'}}
-            data-ai-hint="game pattern"
-        ></div>
+    <div className="relative h-full">
+        {/* Overlay for no active shift */}
+        {!hasActiveShift && (
+             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 z-50">
+                <Alert variant="destructive" className="max-w-md">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
+                    <AlertDescription>
+                        لا يمكنك استخدام نقاط البيع لأنه لا توجد وردية مفتوحة لحسابك. يرجى الذهاب إلى شاشة إدارة الورديات لبدء وردية جديدة.
+                    </AlertDescription>
+                </Alert>
+                <Link href="/shift-closing" className='mt-6'>
+                    <Button>
+                        <Briefcase className="me-2 h-4 w-4" />
+                        الانتقال إلى إدارة الورديات
+                    </Button>
+                </Link>
+             </div>
+        )}
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 z-10">
-            <div className="md:hidden">
-                <SidebarTrigger />
-            </div>
-            <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">نقاط البيع</h1>
-                <span className="text-lg text-muted-foreground font-semibold">({selectedBranchName})</span>
-            </div>
-            <div className="ms-auto w-full sm:w-auto">
-                <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
-                    <SelectTrigger className="w-full sm:w-[200px]">
-                        <SelectValue placeholder="اختر الفرع" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">كل الفروع</SelectItem>
-                        {branches.map(branch => (
-                            <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-        </div>
-      
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 z-10">
-             <StatCard
-                title="الأطفال النشطون حاليًا"
-                value={`${dailyStats.activeCount}`}
-                icon={Users}
-                description={selectedBranchName === 'كل الفروع' ? `في كل الفروع` : `في ${selectedBranchName}`}
-            />
-            <StatCard
-                title="زوار اليوم"
-                value={`${dailyStats.visitorsToday}`}
-                icon={UserCheck}
-                description="إجمالي عدد الأطفال الذين خرجوا اليوم"
-            />
-             <StatCard
-                title="جلسات اليوم المنتهية"
-                value={`${dailyStats.sessionsToday}`}
-                icon={Clock}
-                description="إجمالي عدد الجلسات المنتهية اليوم"
-            />
-        </div>
-      
-        <div className="space-y-8 z-10">
-            {/* Games Section */}
-            <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-                {gameCategories.map(category => (
-                    <TabsTrigger 
-                        key={category.id} 
-                        value={category.id} 
-                        className="transition-all"
-                        style={{
-                            backgroundColor: selectedCategory === category.id ? category.color : '',
-                            color: selectedCategory === category.id ? 'white' : '',
-                            borderColor: category.color
-                        }}
-                    >
-                        {category.name}
-                    </TabsTrigger>
-                ))}
-                </TabsList>
-                 <Card className="min-h-[200px] mt-4">
-                    <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
-                        {gamesForSelectedCategory.map(game => (
-                            <button 
-                                key={game.id} 
-                                onClick={() => openCheckInDialog(game)} 
-                                disabled={!hasActiveShift}
-                                className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                            >
-                                <p className="font-semibold text-sm">{game.name}</p>
-                                <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
-                            </button>
-                        ))}
-                        {gamesForSelectedCategory.length === 0 && (
-                            <div className="col-span-full text-center text-muted-foreground py-16">
-                                لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </Tabs>
+        <div className="flex flex-col gap-8">
+            {/* Background Image */}
+            <div 
+                className="absolute inset-0 bg-repeat bg-center opacity-5 pointer-events-none"
+                style={{backgroundImage: 'url(https://placehold.co/300x300.png)', backgroundSize: '300px'}}
+                data-ai-hint="game pattern"
+            ></div>
 
-            {/* Active Children Section */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>الأطفال النشطون حاليًا</CardTitle>
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="ابحث بالطفل أو ولي الأمر..."
-                            value={activeSearch}
-                            onChange={(e) => setActiveSearch(e.target.value)}
-                            className="w-full pl-8"
-                        />
-                    </div>
-                </CardHeader>
-                <CardContent className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-right">الطفل</TableHead>
-                                <TableHead className="text-right">ولي الأمر</TableHead>
-                                <TableHead className="text-right">اللعبة</TableHead>
-                                <TableHead className="text-center">الوقت</TableHead>
-                                <TableHead className="text-center">إجراء</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {searchedActiveChildren.length > 0 ? (
-                            searchedActiveChildren.map((session) => (
-                                <TableRow key={session.id}>
-                                <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
-                                <TableCell className="text-right">{session.parentName}</TableCell>
-                                <TableCell className="text-right">{session.game}</TableCell>
-                                <TableCell className="text-center">
-                                    <TimeCounter startTime={session.checkInTime} />
-                                </TableCell>
-                                <TableCell className="text-center">
-                                    <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => openCheckOutDialog(session)}
+            <div className="flex flex-col sm:flex-row items-center gap-4 z-10">
+                <div className="md:hidden">
+                    <SidebarTrigger />
+                </div>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold">نقاط البيع</h1>
+                    <span className="text-lg text-muted-foreground font-semibold">({selectedBranchName})</span>
+                </div>
+                <div className="ms-auto w-full sm:w-auto">
+                    <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
+                        <SelectTrigger className="w-full sm:w-[200px]">
+                            <SelectValue placeholder="اختر الفرع" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">كل الفروع</SelectItem>
+                            {branches.map(branch => (
+                                <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+          
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 z-10">
+                 <StatCard
+                    title="الأطفال النشطون حاليًا"
+                    value={`${dailyStats.activeCount}`}
+                    icon={Users}
+                    description={selectedBranchName === 'كل الفروع' ? `في كل الفروع` : `في ${selectedBranchName}`}
+                />
+                <StatCard
+                    title="زوار اليوم"
+                    value={`${dailyStats.visitorsToday}`}
+                    icon={UserCheck}
+                    description="إجمالي عدد الأطفال الذين خرجوا اليوم"
+                />
+                 <StatCard
+                    title="جلسات اليوم المنتهية"
+                    value={`${dailyStats.sessionsToday}`}
+                    icon={Clock}
+                    description="إجمالي عدد الجلسات المنتهية اليوم"
+                />
+            </div>
+          
+            <div className="space-y-8 z-10">
+                {/* Games Section */}
+                <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                    {gameCategories.map(category => (
+                        <TabsTrigger 
+                            key={category.id} 
+                            value={category.id} 
+                            className="transition-all"
+                            style={{
+                                backgroundColor: selectedCategory === category.id ? category.color : '',
+                                color: selectedCategory === category.id ? 'white' : '',
+                                borderColor: category.color
+                            }}
+                        >
+                            {category.name}
+                        </TabsTrigger>
+                    ))}
+                    </TabsList>
+                     <Card className="min-h-[200px] mt-4">
+                        <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
+                            {gamesForSelectedCategory.map(game => (
+                                <button 
+                                    key={game.id} 
+                                    onClick={() => openCheckInDialog(game)} 
                                     disabled={!hasActiveShift}
-                                    >
-                                    <Square className="me-2 h-4 w-4" />
-                                    خروج
-                                    </Button>
-                                </TableCell>
-                                </TableRow>
-                            ))
-                            ) : (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
-                                لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
-                                </TableCell>
-                            </TableRow>
+                                    className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                >
+                                    <p className="font-semibold text-sm">{game.name}</p>
+                                    <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
+                                </button>
+                            ))}
+                            {gamesForSelectedCategory.length === 0 && (
+                                <div className="col-span-full text-center text-muted-foreground py-16">
+                                    لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
+                                </div>
                             )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
+                </Tabs>
 
-             {/* Completed Sessions Section */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>أحدث الجلسات المنتهية (في ورديتك)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-right">الطفل</TableHead>
-                                <TableHead className="text-right">ولي الأمر</TableHead>
-                                <TableHead className="text-center">التكلفة</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {todaysCompletedSessions.length > 0 ? (
-                                todaysCompletedSessions.map((session) => (
+                {/* Active Children Section */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="ابحث بالطفل أو ولي الأمر..."
+                                value={activeSearch}
+                                onChange={(e) => setActiveSearch(e.target.value)}
+                                className="w-full pl-8"
+                            />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-right">الطفل</TableHead>
+                                    <TableHead className="text-right">ولي الأمر</TableHead>
+                                    <TableHead className="text-right">اللعبة</TableHead>
+                                    <TableHead className="text-center">الوقت</TableHead>
+                                    <TableHead className="text-center">إجراء</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {searchedActiveChildren.length > 0 ? (
+                                searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id}>
-                                        <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
-                                        <TableCell className="text-right">{session.parentName}</TableCell>
-                                        <TableCell className="font-bold text-center">
-                                            {session.subscriptionId ? (
-                                                <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
-                                            ) : `ج.م ${session.cost.toFixed(2)}`}
-                                        </TableCell>
+                                    <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
+                                    <TableCell className="text-right">{session.parentName}</TableCell>
+                                    <TableCell className="text-right">{session.game}</TableCell>
+                                    <TableCell className="text-center">
+                                        <TimeCounter startTime={session.checkInTime} />
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => openCheckOutDialog(session)}
+                                        disabled={!hasActiveShift}
+                                        >
+                                        <Square className="me-2 h-4 w-4" />
+                                        خروج
+                                        </Button>
+                                    </TableCell>
                                     </TableRow>
                                 ))
-                            ) : (
+                                ) : (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center">
-                                        لم تكتمل أي جلسات في ورديتك بعد.
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                    لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
                                     </TableCell>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+
+                 {/* Completed Sessions Section */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>أحدث الجلسات المنتهية (في ورديتك)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                         <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-right">الطفل</TableHead>
+                                    <TableHead className="text-right">ولي الأمر</TableHead>
+                                    <TableHead className="text-center">التكلفة</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {todaysCompletedSessions.length > 0 ? (
+                                    todaysCompletedSessions.map((session) => (
+                                        <TableRow key={session.id}>
+                                            <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
+                                            <TableCell className="text-right">{session.parentName}</TableCell>
+                                            <TableCell className="font-bold text-center">
+                                                {session.subscriptionId ? (
+                                                    <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
+                                                ) : `ج.م ${session.cost.toFixed(2)}`}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="h-24 text-center">
+                                            لم تكتمل أي جلسات في ورديتك بعد.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
+           
+          <CheckInDialog
+            open={isCheckInDialogOpen}
+            onOpenChange={setCheckInDialogOpen}
+            selectedGame={selectedGame}
+            onConfirm={handleCheckIn}
+          />
+          <CheckOutDialog 
+            open={isCheckoutDialogOpen}
+            onOpenChange={setCheckoutDialogOpen}
+            child={childToCheckout}
+            onConfirm={handleCheckOut}
+          />
         </div>
-       
-      <CheckInDialog
-        open={isCheckInDialogOpen}
-        onOpenChange={setCheckInDialogOpen}
-        selectedGame={selectedGame}
-        onConfirm={handleCheckIn}
-      />
-      <CheckOutDialog 
-        open={isCheckoutDialogOpen}
-        onOpenChange={setCheckoutDialogOpen}
-        child={childToCheckout}
-        onConfirm={handleCheckOut}
-      />
     </div>
   );
 }
@@ -920,6 +920,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-
-
