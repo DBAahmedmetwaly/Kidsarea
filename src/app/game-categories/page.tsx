@@ -214,7 +214,7 @@ function GameCategoriesContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>اسم التصنيف</TableHead>
+                <TableHead className="text-right">اسم التصنيف</TableHead>
                 <TableHead className="text-center">اللون</TableHead>
                 <TableHead className="text-center">إجراءات</TableHead>
               </TableRow>
