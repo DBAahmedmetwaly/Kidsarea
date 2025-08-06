@@ -109,7 +109,7 @@ function EmployeeFormDialog({
             return;
         }
 
-        const requiresCredentials = role === 'كاشير' || role === 'مدير فرع';
+        const requiresCredentials = role === 'كاشير' || role === 'مدير فرع' || role === 'مشرف';
 
         if (requiresCredentials && (!username || !password)) {
             toast({
@@ -161,7 +161,7 @@ function EmployeeFormDialog({
                             </SelectContent>
                         </Select>
                     </div>
-                     {(role === 'كاشير' || role === 'مدير فرع') && (
+                     {(role === 'كاشير' || role === 'مدير فرع' || role === 'مشرف') && (
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="username" className="text-right">اسم المستخدم</Label>
@@ -400,5 +400,3 @@ export default function EmployeesPage() {
         </SidebarProvider>
     );
 }
-
-    

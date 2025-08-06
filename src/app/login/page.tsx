@@ -33,7 +33,7 @@ export default function LoginPage() {
     setLoading(true);
 
     const user = employees.find(
-        (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع') && emp.username === username && emp.password === password && emp.status !== 'Disabled'
+        (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع' || emp.role === 'مشرف') && emp.username === username && emp.password === password && emp.status !== 'Disabled'
     );
 
     if (user) {
