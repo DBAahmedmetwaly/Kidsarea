@@ -3,12 +3,12 @@
 
 import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle, Star, MinusCircle } from 'lucide-react';
 import React from 'react';
-import type { ReceiptSettings } from '@/lib/types';
+import type { ReceiptSettings, CustomerChild } from '@/lib/types';
 
 export interface PosReceiptProps {
   settings: ReceiptSettings | null;
   appName: string;
-  childName: string;
+  children: CustomerChild[];
   parentName: string;
   gameName: string;
   checkInTime: Date;
@@ -25,7 +25,7 @@ export interface PosReceiptProps {
 export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   settings,
   appName,
-  childName,
+  children,
   parentName,
   gameName,
   checkInTime,
@@ -53,7 +53,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
       <div className="space-y-3 text-sm text-center">
         {show('showChildName') && (
             <div className="flex justify-between items-center">
-                <span className="font-bold">{childName}</span>
+                <span className="font-bold">{children.map(c => c.name).join(', ')}</span>
                 <span className="flex items-center gap-2"><Smile size={16} /> اسم الطفل</span>
             </div>
         )}

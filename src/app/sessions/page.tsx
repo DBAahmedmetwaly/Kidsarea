@@ -130,7 +130,7 @@ function SessionsContent() {
 
     const receiptDetails: PosReceiptProps = {
         appName: policies?.appName || 'FunTrack',
-        childName: session.name,
+        children: session.children,
         parentName: session.parentName,
         gameName: session.game,
         checkInTime: new Date(session.checkInTime),
@@ -139,6 +139,7 @@ function SessionsContent() {
         totalCost: session.cost,
         durationCost: session.durationCost,
         entryFee: session.entryFee,
+        discount: session.discount,
         cashierName: cashierName,
         isSubscription: !!session.subscriptionId,
     };
@@ -183,7 +184,7 @@ function SessionsContent() {
         {filteredSessions.map((session) => (
             <TableRow key={session.id}>
                 <TableCell className="font-medium text-right">
-                {session.name}
+                {session.children.map(c => c.name).join(', ')}
                 </TableCell>
                 <TableCell className="text-right">{session.parentName}</TableCell>
                 <TableCell className="text-right">{session.branchName}</TableCell>

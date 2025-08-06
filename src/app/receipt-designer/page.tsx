@@ -135,7 +135,7 @@ function ReceiptDesignerContent() {
   const dummyReceiptProps = {
     settings: watchedSettings,
     appName: 'FunTrack',
-    childName: 'اسم الطفل',
+    children: [{name: 'اسم الطفل', age: 5}],
     parentName: 'اسم ولي الأمر',
     gameName: 'لعبة افتراضية',
     checkInTime: new Date(Date.now() - 3600 * 1000),

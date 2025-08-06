@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push } from 'firebase/database';
@@ -41,6 +41,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { startOfDay } from 'date-fns';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -84,65 +85,39 @@ function CheckInDialog({
     open: boolean,
     onOpenChange: (open: boolean) => void,
     selectedGame: Game | null,
-    onConfirm: (childData: { customer: Customer, child: {name: string, age: number}, game: Game, branch: string }) => void
+    onConfirm: (childData: { customer: Customer, children: CustomerChild[], game: Game, branch: string }) => void
 }) {
     const { customers } = useCustomers();
     const { subscriptions } = useFirebase();
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-    const [selectedChild, setSelectedChild] = useState<{name: string, age: number} | null>(null);
+    const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
-    const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null);
-
+    
     useEffect(() => {
         if (!open) {
             setSelectedCustomer(null);
-            setSelectedChild(null);
+            setSelectedChildren([]);
             setOpenCombobox(false);
-            setActiveSubscription(null);
         }
     }, [open]);
 
-      // Check for active subscription when a child is selected
-    useEffect(() => {
-        if (selectedCustomer && selectedChild) {
-            onValue(ref(db, 'subscriptions'), (snapshot) => {
-                const allSubscriptions = snapshot.val();
-                if (allSubscriptions) {
-                    const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
-                    const now = new Date();
-                    const foundSubscription = customerSubscriptions.find(sub => 
-                        sub.customerId === selectedCustomer.id &&
-                        sub.childName === selectedChild.name &&
-                        sub.status === 'Active' &&
-                        now >= new Date(sub.startDate) &&
-                        now <= new Date(sub.endDate)
-                    );
-                    setActiveSubscription(foundSubscription || null);
-                } else {
-                    setActiveSubscription(null);
-                }
-            }, { onlyOnce: true });
-        } else {
-            setActiveSubscription(null);
-        }
-    }, [selectedCustomer, selectedChild]);
-
-
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
-        if (customer.children.length === 1) {
-            setSelectedChild(customer.children[0]);
-        } else {
-            setSelectedChild(null);
-        }
+        setSelectedChildren([]); // Reset selected children when customer changes
         setOpenCombobox(false);
+    }
+    
+    const handleChildSelect = (child: CustomerChild, checked: boolean) => {
+        setSelectedChildren(prev => 
+            checked ? [...prev, child] : prev.filter(c => c.name !== child.name)
+        );
     }
 
     const handleConfirm = () => {
-        if (!selectedCustomer || !selectedChild || !selectedGame) return;
-        onConfirm({ customer: selectedCustomer, child: selectedChild, game: selectedGame, branch: selectedGame.branch });
+        if (!selectedCustomer || selectedChildren.length === 0 || !selectedGame) return;
+        onConfirm({ customer: selectedCustomer, children: selectedChildren, game: selectedGame, branch: selectedGame.branch });
         onOpenChange(false);
     }
     
@@ -170,7 +145,7 @@ function CheckInDialog({
                     <DialogHeader>
                         <DialogTitle>تسجيل دخول: {selectedGame?.name}</DialogTitle>
                         <DialogDescription>
-                            اختر العميل والطفل لبدء جلسة اللعب.
+                            اختر العميل والأطفال لبدء جلسة اللعب.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -223,40 +198,30 @@ function CheckInDialog({
                             </div>
                         </div>
                         {selectedCustomer && (
-                                <div className="space-y-2">
-                                <Label htmlFor="child-select">اختر الطفل</Label>
-                                <Select value={selectedChild?.name} onValueChange={(childName) => {
-                                    const child = selectedCustomer.children.find(c => c.name === childName);
-                                    setSelectedChild(child || null);
-                                }}>
-                                    <SelectTrigger id="child-select">
-                                        <SelectValue placeholder="اختر طفل..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {selectedCustomer.children.map((child, index) => (
-                                            <SelectItem key={index} value={child.name}>
+                             <div className="space-y-2">
+                                <Label>اختر الأطفال</Label>
+                                <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
+                                    {selectedCustomer.children.map((child, index) => (
+                                        <div key={index} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`child-${index}`}
+                                                onCheckedChange={(checked) => handleChildSelect(child, !!checked)}
+                                                checked={selectedChildren.some(c => c.name === child.name)}
+                                            />
+                                            <Label htmlFor={`child-${index}`} className="font-normal">
                                                 {child.name} (عمر: {child.age})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        )}
-                        {activeSubscription && (
-                            <Alert className="bg-green-50 border-green-200">
-                                <Star className="h-4 w-4 text-green-600" />
-                                <AlertTitle className="text-green-800">اشتراك فعال</AlertTitle>
-                                <AlertDescription className="text-green-700">
-                                    هذا الطفل لديه اشتراك سارٍ حتى {new Date(activeSubscription.endDate).toLocaleDateString('ar-EG')}.
-                                </AlertDescription>
-                            </Alert>
                         )}
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button variant="outline">إلغاء</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirm} disabled={!selectedChild || !selectedCustomer}>
+                        <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer}>
                             بدء اللعب
                         </Button>
                     </DialogFooter>
@@ -342,10 +307,10 @@ function PosTrackingContent() {
     setCheckInDialogOpen(true);
   }
 
-  const handleCheckIn = async (data: { customer: Customer, child: {name: string, age: number}, game: Game, branch: string }) => {
-    const { customer, child, game, branch } = data;
+  const handleCheckIn = async (data: { customer: Customer, children: CustomerChild[], game: Game, branch: string }) => {
+    const { customer, children, game, branch } = data;
     
-    if (policies && policies.maxCapacity && activeChildren.length >= policies.maxCapacity) {
+    if (policies && policies.maxCapacity && (activeChildren.length + children.length) > policies.maxCapacity) {
         toast({
             title: 'تم الوصول للحد الأقصى',
             description: `لا يمكن إضافة المزيد من الأطفال. السعة القصوى هي ${policies.maxCapacity} طفل.`,
@@ -364,10 +329,9 @@ function PosTrackingContent() {
     }
     
     const childId = Date.now();
-    const newChild: Child = {
+    const newSession: Child = {
       id: childId,
-      name: child.name,
-      age: parseInt(child.age.toString()),
+      children: children,
       parentName: customer.parentName,
       phoneNumber: customer.phoneNumber,
       game: game.name,
@@ -377,10 +341,10 @@ function PosTrackingContent() {
     };
 
     try {
-        await set(ref(db, `sessions/active/${childId}`), newChild);
+        await set(ref(db, `sessions/active/${childId}`), newSession);
         toast({
         title: 'تم تسجيل الدخول بنجاح',
-        description: `تم تسجيل دخول الطفل ${newChild.name}.`,
+        description: `تم تسجيل دخول الأطفال: ${children.map(c=>c.name).join(', ')}.`,
         });
     } catch(err) {
         console.error(err);
@@ -492,12 +456,12 @@ function PosTrackingContent() {
                         </TableHeader>
                         <TableBody>
                             {filteredActiveChildren.length > 0 ? (
-                            filteredActiveChildren.map((child) => (
-                                <TableRow key={child.id}>
-                                <TableCell className="font-medium text-right">{child.name}</TableCell>
-                                <TableCell className="text-right">{child.game}</TableCell>
+                            filteredActiveChildren.map((session) => (
+                                <TableRow key={session.id}>
+                                <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
+                                <TableCell className="text-right">{session.game}</TableCell>
                                 <TableCell className="text-center">
-                                    <TimeCounter startTime={child.checkInTime} />
+                                    <TimeCounter startTime={session.checkInTime} />
                                 </TableCell>
                                 </TableRow>
                             ))
@@ -528,7 +492,7 @@ function PosTrackingContent() {
                             {todaysCompletedSessions.length > 0 ? (
                                 todaysCompletedSessions.map((session) => (
                                     <TableRow key={session.id}>
-                                        <TableCell className="font-medium text-right">{session.name}</TableCell>
+                                        <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                         <TableCell className="font-bold text-center">
                                             {session.subscriptionId ? (
                                                 <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>

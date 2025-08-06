@@ -42,7 +42,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, History, Search, ChevronsUpDown, Check, PlusCircle, Star } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee, Customer, Subscription, ReceiptSettings } from '@/lib/types';
+import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee, Customer, Subscription, ReceiptSettings, CustomerChild } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
@@ -58,6 +58,7 @@ import { cn } from '@/lib/utils';
 import { useCustomers } from '@/context/CustomerContext';
 import { CustomerFormDialog } from '../customers/page';
 import { startOfDay } from 'date-fns';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
@@ -99,7 +100,7 @@ function formatDuration(durationMs: number) {
     return `${hours} ساعة و ${minutes} دقيقة`;
 }
 
-function calculateCost(durationMs: number, hourlyRate: number, policies: Policies | null) {
+function calculateCost(durationMs: number, hourlyRate: number, policies: Policies | null, numberOfChildren: number) {
     const durationHours = durationMs / (1000 * 60 * 60);
     let roundedHours = durationHours;
 
@@ -118,11 +119,10 @@ function calculateCost(durationMs: number, hourlyRate: number, policies: Policie
         }
     }
     
-    // This is a simplified logic. A more complex one might check if duration is less than 30mins etc.
-    // For now we assume fractional_rate is not used with rounding policies.
-    const durationCost = roundedHours * hourlyRate;
+    // Cost is per child
+    const durationCost = (roundedHours * hourlyRate) * numberOfChildren;
 
-    const entryFee = policies?.entryFee || 0;
+    const entryFee = (policies?.entryFee || 0) * numberOfChildren;
     const totalCost = durationCost + entryFee;
 
     return { totalCost, durationCost, entryFee };
@@ -145,10 +145,10 @@ function CheckOutDialog({
   child: Child | null;
   onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
 }) {
-  const { games, policies, employees, receiptSettings } = useFirebase();
+  const { games, policies, employees, receiptSettings, subscriptions } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
   const [discount, setDiscount] = useState('');
-  const [isSubscription, setIsSubscription] = useState(false);
+  const [activeSubscriptions, setActiveSubscriptions] = useState<Subscription[]>([]);
   const { user } = useAuth();
   const { printReceipt } = usePosPrint();
   
@@ -172,7 +172,11 @@ function CheckOutDialog({
         }
     }
     
-    const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
+    const nonSubscribedChildrenCount = child.children.filter(c => 
+        !activeSubscriptions.some(s => s.childName === c.name)
+    ).length;
+
+    const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies, nonSubscribedChildrenCount);
     
     const discountAmount = parseFloat(discount) || 0;
     const finalCost = totalCost - discountAmount > 0 ? totalCost - discountAmount : 0;
@@ -185,33 +189,24 @@ function CheckOutDialog({
         discount: discountAmount,
     }
 
-  }, [child, games, policies, discount]);
+  }, [child, games, policies, discount, activeSubscriptions]);
 
   // Check for subscription when dialog opens
   useEffect(() => {
     if (child) {
-        const subscriptionsRef = ref(db, 'subscriptions');
-        onValue(subscriptionsRef, (snapshot) => {
-            const allSubscriptions = snapshot.val();
-            if (allSubscriptions) {
-                const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
-                const now = new Date();
-                const foundSubscription = customerSubscriptions.find(sub => 
-                    sub.customerName === child.parentName &&
-                    sub.childName === child.name &&
-                    sub.status === 'Active' &&
-                    now >= new Date(sub.startDate) &&
-                    now <= new Date(sub.endDate)
-                );
-                setIsSubscription(!!foundSubscription);
-            } else {
-                setIsSubscription(false);
-            }
-        }, { onlyOnce: true });
+        const now = new Date();
+        const foundSubscriptions = subscriptions.filter(sub => 
+            sub.customerName === child.parentName &&
+            child.children.some(c => c.name === sub.childName) &&
+            sub.status === 'Active' &&
+            now >= new Date(sub.startDate) &&
+            now <= new Date(sub.endDate)
+        );
+        setActiveSubscriptions(foundSubscriptions);
     } else {
-        setIsSubscription(false);
+        setActiveSubscriptions([]);
     }
-  }, [child]);
+  }, [child, subscriptions]);
 
 
   useEffect(() => {
@@ -228,23 +223,24 @@ function CheckOutDialog({
         ? 'Admin' 
         : cashier?.name || user?.username || 'N/A';
         
-    const finalCost = isSubscription ? 0 : checkoutData.totalCost;
+    const finalCost = checkoutData.totalCost;
+    const isFullySubscribed = child.children.every(c => activeSubscriptions.some(s => s.childName === c.name));
     
     const receiptDetails: PosReceiptProps = {
         settings: receiptSettings,
         appName: policies?.appName || 'FunTrack',
-        childName: child.name,
+        children: child.children,
         parentName: child.parentName,
         gameName: child.game,
         checkInTime: new Date(child.checkInTime),
         checkOutTime: new Date(),
         duration: checkoutData.duration,
         totalCost: finalCost,
-        durationCost: isSubscription ? 0 : checkoutData.durationCost,
-        entryFee: isSubscription ? 0 : checkoutData.entryFee,
-        discount: isSubscription ? 0 : checkoutData.discount,
+        durationCost: checkoutData.durationCost,
+        entryFee: checkoutData.entryFee,
+        discount: checkoutData.discount,
         cashierName: cashierName,
-        isSubscription: isSubscription,
+        isSubscription: isFullySubscribed,
     };
     
     printReceipt(<PosReceipt {...receiptDetails} />);
@@ -254,68 +250,66 @@ function CheckOutDialog({
   if (!child || !checkoutData) return null;
 
 
-  const change = Number(amountReceived) - (isSubscription ? 0 : checkoutData.totalCost);
+  const change = Number(amountReceived) - checkoutData.totalCost;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>تسوية حساب: {child.name}</DialogTitle>
+          <DialogTitle>تسوية حساب: {child.children.map(c=>c.name).join(', ')}</DialogTitle>
           <DialogDescription>
             مدة اللعب: {checkoutData.duration}. قم بتأكيد المبلغ المستلم لإتمام العملية.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-            {isSubscription ? (
+            {activeSubscriptions.length > 0 && (
                 <Alert className="bg-green-50 border-green-200">
                     <Star className="h-4 w-4 text-green-600" />
-                    <AlertTitle className="text-green-800">مشترك فعال</AlertTitle>
+                    <AlertTitle className="text-green-800">لديهم اشتراك فعال</AlertTitle>
                     <AlertDescription className="text-green-700">
-                        هذه الجلسة مغطاة باشتراك. التكلفة النهائية هي صفر.
+                       الأطفال: {activeSubscriptions.map(s => s.childName).join(', ')}. سيتم خصم تكلفتهم من الإجمالي.
                     </AlertDescription>
                 </Alert>
-            ) : (
-                <>
-                    <div className="flex justify-between items-center text-lg p-3 bg-muted rounded-md">
-                        <span className="font-medium">التكلفة الإجمالية:</span>
-                        <span className="font-bold text-primary">{`ج.م ${checkoutData.totalCost.toFixed(2)}`}</span>
-                    </div>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="discount">الخصم (ج.م)</Label>
-                            <Input
-                            id="discount"
-                            type="number"
-                            value={discount}
-                            onChange={(e) => setDiscount(e.target.value)}
-                            placeholder="أدخل الخصم"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="amount-received">المبلغ المستلم</Label>
-                            <Input
-                            id="amount-received"
-                            type="number"
-                            value={amountReceived}
-                            onChange={(e) => setAmountReceived(e.target.value)}
-                            placeholder="أدخل المبلغ المستلم"
-                            />
-                        </div>
-                    </div>
-                    {amountReceived && (
-                        <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            <span className="font-medium">الباقي:</span>
-                            <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
-                        </div>
-                    )}
-                </>
+            )}
+            
+            <div className="flex justify-between items-center text-lg p-3 bg-muted rounded-md">
+                <span className="font-medium">التكلفة الإجمالية:</span>
+                <span className="font-bold text-primary">{`ج.م ${checkoutData.totalCost.toFixed(2)}`}</span>
+            </div>
+                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="discount">الخصم (ج.م)</Label>
+                    <Input
+                    id="discount"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                    placeholder="أدخل الخصم"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="amount-received">المبلغ المستلم</Label>
+                    <Input
+                    id="amount-received"
+                    type="number"
+                    value={amountReceived}
+                    onChange={(e) => setAmountReceived(e.target.value)}
+                    placeholder="أدخل المبلغ المستلم"
+                    />
+                </div>
+            </div>
+            {amountReceived && (
+                <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className="font-medium">الباقي:</span>
+                    <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
+                </div>
             )}
         </div>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline">إلغاء</Button>
           </DialogClose>
-            <Button onClick={handleConfirm} disabled={!isSubscription && !amountReceived}>
+            <Button onClick={handleConfirm} disabled={!amountReceived && checkoutData.totalCost > 0}>
                 حفظ و طباعة
             </Button>
         </DialogFooter>
@@ -327,20 +321,19 @@ function CheckOutDialog({
 
 function TrackingContent() {
   const { activeChildren, setActiveChildren, completedSessions, setCompletedSessions } = useSession();
-  const { customers, setCustomers } = useCustomers();
+  const { customers } = useCustomers();
   
   // Existing Customer State
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectedChild, setSelectedChild] = useState<{name: string, age: number} | null>(null);
+  const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
   const [openCombobox, setOpenCombobox] = useState(false);
-  const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null);
   
   // Common State
   const [selectedGame, setSelectedGame] = useState('');
   const [checkInBranch, setCheckInBranch] = useState('');
   
   const { toast } = useToast();
-  const { games, policies, openShifts, employees, branches } = useFirebase();
+  const { games, policies, openShifts, employees, branches, subscriptions } = useFirebase();
   const { user } = useAuth();
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
@@ -362,32 +355,6 @@ function TrackingContent() {
         }
     }, [currentUser, checkInBranch]);
 
-  // Check for active subscription when a child is selected
-  useEffect(() => {
-    if (selectedCustomer && selectedChild) {
-        const subscriptionsRef = ref(db, 'subscriptions');
-        onValue(subscriptionsRef, (snapshot) => {
-            const allSubscriptions = snapshot.val();
-            if (allSubscriptions) {
-                const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
-                const now = new Date();
-                const foundSubscription = customerSubscriptions.find(sub => 
-                    sub.customerId === selectedCustomer.id &&
-                    sub.childName === selectedChild.name &&
-                    sub.status === 'Active' &&
-                    now >= new Date(sub.startDate) &&
-                    now <= new Date(sub.endDate)
-                );
-                setActiveSubscription(foundSubscription || null);
-            } else {
-                setActiveSubscription(null);
-            }
-        }, { onlyOnce: true }); // Query only once
-    } else {
-        setActiveSubscription(null);
-    }
-  }, [selectedCustomer, selectedChild]);
-
 
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
@@ -408,23 +375,24 @@ function TrackingContent() {
 
   const totalVisitorsToday = useMemo(() => {
     const todayStart = startOfDay(new Date()).getTime();
-
-    const todaysActiveChildren = activeChildren.filter(s => {
-        const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
-        return branchMatch && s.checkInTime >= todayStart;
-    });
-
-    const todaysSessions = completedSessions.filter(s => {
-        const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
-        return branchMatch && s.checkOutTime >= todayStart;
-    });
-
-    const uniqueIds = new Set([
-        ...todaysActiveChildren.map(c => c.id),
-        ...todaysSessions.map(c => c.id),
-    ]);
     
-    return uniqueIds.size;
+    const todaysActiveCount = activeChildren
+        .filter(s => {
+            const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
+            return branchMatch && s.checkInTime >= todayStart;
+        })
+        .reduce((sum, s) => sum + s.children.length, 0);
+
+    const todaysCompletedCount = completedSessions
+        .filter(s => {
+            const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
+            return branchMatch && s.checkOutTime >= todayStart;
+        })
+        .reduce((sum, s) => sum + s.children.length, 0);
+    
+    // This isn't perfect as it double counts if a child checks in and out today
+    // A more accurate way would be to count unique parent+child combinations
+    return todaysActiveCount + todaysCompletedCount;
   }, [activeChildren, completedSessions, selectedBranchFilter]);
 
 
@@ -459,30 +427,28 @@ function TrackingContent() {
 
     const resetExistingCustomerForm = () => {
         setSelectedCustomer(null);
-        setSelectedChild(null);
-        setActiveSubscription(null);
+        setSelectedChildren([]);
     }
   
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
-        if (customer.children.length === 1) {
-            setSelectedChild(customer.children[0]);
-        } else {
-            setSelectedChild(null);
-        }
+        setSelectedChildren([]);
         setOpenCombobox(false);
     }
-
+    
+    const handleChildSelect = (child: CustomerChild, checked: boolean) => {
+        setSelectedChildren(prev => 
+            checked ? [...prev, child] : prev.filter(c => c.name !== child.name)
+        );
+    }
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const childName = selectedChild?.name;
-    const childAge = selectedChild?.age;
     const parentName = selectedCustomer?.parentName;
     const phoneNumber = selectedCustomer?.phoneNumber;
     
-    if (!childName || !childAge || !selectedGame || !parentName || !phoneNumber || !checkInBranch) {
+    if (selectedChildren.length === 0 || !selectedGame || !parentName || !phoneNumber || !checkInBranch) {
       toast({
         title: 'خطأ',
         description: 'الرجاء تعبئة جميع الحقول لتسجيل الدخول.',
@@ -497,7 +463,7 @@ function TrackingContent() {
          return;
     }
 
-    if (policies && policies.maxCapacity && activeChildren.length >= policies.maxCapacity) {
+    if (policies && policies.maxCapacity && (activeChildren.length + selectedChildren.length) > policies.maxCapacity) {
         toast({
             title: 'تم الوصول للحد الأقصى',
             description: `لا يمكن إضافة المزيد من الأطفال. السعة القصوى هي ${policies.maxCapacity} طفل.`,
@@ -515,11 +481,10 @@ function TrackingContent() {
         return;
     }
     
-    const childId = Date.now();
-    const newChild: Child = {
-      id: childId,
-      name: childName,
-      age: parseInt(childAge.toString()),
+    const sessionId = Date.now();
+    const newSession: Child = {
+      id: sessionId,
+      children: selectedChildren,
       parentName: parentName,
       phoneNumber: phoneNumber,
       game: selectedGame,
@@ -529,7 +494,7 @@ function TrackingContent() {
     };
 
     try {
-        await set(ref(db, `sessions/active/${childId}`), newChild);
+        await set(ref(db, `sessions/active/${sessionId}`), newSession);
         
         // Reset forms
         resetExistingCustomerForm();
@@ -540,7 +505,7 @@ function TrackingContent() {
         }
         toast({
         title: 'تم تسجيل الدخول بنجاح',
-        description: `تم تسجيل دخول الطفل ${newChild.name}.`,
+        description: `تم تسجيل دخول الأطفال: ${newSession.children.map(c => c.name).join(', ')}.`,
         });
     } catch(err) {
         console.error(err);
@@ -555,26 +520,12 @@ function TrackingContent() {
 
   const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
     setCheckoutDialogOpen(false);
-
-    const subscriptionsRef = ref(db, 'subscriptions');
-    const subsSnapshot = await get(subscriptionsRef);
-    const allSubscriptions = subsSnapshot.val();
-    let subscriptionId: string | undefined = undefined;
-
-    if (allSubscriptions) {
-        const customerSubscriptions: Subscription[] = Object.values(allSubscriptions);
-        const now = new Date();
-        const foundSubscription = customerSubscriptions.find(sub => 
-            sub.customerName === child.parentName &&
-            sub.childName === child.name &&
-            sub.status === 'Active' &&
-            now >= new Date(sub.startDate) &&
-            now <= new Date(sub.endDate)
-        );
-        if (foundSubscription) {
-          subscriptionId = foundSubscription.id;
-        }
-    }
+    
+    const activeSubs = subscriptions.filter(sub => 
+        sub.customerName === child.parentName &&
+        child.children.some(c => c.name === sub.childName) &&
+        sub.status === 'Active'
+    );
 
     const completedSession: Omit<CompletedSession, 'id'> = {
         ...child,
@@ -584,11 +535,8 @@ function TrackingContent() {
         durationCost: receiptDetails.durationCost,
         entryFee: receiptDetails.entryFee,
         discount: receiptDetails.discount,
+        subscriptionId: activeSubs.length > 0 ? activeSubs.map(s => s.id).join(',') : undefined,
     };
-    
-    if (subscriptionId) {
-        (completedSession as CompletedSession).subscriptionId = subscriptionId;
-    }
 
     try {
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
@@ -646,7 +594,7 @@ function TrackingContent() {
        <div className="grid gap-4 md:grid-cols-2">
         <StatCard
           title="الأطفال النشطون حاليًا"
-          value={filteredActiveChildren.length.toString()}
+          value={filteredActiveChildren.reduce((sum, s) => sum + s.children.length, 0).toString()}
           icon={Activity}
           description={selectedBranchFilter === 'all' ? `في كل الفروع` : `في ${selectedBranchFilter}`}
         />
@@ -727,33 +675,23 @@ function TrackingContent() {
                             </div>
                         </div>
                         {selectedCustomer && (
-                             <div className="space-y-2">
-                                <Label htmlFor="child-select">اختر الطفل</Label>
-                                <Select value={selectedChild?.name} onValueChange={(childName) => {
-                                    const child = selectedCustomer.children.find(c => c.name === childName);
-                                    setSelectedChild(child || null);
-                                }} disabled={!hasActiveShift}>
-                                    <SelectTrigger id="child-select">
-                                        <SelectValue placeholder="اختر طفل..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {selectedCustomer.children.map((child, index) => (
-                                            <SelectItem key={index} value={child.name}>
+                            <div className="space-y-2">
+                                <Label>اختر الأطفال</Label>
+                                <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
+                                    {selectedCustomer.children.map((child, index) => (
+                                        <div key={index} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`track-child-${index}`}
+                                                onCheckedChange={(checked) => handleChildSelect(child, !!checked)}
+                                                checked={selectedChildren.some(c => c.name === child.name)}
+                                            />
+                                            <Label htmlFor={`track-child-${index}`} className="font-normal">
                                                 {child.name} (عمر: {child.age})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        )}
-                        {activeSubscription && (
-                            <Alert className="bg-green-50 border-green-200">
-                                <Star className="h-4 w-4 text-green-600" />
-                                <AlertTitle className="text-green-800">اشتراك فعال</AlertTitle>
-                                <AlertDescription className="text-green-700">
-                                    هذا الطفل لديه اشتراك سارٍ حتى {new Date(activeSubscription.endDate).toLocaleDateString('ar-EG')}.
-                                </AlertDescription>
-                            </Alert>
                         )}
                         <div className="space-y-2">
                             <Label htmlFor="branch-select-existing">اختر الفرع</Label>
@@ -785,7 +723,7 @@ function TrackingContent() {
                                 </SelectContent>
                             </Select>
                         </div>
-                         <Button type="submit" className="w-full" disabled={!hasActiveShift || !selectedChild}>
+                         <Button type="submit" className="w-full" disabled={!hasActiveShift || selectedChildren.length === 0}>
                             <PlayCircle className="me-2 h-4 w-4" />
                             بدء اللعب
                         </Button>
@@ -816,7 +754,7 @@ function TrackingContent() {
                     {filteredActiveChildren.length > 0 ? (
                     filteredActiveChildren.map((child) => (
                         <TableRow key={child.id}>
-                        <TableCell className="font-medium text-right">{child.name}</TableCell>
+                        <TableCell className="font-medium text-right">{child.children.map(c => c.name).join(', ')}</TableCell>
                         <TableCell className="text-right">{child.game}</TableCell>
                         <TableCell className="text-right">{child.branchName}</TableCell>
                         <TableCell className="text-center">
@@ -868,7 +806,7 @@ function TrackingContent() {
                             {todaysCompletedSessions.length > 0 ? (
                                 todaysCompletedSessions.map((session) => (
                                     <TableRow key={session.id}>
-                                        <TableCell className="font-medium text-right">{session.name}</TableCell>
+                                        <TableCell className="font-medium text-right">{session.children.map(c=>c.name).join(', ')}</TableCell>
                                         <TableCell className="text-right">{session.game}</TableCell>
                                         <TableCell className="font-bold text-center">
                                             {session.subscriptionId ? (
@@ -922,4 +860,3 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
-

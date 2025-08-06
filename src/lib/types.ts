@@ -1,9 +1,13 @@
 
 
+export interface CustomerChild {
+    name: string;
+    age: number;
+}
+
 export interface Child {
   id: number;
-  name: string;
-  age: number;
+  children: CustomerChild[];
   parentName: string;
   phoneNumber: string;
   game: string;
@@ -113,10 +117,6 @@ export interface Policies {
     weekendDays: Record<DayOfWeek, boolean>;
 }
 
-export interface CustomerChild {
-    name: string;
-    age: number;
-}
 export interface Customer {
     id: string;
     parentName: string;
