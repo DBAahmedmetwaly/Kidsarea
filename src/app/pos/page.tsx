@@ -492,7 +492,7 @@ function PosTrackingContent() {
                             {todaysCompletedSessions.length > 0 ? (
                                 todaysCompletedSessions.map((session) => (
                                     <TableRow key={session.id}>
-                                        <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
+                                        <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
                                         <TableCell className="font-bold text-center">
                                             {session.subscriptionId ? (
                                                 <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
