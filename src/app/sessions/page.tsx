@@ -185,7 +185,7 @@ function SessionsContent() {
         {filteredSessions.map((session) => (
             <TableRow key={session.id}>
                 <TableCell className="font-medium text-right">
-                {session.children.map(c => c.name).join(', ')}
+                {session.children?.map(c => c.name).join(', ') ?? 'N/A'}
                 </TableCell>
                 <TableCell className="text-right">{session.parentName}</TableCell>
                 <TableCell className="text-right">{session.branchName}</TableCell>
@@ -310,6 +310,7 @@ function SessionsContent() {
         <Card>
             <CardHeader>
                 <CardTitle>جميع الجلسات المنتهية</CardTitle>
+                <CardDescription>عرض لجميع جلسات اللعب التي تمت في الفروع.</CardDescription>
             </CardHeader>
             <CardContent>
                  <Table>
