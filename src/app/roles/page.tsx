@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, FileCog, History } from 'lucide-react';
+import { Shield, FileCog, History, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ALL_SCREENS = [
@@ -28,6 +28,7 @@ const ALL_SCREENS = [
   { href: '/safes', label: 'الخزائن' },
   { href: '/roles', label: 'الصلاحيات' },
   { href: '/policies', label: 'السياسات' },
+  { href: '/receipt-designer', label: 'تصميم الإيصال' },
   { href: '/transactions', label: 'سجل الحركات'},
   { href: '/customers', label: 'العملاء' },
   { href: '/subscriptions', label: 'الاشتراكات' },

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -12,7 +13,7 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory } from '@/lib/types';
+import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -22,6 +23,7 @@ interface FirebaseContextType {
   branches: Branch[];
   safes: Safe[];
   policies: Policies | null;
+  receiptSettings: ReceiptSettings | null;
   openShifts: OpenShift[];
   transactions: SafeTransaction[];
   subscriptions: Subscription[];
@@ -47,6 +49,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [safes, setSafes] = useState<Safe[]>([]);
   const [policies, setPolicies] = useState<Policies | null>(null);
+  const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings | null>(null);
   const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
   const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -63,6 +66,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       { key: 'branches', setter: setBranches, isArray: true },
       { key: 'safes', setter: setSafes, isArray: true },
       { key: 'policies', setter: setPolicies, isArray: false },
+      { key: 'receiptSettings', setter: setReceiptSettings, isArray: false },
       { key: 'openShifts', setter: setOpenShifts, isArray: true },
       { key: 'safeTransactions', setter: setTransactions, isArray: true },
       { key: 'subscriptions', setter: setSubscriptions, isArray: true },
@@ -115,7 +119,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, loading, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, receiptSettings, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, loading, error }}>
       {children}
     </FirebaseContext.Provider>
   );

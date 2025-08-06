@@ -18,6 +18,7 @@ export interface CompletedSession extends Child {
     cost: number; // Total cost
     durationCost?: number;
     entryFee?: number;
+    discount?: number;
     subscriptionId?: string; // To link to a subscription if applicable
 }
 
@@ -151,4 +152,25 @@ export interface SubscriptionPlan {
 export interface GameCategory {
     id: string;
     name: string;
+}
+
+export interface ReceiptSettings {
+    showLogo: boolean;
+    showAppName: boolean;
+    showThankYouMessage: boolean;
+    thankYouMessage?: string;
+    showChildName: boolean;
+    showParentName: boolean;
+    showGameName: boolean;
+    showCheckInTime: boolean;
+    showCheckOutTime: boolean;
+    showDuration: boolean;
+    showDurationCost: boolean;
+    showEntryFee: boolean;
+    showDiscount: boolean;
+    showTotalCost: boolean;
+    showCashierName: boolean;
+    showReceiptId: boolean;
+    showTimestamp: boolean;
+    customFooter?: string;
 }

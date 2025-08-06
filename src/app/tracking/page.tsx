@@ -42,7 +42,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, Printer, Users, Activity, AlertTriangle, History, Search, ChevronsUpDown, Check, PlusCircle, Star } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee, Customer, Subscription } from '@/lib/types';
+import type { Child, CompletedSession, Policies, DayOfWeek, Game, Employee, Customer, Subscription, ReceiptSettings } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { StatCard } from '@/components/StatCard';
@@ -145,8 +145,9 @@ function CheckOutDialog({
   child: Child | null;
   onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
 }) {
-  const { games, policies, employees } = useFirebase();
+  const { games, policies, employees, receiptSettings } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
+  const [discount, setDiscount] = useState('');
   const [isSubscription, setIsSubscription] = useState(false);
   const { user } = useAuth();
   const { printReceipt } = usePosPrint();
@@ -173,14 +174,18 @@ function CheckOutDialog({
     
     const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
     
+    const discountAmount = parseFloat(discount) || 0;
+    const finalCost = totalCost - discountAmount > 0 ? totalCost - discountAmount : 0;
+
     return {
         duration: formatDuration(durationMs),
-        totalCost,
+        totalCost: finalCost,
         durationCost,
-        entryFee
+        entryFee,
+        discount: discountAmount,
     }
 
-  }, [child, games, policies]);
+  }, [child, games, policies, discount]);
 
   // Check for subscription when dialog opens
   useEffect(() => {
@@ -212,6 +217,7 @@ function CheckOutDialog({
   useEffect(() => {
     // Reset amount received when a new child is selected for checkout
     setAmountReceived('');
+    setDiscount('');
   }, [child]);
 
   const handleConfirm = () => {
@@ -225,6 +231,7 @@ function CheckOutDialog({
     const finalCost = isSubscription ? 0 : checkoutData.totalCost;
     
     const receiptDetails: PosReceiptProps = {
+        settings: receiptSettings,
         appName: policies?.appName || 'FunTrack',
         childName: child.name,
         parentName: child.parentName,
@@ -235,6 +242,7 @@ function CheckOutDialog({
         totalCost: finalCost,
         durationCost: isSubscription ? 0 : checkoutData.durationCost,
         entryFee: isSubscription ? 0 : checkoutData.entryFee,
+        discount: isSubscription ? 0 : checkoutData.discount,
         cashierName: cashierName,
         isSubscription: isSubscription,
     };
@@ -272,15 +280,27 @@ function CheckOutDialog({
                         <span className="font-medium">التكلفة الإجمالية:</span>
                         <span className="font-bold text-primary">{`ج.م ${checkoutData.totalCost.toFixed(2)}`}</span>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="amount-received">المبلغ المستلم من العميل</Label>
-                        <Input
-                        id="amount-received"
-                        type="number"
-                        value={amountReceived}
-                        onChange={(e) => setAmountReceived(e.target.value)}
-                        placeholder="أدخل المبلغ المستلم"
-                        />
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="discount">الخصم (ج.م)</Label>
+                            <Input
+                            id="discount"
+                            type="number"
+                            value={discount}
+                            onChange={(e) => setDiscount(e.target.value)}
+                            placeholder="أدخل الخصم"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="amount-received">المبلغ المستلم</Label>
+                            <Input
+                            id="amount-received"
+                            type="number"
+                            value={amountReceived}
+                            onChange={(e) => setAmountReceived(e.target.value)}
+                            placeholder="أدخل المبلغ المستلم"
+                            />
+                        </div>
                     </div>
                     {amountReceived && (
                         <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -563,6 +583,7 @@ function TrackingContent() {
         cost: receiptDetails.totalCost,
         durationCost: receiptDetails.durationCost,
         entryFee: receiptDetails.entryFee,
+        discount: receiptDetails.discount,
     };
     
     if (subscriptionId) {
@@ -901,3 +922,4 @@ export default function TrackingPage() {
         </SidebarProvider>
     );
 }
+

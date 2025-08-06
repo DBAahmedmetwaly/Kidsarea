@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -36,6 +37,7 @@ import {
   Package,
   Layers,
   ShoppingBag,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -67,6 +69,7 @@ const allMenuItems = [
 const settingsMenuItems = [
     { href: '/roles', label: 'الصلاحيات', icon: Shield },
     { href: '/policies', label: 'السياسات', icon: FileCog },
+    { href: '/receipt-designer', label: 'تصميم الإيصال', icon: FileText },
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
 ]
 
