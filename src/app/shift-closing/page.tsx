@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -41,7 +42,7 @@ import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession, S
 import { useAuth } from '@/components/AuthProvider';
 
 const closeShiftSchema = z.object({
-  cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
+  cashierUsername: z.string().min(1, 'يجب اختيار الموظف'),
   branchName: z.string().min(1, 'اسم الفرع مطلوب'),
   actualRevenue: z.coerce.number().min(0, 'يجب أن يكون مبلغًا موجبًا'),
   notes: z.string().optional(),
@@ -50,7 +51,7 @@ const closeShiftSchema = z.object({
 type CloseShiftFormValues = z.infer<typeof closeShiftSchema>;
 
 const openShiftSchema = z.object({
-    cashierUsername: z.string().min(1, 'يجب اختيار الكاشير'),
+    cashierUsername: z.string().min(1, 'يجب اختيار الموظف'),
 });
 
 type OpenShiftFormValues = z.infer<typeof openShiftSchema>;
@@ -63,7 +64,9 @@ function ShiftClosingForm() {
   const { employees, openShifts, subscriptions } = useFirebase();
   const { completedSessions } = useSession();
   const { user } = useAuth();
-  const cashiers = employees.filter(emp => emp.role === 'كاشير');
+  
+  const employeesWithShifts = employees.filter(emp => emp.role === 'كاشير' || emp.role === 'مشرف' || emp.role === 'مدير فرع');
+
 
   const form = useForm<CloseShiftFormValues>({
     resolver: zodResolver(closeShiftSchema),
@@ -110,9 +113,9 @@ function ShiftClosingForm() {
     setLoading(true);
     setError(null);
     
-    const cashier = cashiers.find(c => c.username === values.cashierUsername);
-    if (!cashier) {
-        setError('لم يتم العثور على الكاشير.');
+    const employee = employeesWithShifts.find(e => e.username === values.cashierUsername);
+    if (!employee) {
+        setError('لم يتم العثور على الموظف.');
         setLoading(false);
         return;
     }
@@ -122,7 +125,7 @@ function ShiftClosingForm() {
 
     const newRecord: Omit<ShiftRecord, 'id'> = {
         ...values,
-        cashierName: cashier.name,
+        cashierName: employee.name,
         expectedRevenue: expectedRevenue,
         date: new Date().toISOString(),
         difference: values.actualRevenue - expectedRevenue,
@@ -155,7 +158,7 @@ function ShiftClosingForm() {
   return (
     <Card>
         <CardHeader>
-            <CardTitle>الخطوة 1: استلام النقدية من الكاشير</CardTitle>
+            <CardTitle>الخطوة 1: استلام النقدية من الموظف</CardTitle>
             <CardDescription>أدخل بيانات الوردية لإتمام عملية الاستلام. الترحيل للخزينة يتم في الخطوة التالية.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -167,11 +170,11 @@ function ShiftClosingForm() {
                         name="cashierUsername"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>اختر الكاشير</FormLabel>
+                            <FormLabel>اختر الموظف</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="اختر من الكاشيرز المتاحين..." />
+                                    <SelectValue placeholder="اختر من الموظفين المتاحين..." />
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -278,7 +281,7 @@ function ShiftClosingForm() {
 function OpenShiftForm() {
     const { toast } = useToast();
     const { employees, openShifts } = useFirebase();
-    const cashiers = employees.filter(e => e.role === 'كاشير');
+    const employeesWithShifts = employees.filter(e => e.role === 'كاشير' || e.role === 'مشرف' || e.role === 'مدير فرع');
 
     const form = useForm<OpenShiftFormValues>({
         resolver: zodResolver(openShiftSchema),
@@ -287,16 +290,16 @@ function OpenShiftForm() {
         },
     });
 
-    const availableCashiers = cashiers.filter(c => c.username && !openShifts.some(s => s.cashierUsername === c.username));
+    const availableEmployees = employeesWithShifts.filter(c => c.username && !openShifts.some(s => s.cashierUsername === c.username));
 
     async function onSubmit(values: OpenShiftFormValues) {
-        const cashier = cashiers.find(c => c.username === values.cashierUsername);
-        if (!cashier || !cashier.username) return;
+        const employee = employeesWithShifts.find(c => c.username === values.cashierUsername);
+        if (!employee || !employee.username) return;
 
         const newShift: Omit<OpenShift, 'id'> = {
-            cashierUsername: cashier.username,
-            cashierName: cashier.name,
-            branchName: cashier.branch,
+            cashierUsername: employee.username,
+            cashierName: employee.name,
+            branchName: employee.branch,
             startTime: new Date().toISOString(),
         };
 
@@ -306,7 +309,7 @@ function OpenShiftForm() {
             await set(newShiftRef, newShift);
              toast({
                 title: 'تم فتح الوردية',
-                description: `تم فتح وردية جديدة للكاشير ${cashier.name}.`,
+                description: `تم فتح وردية جديدة للموظف ${employee.name}.`,
             });
             form.reset();
         } catch(e) {
@@ -323,7 +326,7 @@ function OpenShiftForm() {
         <Card>
             <CardHeader>
                 <CardTitle>فتح وردية جديدة</CardTitle>
-                <CardDescription>اختر الكاشير لبدء وردية جديدة له.</CardDescription>
+                <CardDescription>اختر الموظف لبدء وردية جديدة له.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
@@ -333,17 +336,17 @@ function OpenShiftForm() {
                             name="cashierUsername"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>اختر الكاشير</FormLabel>
+                                <FormLabel>اختر الموظف</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="اختر كاشير لبدء ورديته..." />
+                                        <SelectValue placeholder="اختر موظف لبدء ورديته..." />
                                     </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                    {availableCashiers.map(cashier => (
-                                        <SelectItem key={cashier.id} value={cashier.username!}>
-                                            {cashier.name}
+                                    {availableEmployees.map(employee => (
+                                        <SelectItem key={employee.id} value={employee.username!}>
+                                            {employee.name} ({employee.role})
                                         </SelectItem>
                                     ))}
                                     </SelectContent>
@@ -352,7 +355,7 @@ function OpenShiftForm() {
                                 </FormItem>
                             )}
                             />
-                        <Button type="submit" className="w-full" disabled={availableCashiers.length === 0}>
+                        <Button type="submit" className="w-full" disabled={availableEmployees.length === 0}>
                            <PlayCircle className="me-2 h-4 w-4" />
                            بدء الوردية
                         </Button>
@@ -380,7 +383,7 @@ function ActiveShiftsTable() {
              <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>الكاشير</TableHead>
+                        <TableHead>الموظف</TableHead>
                         <TableHead>الفرع</TableHead>
                         <TableHead>وقت البدء</TableHead>
                     </TableRow>
@@ -501,7 +504,7 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
                                             aria-label="تحديد الكل"
                                         />
                                     </TableHead>
-                                    <TableHead>الكاشير</TableHead>
+                                    <TableHead>الموظف</TableHead>
                                     <TableHead>الفرع</TableHead>
                                     <TableHead className="text-right">المبلغ المستلم</TableHead>
                                 </TableRow>
@@ -566,14 +569,14 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
         <Card>
             <CardHeader>
                 <CardTitle>سجل حركات استلام النقدية</CardTitle>
-                <CardDescription>عرض لجميع ورديات الكاشير التي تم إغلاقها أو ترحيلها.</CardDescription>
+                <CardDescription>عرض لجميع ورديات الموظفين التي تم إغلاقها أو ترحيلها.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>التاريخ والوقت</TableHead>
-                            <TableHead>الكاشير</TableHead>
+                            <TableHead>الموظف</TableHead>
                             <TableHead>الفرع</TableHead>
                             <TableHead>المبلغ المستلم</TableHead>
                              <TableHead>الحالة</TableHead>
