@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -228,7 +229,9 @@ function CheckOutDialog({
         isSubscription: isFullySubscribed,
     };
     
-    printReceipt(<PosReceipt {...receiptDetails} />);
+    if (receiptSettings) {
+        printReceipt(<PosReceipt {...receiptDetails} />);
+    }
     onConfirm(child, receiptDetails);
   }
 
@@ -552,7 +555,7 @@ function PosTrackingContent() {
         sub.status === 'Active'
     );
 
-    const completedSession: Omit<CompletedSession, 'id'> = {
+    const baseSession: Omit<CompletedSession, 'id' | 'subscriptionId'> = {
         ...child,
         checkOutTime: receiptDetails.checkOutTime.getTime(),
         durationMs: receiptDetails.checkOutTime.getTime() - child.checkInTime,
@@ -560,7 +563,11 @@ function PosTrackingContent() {
         durationCost: receiptDetails.durationCost,
         entryFee: receiptDetails.entryFee,
         discount: receiptDetails.discount,
-        subscriptionId: activeSubs.length > 0 ? activeSubs.map(s => s.id).join(',') : undefined,
+    };
+    
+    const completedSession: Omit<CompletedSession, 'id'> = {
+        ...baseSession,
+        ...(activeSubs.length > 0 && { subscriptionId: activeSubs.map(s => s.id).join(',') }),
     };
 
     try {
@@ -823,5 +830,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
+    
 
     
