@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -380,8 +381,10 @@ function SubscriptionsContent() {
           {filteredSubscriptions.map((sub) => (
             <TableRow key={sub.id}>
               <TableCell>
-                <div>{sub.customerName}</div>
-                <div className='text-xs text-muted-foreground'>{sub.childName}</div>
+                 <Link href={`/subscriptions/${sub.id}`} className="hover:underline text-primary">
+                    <div>{sub.customerName}</div>
+                    <div className='text-xs text-muted-foreground'>{sub.childName}</div>
+                 </Link>
               </TableCell>
               <TableCell>
                  <div>{sub.planName}</div>

@@ -57,12 +57,12 @@ const allMenuItems = [
   { href: '/transactions', label: 'سجل الحركات', icon: List },
   { href: '/customers', label: 'العملاء', icon: Contact },
   { href: '/subscriptions', label: 'الاشتراكات', icon: Star },
+  { href: '/subscription-plans', label: 'باقات الاشتراكات', icon: Package },
 ];
 
 const settingsMenuItems = [
     { href: '/roles', label: 'الصلاحيات', icon: Shield },
     { href: '/policies', label: 'السياسات', icon: FileCog },
-    { href: '/subscription-plans', label: 'باقات الاشتراكات', icon: Package },
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
 ]
 
@@ -170,6 +170,12 @@ function SidebarItems() {
     if (userPermissions['/tracking'] && !userPermissions['/sessions']) {
         userPermissions['/sessions'] = true;
     }
+    
+    // Allow access to details pages if the main page is accessible
+    if (userPermissions['/subscriptions']) {
+        userPermissions['/subscriptions/[subscriptionId]'] = true;
+    }
+
 
     return [...allMenuItems, ...settingsMenuItems].filter(item => userPermissions[item.href]);
   };
@@ -212,7 +218,7 @@ function SidebarItems() {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {menuItems.filter(item => !settingsMenuItems.some(s => s.href === item.href)).map((item) => (
+          {menuItems.filter(item => !settingsMenuItems.some(s => s.href === item.href) && !item.href.includes('[')).map((item) => (
             <SidebarMenuItem key={item.href} onClick={handleLinkClick}>
               <SidebarMenuButton
                 asChild
