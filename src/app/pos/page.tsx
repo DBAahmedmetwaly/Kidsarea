@@ -301,7 +301,7 @@ function CheckOutDialog({
           </DialogClose>
             <Button 
               onClick={handleConfirm} 
-              disabled={(checkoutData.totalCost > 0 && (!amountReceived || Number(amountReceived) < checkoutData.totalCost))}
+              disabled={checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost || !amountReceived)}
             >
                 حفظ و طباعة
             </Button>
@@ -920,5 +920,6 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
