@@ -8,6 +8,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription
 } from '@/components/ui/card';
 import {
   Dialog,
@@ -19,13 +20,13 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
-import { ref, set, onValue } from 'firebase/database';
+import { ref, set, onValue, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { useCustomers } from '@/context/CustomerContext';
@@ -38,6 +39,41 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { CustomerFormDialog } from '../customers/page';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { startOfDay } from 'date-fns';
+
+const TimeCounter = ({ startTime }: { startTime: number }) => {
+  const [elapsed, setElapsed] = useState<number | null>(null);
+
+  useEffect(() => {
+    const calculateElapsed = () => Date.now() - startTime;
+    setElapsed(calculateElapsed());
+
+    const timer = setInterval(() => {
+      setElapsed(calculateElapsed());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [startTime]);
+
+  if (elapsed === null) {
+    return <span>...</span>;
+  }
+
+  const totalSeconds = Math.floor(elapsed / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return (
+    <span className="font-mono" dir="ltr">
+      {`${hours.toString().padStart(2, '0')}:${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`}
+    </span>
+  );
+};
+
 
 function CheckInDialog({
     open,
@@ -238,7 +274,7 @@ function CheckInDialog({
 
 
 function PosTrackingContent() {
-  const { activeChildren } = useSession();
+  const { activeChildren, completedSessions } = useSession();
   const { games, policies, openShifts, employees, branches, gameCategories } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -285,6 +321,21 @@ function PosTrackingContent() {
         (selectedBranchFilter === 'all' || g.branch === selectedBranchFilter || g.branch === 'كل الفروع')
     );
   }, [games, selectedCategory, selectedBranchFilter]);
+
+    const todaysCompletedSessions = useMemo(() => {
+        if (!user || !user.username) return [];
+
+        const todayStart = startOfDay(new Date());
+        const openShift = openShifts.find(s => s.cashierUsername === user.username);
+        const filterStartTime = openShift ? new Date(openShift.startTime) : todayStart;
+
+        return completedSessions.filter(s => {
+            const cashierMatch = s.cashierUsername === user.username;
+            const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
+            const timeMatch = new Date(s.checkOutTime) >= filterStartTime;
+            return cashierMatch && branchMatch && timeMatch;
+        }).slice(0, 5); // Show last 5
+  }, [completedSessions, selectedBranchFilter, user, openShifts]);
 
   const openCheckInDialog = (game: Game) => {
     setSelectedGame(game);
@@ -365,13 +416,13 @@ function PosTrackingContent() {
                 <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
                 <AlertDescription>
                     لا يمكنك تسجيل دخول الأطفال لأنه لا توجد وردية مفتوحة لحسابك. يرجى الذهاب إلى
-                    <Link href="/shift-closing" className="font-bold underline px-1">إدارة الورديات</Link>
+                     إدارة الورديات
                     لبدء وردية جديدة.
                 </AlertDescription>
             </Alert>
         )}
       
-      <div className="grid gap-8 md:grid-cols-12 items-start">
+      <div className="grid gap-4 md:grid-cols-12 items-start">
         {/* Categories */}
         <div className="md:col-span-3">
             <Card>
@@ -394,12 +445,12 @@ function PosTrackingContent() {
         </div>
 
         {/* Games */}
-        <div className="md:col-span-9">
+        <div className="md:col-span-5">
             <Card className="min-h-[400px]">
                 <CardHeader>
                     <CardTitle>{selectedCategory?.name || 'الألعاب'}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
                      {gamesForSelectedCategory.map(game => (
                          <button 
                             key={game.id} 
@@ -417,6 +468,83 @@ function PosTrackingContent() {
                             لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
                         </div>
                      )}
+                </CardContent>
+            </Card>
+        </div>
+
+        {/* Live Data */}
+        <div className="md:col-span-4 space-y-4">
+             <Card>
+                <CardHeader>
+                    <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+                    <CardDescription>
+                    قائمة بالأطفال الذين يلعبون حاليًا.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="text-right">الطفل</TableHead>
+                                <TableHead className="text-right">اللعبة</TableHead>
+                                <TableHead className="text-center">الوقت</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredActiveChildren.length > 0 ? (
+                            filteredActiveChildren.map((child) => (
+                                <TableRow key={child.id}>
+                                <TableCell className="font-medium text-right">{child.name}</TableCell>
+                                <TableCell className="text-right">{child.game}</TableCell>
+                                <TableCell className="text-center">
+                                    <TimeCounter startTime={child.checkInTime} />
+                                </TableCell>
+                                </TableRow>
+                            ))
+                            ) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="h-24 text-center">
+                                لا يوجد أطفال نشطون حاليًا.
+                                </TableCell>
+                            </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>أحدث الجلسات المنتهية</CardTitle>
+                </CardHeader>
+                <CardContent>
+                     <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="text-right">الطفل</TableHead>
+                                <TableHead className="text-center">التكلفة</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {todaysCompletedSessions.length > 0 ? (
+                                todaysCompletedSessions.map((session) => (
+                                    <TableRow key={session.id}>
+                                        <TableCell className="font-medium text-right">{session.name}</TableCell>
+                                        <TableCell className="font-bold text-center">
+                                            {session.subscriptionId ? (
+                                                <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
+                                            ) : `ج.م ${session.cost.toFixed(2)}`}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="h-24 text-center">
+                                        لم تكتمل أي جلسات اليوم بعد.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
                 </CardContent>
             </Card>
         </div>
@@ -446,3 +574,4 @@ export default function PosTrackingPage() {
     );
 }
 
+    
