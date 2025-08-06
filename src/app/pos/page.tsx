@@ -684,15 +684,18 @@ function PosTrackingContent() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
                     <AlertDescription>
-                        لا يمكنك استخدام نقاط البيع لأنه لا توجد وردية مفتوحة لحسابك. يرجى الذهاب إلى شاشة إدارة الورديات لبدء وردية جديدة.
+                        لا يمكنك استخدام نقاط البيع لأنه لا توجد وردية مفتوحة لحسابك.
+                        {user?.username !== 'admin' && " يرجى الطلب من المدير فتح وردية لك."}
                     </AlertDescription>
                 </Alert>
-                <Link href="/shift-closing" className='mt-6'>
-                    <Button>
-                        <Briefcase className="me-2 h-4 w-4" />
-                        الانتقال إلى إدارة الورديات
-                    </Button>
-                </Link>
+                 {user?.username === 'admin' && (
+                    <Link href="/shift-closing" className='mt-6'>
+                        <Button>
+                            <Briefcase className="me-2 h-4 w-4" />
+                            الانتقال إلى إدارة الورديات
+                        </Button>
+                    </Link>
+                )}
              </div>
         )}
 
