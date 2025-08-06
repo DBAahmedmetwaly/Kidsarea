@@ -630,31 +630,43 @@ function PosTrackingContent() {
         toast({ title: 'خطأ في تسجيل الدخول', variant: 'destructive'})
     }
   };
+  
+  const selectedBranchName = selectedBranchFilter === 'all' ? 'كل الفروع' : selectedBranchFilter;
 
   return (
-    <div className="flex flex-col gap-8">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-             <div className="md:hidden">
+    <div className="flex flex-col gap-8 relative overflow-hidden">
+        {/* Background Image */}
+        <div 
+            className="absolute inset-0 bg-repeat bg-center opacity-5 pointer-events-none"
+            style={{backgroundImage: 'url(https://placehold.co/300x300.png)', backgroundSize: '300px'}}
+            data-ai-hint="game pattern"
+        ></div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-4 z-10">
+            <div className="md:hidden">
                 <SidebarTrigger />
             </div>
-            <h1 className="text-2xl font-bold">نقاط البيع</h1>
-             <div className="ms-auto w-full sm:w-auto">
-                    <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
-                        <SelectTrigger className="w-full sm:w-[200px]">
-                            <SelectValue placeholder="اختر الفرع" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">كل الفروع</SelectItem>
-                            {branches.map(branch => (
-                                <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+            <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">نقاط البيع</h1>
+                <span className="text-lg text-muted-foreground font-semibold">({selectedBranchName})</span>
+            </div>
+            <div className="ms-auto w-full sm:w-auto">
+                <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                        <SelectValue placeholder="اختر الفرع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">كل الفروع</SelectItem>
+                        {branches.map(branch => (
+                            <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
         </div>
       
         {!hasActiveShift && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="z-10">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
                 <AlertDescription>
@@ -665,48 +677,45 @@ function PosTrackingContent() {
             </Alert>
         )}
       
-      <div className="grid gap-8 md:grid-cols-2 items-start">
-        {/* Left Side: Games and Categories */}
-        <div className="space-y-4">
-          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              {gameCategories.map(category => (
-                <TabsTrigger key={category.id} value={category.id}>{category.name}</TabsTrigger>
-              ))}
-            </TabsList>
-            {gameCategories.map(category => (
-                <TabsContent key={category.id} value={category.id}>
-                    <Card className="min-h-[400px]">
-                        <CardHeader>
-                            <CardTitle>ألعاب: {category.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {gamesForSelectedCategory.map(game => (
-                                <button 
-                                    key={game.id} 
-                                    onClick={() => openCheckInDialog(game)} 
-                                    disabled={!hasActiveShift}
-                                    className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                                >
-                                    <p className="font-semibold text-sm">{game.name}</p>
-                                    <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
-                                </button>
-                            ))}
-                            {gamesForSelectedCategory.length === 0 && (
-                                <div className="col-span-full text-center text-muted-foreground py-16">
-                                    لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            ))}
-          </Tabs>
-        </div>
+        <div className="space-y-8 z-10">
+            {/* Games Section */}
+            <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                {gameCategories.map(category => (
+                    <TabsTrigger key={category.id} value={category.id}>{category.name}</TabsTrigger>
+                ))}
+                </TabsList>
+                {gameCategories.map(category => (
+                    <TabsContent key={category.id} value={category.id}>
+                        <Card className="min-h-[200px]">
+                            <CardHeader>
+                                <CardTitle>ألعاب: {category.name}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {gamesForSelectedCategory.map(game => (
+                                    <button 
+                                        key={game.id} 
+                                        onClick={() => openCheckInDialog(game)} 
+                                        disabled={!hasActiveShift}
+                                        className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                    >
+                                        <p className="font-semibold text-sm">{game.name}</p>
+                                        <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
+                                    </button>
+                                ))}
+                                {gamesForSelectedCategory.length === 0 && (
+                                    <div className="col-span-full text-center text-muted-foreground py-16">
+                                        لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                ))}
+            </Tabs>
 
-        {/* Right Side: Live Data */}
-        <div className="space-y-4">
-             <Card>
+            {/* Active Children Section */}
+            <Card>
                 <CardHeader>
                     <CardTitle>الأطفال النشطون حاليًا</CardTitle>
                     <CardDescription>
@@ -719,6 +728,7 @@ function PosTrackingContent() {
                             <TableRow>
                                 <TableHead className="text-right">الطفل</TableHead>
                                 <TableHead className="text-right">ولي الأمر</TableHead>
+                                <TableHead className="text-right">اللعبة</TableHead>
                                 <TableHead className="text-center">الوقت</TableHead>
                                 <TableHead className="text-center">إجراء</TableHead>
                             </TableRow>
@@ -729,6 +739,7 @@ function PosTrackingContent() {
                                 <TableRow key={session.id}>
                                 <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                 <TableCell className="text-right">{session.parentName}</TableCell>
+                                <TableCell className="text-right">{session.game}</TableCell>
                                 <TableCell className="text-center">
                                     <TimeCounter startTime={session.checkInTime} />
                                 </TableCell>
@@ -747,7 +758,7 @@ function PosTrackingContent() {
                             ))
                             ) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                 لا يوجد أطفال نشطون حاليًا.
                                 </TableCell>
                             </TableRow>
@@ -756,15 +767,18 @@ function PosTrackingContent() {
                     </Table>
                 </CardContent>
             </Card>
+
+             {/* Completed Sessions Section */}
             <Card>
                 <CardHeader>
-                    <CardTitle>أحدث الجلسات المنتهية</CardTitle>
+                    <CardTitle>أحدث الجلسات المنتهية (في ورديتك)</CardTitle>
                 </CardHeader>
                 <CardContent>
                      <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="text-right">الطفل</TableHead>
+                                <TableHead className="text-right">ولي الأمر</TableHead>
                                 <TableHead className="text-center">التكلفة</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -773,6 +787,7 @@ function PosTrackingContent() {
                                 todaysCompletedSessions.map((session) => (
                                     <TableRow key={session.id}>
                                         <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
+                                        <TableCell className="text-right">{session.parentName}</TableCell>
                                         <TableCell className="font-bold text-center">
                                             {session.subscriptionId ? (
                                                 <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
@@ -782,8 +797,8 @@ function PosTrackingContent() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={2} className="h-24 text-center">
-                                        لم تكتمل أي جلسات اليوم بعد.
+                                    <TableCell colSpan={3} className="h-24 text-center">
+                                        لم تكتمل أي جلسات في ورديتك بعد.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -792,7 +807,6 @@ function PosTrackingContent() {
                 </CardContent>
             </Card>
         </div>
-      </div>
        
       <CheckInDialog
         open={isCheckInDialogOpen}
