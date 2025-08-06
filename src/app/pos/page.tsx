@@ -510,7 +510,6 @@ function PosTrackingContent() {
 
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
-    if (user.username === 'admin') return true;
     return openShifts.some(shift => shift.cashierUsername === user.username);
   }, [user, openShifts]);
 
@@ -920,3 +919,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
+    
