@@ -31,7 +31,7 @@ export const usePosPrint = () => {
                         href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap"
                         rel="stylesheet"
                         />
-                        <link rel="stylesheet" href="/_next/static/css/app/layout.css" media="all">
+                        <link rel="stylesheet" href="/_next/static/css/app/globals.css" media="all">
                         <style>
                             @page { size: 80mm auto; margin: 0; }
                             body { margin: 0; font-family: 'PT Sans', sans-serif !important; direction: rtl; color: black !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
