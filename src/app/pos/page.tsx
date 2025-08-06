@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings } from '@/lib/types';
@@ -301,7 +301,7 @@ function CheckOutDialog({
           </DialogClose>
             <Button 
               onClick={handleConfirm} 
-              disabled={(checkoutData.totalCost > 0 && !amountReceived) || (Number(amountReceived) < checkoutData.totalCost)}
+              disabled={(checkoutData.totalCost > 0 && (!amountReceived || Number(amountReceived) < checkoutData.totalCost))}
             >
                 حفظ و طباعة
             </Button>
@@ -665,6 +665,27 @@ function PosTrackingContent() {
   
   const selectedBranchName = selectedBranchFilter === 'all' ? 'كل الفروع' : selectedBranchFilter;
 
+  if (!hasActiveShift) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center p-4 z-10">
+        <Alert variant="destructive" className="max-w-md">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
+            <AlertDescription>
+                لا يمكنك استخدام نقاط البيع لأنه لا توجد وردية مفتوحة لحسابك. يرجى الذهاب إلى شاشة إدارة الورديات لبدء وردية جديدة.
+            </AlertDescription>
+        </Alert>
+        <Link href="/shift-closing" className='mt-6'>
+            <Button>
+                <Briefcase className="me-2 h-4 w-4" />
+                الانتقال إلى إدارة الورديات
+            </Button>
+        </Link>
+      </div>
+    );
+  }
+
+
   return (
     <div className="flex flex-col gap-8 relative overflow-hidden">
         {/* Background Image */}
@@ -697,18 +718,6 @@ function PosTrackingContent() {
             </div>
         </div>
       
-        {!hasActiveShift && (
-            <Alert variant="destructive" className="z-10">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
-                <AlertDescription>
-                    لا يمكنك تسجيل دخول الأطفال لأنه لا توجد وردية مفتوحة لحسابك. يرجى الذهاب إلى
-                     إدارة الورديات
-                    لبدء وردية جديدة.
-                </AlertDescription>
-            </Alert>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 z-10">
              <StatCard
                 title="الأطفال النشطون حاليًا"
