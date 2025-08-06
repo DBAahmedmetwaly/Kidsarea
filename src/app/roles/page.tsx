@@ -17,11 +17,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 const ALL_SCREENS = [
   { href: '/', label: 'لوحة التحكم' },
   { href: '/pos', label: 'نقاط البيع' },
-  { href: '/tracking', label: 'تتبع الوقت' },
   { href: '/sessions', label: 'سجل الجلسات' },
   { href: '/shift-closing', label: 'إدارة الورديات' },
   { href: '/reports', label: 'التقارير' },
-  { href: '/branches', label: 'الفروع' },
   { href: '/employees', label: 'الموظفين' },
   { href: '/games', label: 'الألعاب' },
   { href: '/game-categories', label: 'تصنيفات الألعاب' },
@@ -33,6 +31,8 @@ const ALL_SCREENS = [
   { href: '/customers', label: 'العملاء' },
   { href: '/subscriptions', label: 'الاشتراكات' },
   { href: '/subscription-plans', label: 'باقات الاشتراكات' },
+  { href: '/data-management', label: 'إدارة البيانات' },
+  { href: '/branches', label: 'الفروع' },
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -78,7 +78,6 @@ function RolesContent() {
           'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {}),
           'كاشير': {
              [encodeKey('/pos')]: true,
-             [encodeKey('/tracking')]: true,
              [encodeKey('/sessions')]: true,
              [encodeKey('/shift-closing')]: true,
              [encodeKey('/customers')]: true,
@@ -86,7 +85,6 @@ function RolesContent() {
              [encodeKey('/subscription-plans')]: true,
           },
           'مشرف': { 
-            [encodeKey('/tracking')]: true,
             [encodeKey('/sessions')]: true,
            },
         };
@@ -96,14 +94,13 @@ function RolesContent() {
                  'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {}),
                  'كاشير': {
                     '/pos': true,
-                    '/tracking': true,
                     '/sessions': true,
                     '/shift-closing': true,
                     '/customers': true,
                     '/subscriptions': true,
                     '/subscription-plans': true,
                 },
-                'مشرف': { '/tracking': true, '/sessions': true },
+                'مشرف': { '/sessions': true },
             }
             setPermissions(decodedForState);
             setLoading(false);
@@ -127,15 +124,6 @@ function RolesContent() {
         }
 
         newPermissions[selectedRole][screenHref] = checked;
-
-        // Logic: if /tracking is enabled, /sessions should be too.
-        if (screenHref === '/tracking' && checked) {
-             newPermissions[selectedRole]['/sessions'] = true;
-        }
-         // Logic: if /sessions is disabled, /tracking should be too.
-        if(screenHref === '/sessions' && !checked) {
-             newPermissions[selectedRole]['/tracking'] = false;
-        }
 
         // Auto-enable dependent screens
         if (checked) {
@@ -241,7 +229,6 @@ function RolesContent() {
                                 checked={permissions?.[selectedRole]?.[screen.href] || false}
                                 onCheckedChange={(checked) => handlePermissionChange(screen.href, !!checked)}
                                 disabled={
-                                    (screen.href === '/sessions' && permissions?.[selectedRole]?.['/tracking']) ||
                                     (screen.href === '/subscriptions' && permissions?.[selectedRole]?.['/subscriptions/[subscriptionId]']) ||
                                     (screen.href === '/customers' && permissions?.[selectedRole]?.['/customers/[customerId]'])
                                 }

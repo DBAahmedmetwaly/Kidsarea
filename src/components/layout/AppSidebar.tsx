@@ -51,7 +51,6 @@ import { Button } from '../ui/button';
 const allMenuItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/pos', label: 'نقاط البيع', icon: ShoppingBag },
-  { href: '/tracking', label: 'تتبع الوقت', icon: Clock },
   { href: '/sessions', label: 'سجل الجلسات', icon: History },
   { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
