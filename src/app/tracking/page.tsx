@@ -169,6 +169,11 @@ function CheckOutDialog({
       const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
       const finalCost = isSubscription ? 0 : totalCost;
 
+      const cashier = employees.find(e => e.username === user?.username);
+      const cashierName = user?.username === 'admin' 
+        ? 'Admin' 
+        : cashier?.name || user?.username || 'N/A';
+
       return <PosReceipt 
               appName={policies?.appName || 'FunTrack'}
               childName={child.name}
@@ -180,7 +185,7 @@ function CheckOutDialog({
               totalCost={finalCost}
               durationCost={isSubscription ? 0 : durationCost}
               entryFee={isSubscription ? 0 : entryFee}
-              cashierName={user?.username || 'N/A'}
+              cashierName={cashierName}
               isSubscription={isSubscription}
             />;
   }, [child, games, policies, isSubscription, user]);
@@ -257,6 +262,8 @@ function CheckOutDialog({
   }
 
   if (!child || !checkoutData) return null;
+
+  const { employees } = useFirebase();
 
   const change = Number(amountReceived) - (isSubscription ? 0 : checkoutData.totalCost);
 
@@ -349,12 +356,12 @@ function TrackingContent() {
   }, [user, employees]);
 
 
-  useEffect(() => {
-    if (currentUser && currentUser.branch !== 'كل الفروع') {
-      setCheckInBranch(currentUser.branch);
-      setSelectedBranchFilter(currentUser.branch);
-    }
-  }, [currentUser]);
+    useEffect(() => {
+        if (currentUser && currentUser.branch !== 'كل الفروع' && !checkInBranch) {
+            setCheckInBranch(currentUser.branch);
+            setSelectedBranchFilter(currentUser.branch);
+        }
+    }, [currentUser, checkInBranch]);
 
   // Check for active subscription when a child is selected
   useEffect(() => {
