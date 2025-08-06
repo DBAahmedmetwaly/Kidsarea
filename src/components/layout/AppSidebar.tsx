@@ -93,7 +93,7 @@ function SidebarItems() {
         }
     });
 
-    if (!user || user.username === 'admin') {
+    if (!user || !('role' in user)) {
       const allPermissions: Permissions = [...allMenuItems, ...settingsMenuItems].reduce((acc, item) => {
         acc[item.href] = true;
         return acc;
@@ -138,7 +138,9 @@ function SidebarItems() {
     if (!user) return [];
     if (user.username === 'admin') return [...allMenuItems, ...settingsMenuItems];
     
+    if (!('role' in user)) return []; // Should not happen if not admin
     const employee = user as Employee;
+    
     if (!permissions || !employee.role || !permissions[employee.role]) return [];
 
     const userPermissions = permissions[employee.role];
