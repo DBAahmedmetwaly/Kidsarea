@@ -55,7 +55,7 @@ const allMenuItems = [
   { href: '/sessions', label: 'سجل الجلسات', icon: History },
   { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
-  { href: '/branches', label: 'الفروع', icon: Building2 },
+  // { href: '/branches', label: 'الفروع', icon: Building2 },
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/game-categories', label: 'تصنيفات الألعاب', icon: Layers },
