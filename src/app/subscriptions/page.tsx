@@ -157,20 +157,23 @@ function SubscriptionFormDialog({
         return;
     };
 
-    // Prevent duplicate active subscriptions
-    const hasActiveSubscription = subscriptions.some(sub => 
+    // Prevent duplicate active subscriptions, allow renewal within 5 days.
+    const activeSubscription = subscriptions.find(sub => 
         sub.customerId === values.customerId &&
         sub.childName === values.childName &&
         sub.status === 'Active'
     );
 
-    if (hasActiveSubscription) {
-        toast({
-            title: "اشتراك مكرر",
-            description: "هذا الطفل لديه اشتراك فعال بالفعل.",
-            variant: 'destructive'
-        });
-        return;
+    if (activeSubscription) {
+        const daysLeft = differenceInDays(new Date(activeSubscription.endDate), new Date());
+        if (daysLeft > 5) {
+            toast({
+                title: "اشتراك مكرر",
+                description: `هذا الطفل لديه اشتراك فعال بالفعل. يمكن تجديده قبل 5 أيام من تاريخ الانتهاء.`,
+                variant: 'destructive'
+            });
+            return;
+        }
     }
 
 
