@@ -1,25 +1,22 @@
 
+
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-export const usePosPrint = (receiptComponent: React.ReactElement) => {
-    const iframeRef = useRef<HTMLIFrameElement | null>(null);
+export const usePosPrint = () => {
 
-    const print = useCallback(() => {
+    const printReceipt = useCallback((receiptComponent: React.ReactElement) => {
         const receiptHtml = renderToStaticMarkup(receiptComponent);
         
-        // Create an iframe dynamically
         const iframe = document.createElement('iframe');
         iframe.style.position = 'absolute';
         iframe.style.width = '0';
         iframe.style.height = '0';
         iframe.style.border = 'none';
         iframe.style.visibility = 'hidden';
-
         document.body.appendChild(iframe);
-        iframeRef.current = iframe;
 
         const iframeDoc = iframe.contentWindow?.document;
         if (iframeDoc) {
@@ -43,14 +40,12 @@ export const usePosPrint = (receiptComponent: React.ReactElement) => {
             iframe.onload = () => {
                 iframe.contentWindow?.focus();
                 iframe.contentWindow?.print();
-                 // Clean up the iframe after printing
                 setTimeout(() => {
                     document.body.removeChild(iframe);
-                    iframeRef.current = null;
-                }, 500);
+                }, 500); // Cleanup iframe
             };
         }
-    }, [receiptComponent]);
+    }, []);
 
-    return { print };
+    return { printReceipt };
 };

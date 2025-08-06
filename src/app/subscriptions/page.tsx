@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -76,7 +77,7 @@ import { Star, PlusCircle, Trash, ChevronsUpDown, Check, Filter, RotateCw, MoreH
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePosPrint } from '@/hooks/use-pos-print';
-import { SubscriptionReceipt } from '@/components/SubscriptionReceipt';
+import { SubscriptionReceipt, SubscriptionReceiptProps } from '@/components/SubscriptionReceipt';
 
 const subscriptionSchema = z.object({
   customerId: z.string().min(1, 'يجب اختيار العميل'),
@@ -101,20 +102,8 @@ function SubscriptionFormDialog({
   const { toast } = useToast();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [openCombobox, setOpenCombobox] = useState(false);
-  const [receiptDetails, setReceiptDetails] = useState<any | null>(null);
+  const { printReceipt } = usePosPrint();
 
-  const receiptComponent = useMemo(() => {
-    if (!receiptDetails) return null;
-    return <SubscriptionReceipt {...receiptDetails} />;
-  }, [receiptDetails]);
-
-  const { print } = usePosPrint(receiptComponent as React.ReactElement);
-
-   useEffect(() => {
-      if (receiptDetails) {
-          print();
-      }
-  }, [receiptDetails, print]);
 
   const form = useForm<SubscriptionFormValues>({
     resolver: zodResolver(subscriptionSchema),
@@ -204,9 +193,8 @@ function SubscriptionFormDialog({
         const cashierName = user?.username === 'admin' 
             ? 'Admin' 
             : cashier?.name || user?.username || 'N/A';
-
-        // Prepare and trigger receipt printing
-        setReceiptDetails({
+        
+        const receiptDetails: SubscriptionReceiptProps = {
             appName: policies?.appName || 'FunTrack',
             customerName: customer.parentName,
             childName: values.childName,
@@ -215,7 +203,9 @@ function SubscriptionFormDialog({
             endDate: endDate,
             price: plan.price,
             cashierName: cashierName,
-        });
+        };
+
+        printReceipt(<SubscriptionReceipt {...receiptDetails} />);
 
         toast({ title: "تم إنشاء الاشتراك بنجاح!"});
         onOpenChange(false);

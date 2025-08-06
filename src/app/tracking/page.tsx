@@ -149,49 +149,8 @@ function CheckOutDialog({
   const [amountReceived, setAmountReceived] = useState('');
   const [isSubscription, setIsSubscription] = useState(false);
   const { user } = useAuth();
+  const { printReceipt } = usePosPrint();
   
-  const receiptComponent = useMemo(() => {
-      if(!child) return null;
-      // All the data needed for the receipt is calculated here and passed to PosReceipt
-      const durationMs = Date.now() - child.checkInTime;
-      const gameDetails = games.find((g) => g.name === child.game);
-      let hourlyRate = gameDetails?.hourly_rate || 0;
-      if (policies?.enableWeekendPricing) {
-          const today = getDayOfWeek(new Date());
-          if (policies.weekendDays[today]) {
-              const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-              if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
-          } else {
-              const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-              if(weekdayPolicy) hourlyRate = weekdayPolicy.weekdayRate;
-          }
-      }
-      const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies);
-      const finalCost = isSubscription ? 0 : totalCost;
-
-      const cashier = employees.find(e => e.username === user?.username);
-      const cashierName = user?.username === 'admin' 
-        ? 'Admin' 
-        : cashier?.name || user?.username || 'N/A';
-
-      return <PosReceipt 
-              appName={policies?.appName || 'FunTrack'}
-              childName={child.name}
-              parentName={child.parentName}
-              gameName={child.game}
-              checkInTime={new Date(child.checkInTime)}
-              checkOutTime={new Date()}
-              duration={formatDuration(durationMs)}
-              totalCost={finalCost}
-              durationCost={isSubscription ? 0 : durationCost}
-              entryFee={isSubscription ? 0 : entryFee}
-              cashierName={cashierName}
-              isSubscription={isSubscription}
-            />;
-  }, [child, games, policies, isSubscription, user, employees]);
-
-  const { print } = usePosPrint(receiptComponent as React.ReactElement);
-
 
   const checkoutData = useMemo(() => {
     if (!child) return null;
@@ -256,9 +215,32 @@ function CheckOutDialog({
   }, [child]);
 
   const handleConfirm = () => {
-    if(!child || !receiptComponent) return;
-    print();
-    onConfirm(child, receiptComponent.props);
+    if(!child || !checkoutData) return;
+    
+    const cashier = employees.find(e => e.username === user?.username);
+    const cashierName = user?.username === 'admin' 
+        ? 'Admin' 
+        : cashier?.name || user?.username || 'N/A';
+        
+    const finalCost = isSubscription ? 0 : checkoutData.totalCost;
+    
+    const receiptDetails: PosReceiptProps = {
+        appName: policies?.appName || 'FunTrack',
+        childName: child.name,
+        parentName: child.parentName,
+        gameName: child.game,
+        checkInTime: new Date(child.checkInTime),
+        checkOutTime: new Date(),
+        duration: checkoutData.duration,
+        totalCost: finalCost,
+        durationCost: isSubscription ? 0 : checkoutData.durationCost,
+        entryFee: isSubscription ? 0 : checkoutData.entryFee,
+        cashierName: cashierName,
+        isSubscription: isSubscription,
+    };
+    
+    printReceipt(<PosReceipt {...receiptDetails} />);
+    onConfirm(child, receiptDetails);
   }
 
   if (!child || !checkoutData) return null;

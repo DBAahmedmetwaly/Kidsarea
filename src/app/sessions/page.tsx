@@ -60,6 +60,8 @@ function SessionsContent() {
   const { completedSessions, setCompletedSessions } = useSession();
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { printReceipt } = usePosPrint();
+
 
   const currentUser = useMemo(() => {
     if (!user) return null;
@@ -70,16 +72,6 @@ function SessionsContent() {
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
-  
-  // Receipt State
-  const [receiptDetails, setReceiptDetails] = useState<PosReceiptProps | null>(null);
-  
-  const receiptComponent = useMemo(() => {
-    if (!receiptDetails) return null;
-    return <PosReceipt {...receiptDetails} />;
-  }, [receiptDetails]);
-
-  const { print } = usePosPrint(receiptComponent as React.ReactElement);
 
 
   useEffect(() => {
@@ -136,7 +128,7 @@ function SessionsContent() {
         ? 'Admin' 
         : cashier?.name || session.cashierUsername || 'N/A';
 
-    setReceiptDetails({
+    const receiptDetails: PosReceiptProps = {
         appName: policies?.appName || 'FunTrack',
         childName: session.name,
         parentName: session.parentName,
@@ -149,14 +141,9 @@ function SessionsContent() {
         entryFee: session.entryFee,
         cashierName: cashierName,
         isSubscription: !!session.subscriptionId,
-    });
+    };
+    printReceipt(<PosReceipt {...receiptDetails} />);
   }
-  
-  useEffect(() => {
-      if (receiptDetails) {
-          print();
-      }
-  }, [receiptDetails, print]);
 
 
   const renderContent = () => {
