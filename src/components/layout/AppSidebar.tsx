@@ -94,7 +94,8 @@ function SidebarItems() {
     });
 
     if (!user) {
-        return () => unsubPolicies();
+      setPermissions(null); // Clear permissions on logout
+      return () => unsubPolicies();
     }
     
     // Handle admin user
@@ -112,45 +113,59 @@ function SidebarItems() {
       return () => unsubPolicies();
     }
 
-    // Handle employee users
-    const rolesRef = ref(db, 'roles');
-    const unsubRoles = onValue(rolesRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            const decodedPermissions: Partial<RolePermissions> = {};
-            for (const role in data) {
-                if (Object.prototype.hasOwnProperty.call(data, role)) {
-                    const rolePermissions = data[role as Employee['role']];
-                    const decodedRolePermissions: Permissions = {};
-                    for (const encodedKey in rolePermissions) {
-                        if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
-                           decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
-                        }
-                    }
-                    decodedPermissions[role as Employee['role']] = decodedRolePermissions;
-                }
-            }
-            setPermissions(decodedPermissions as RolePermissions);
-        }
-    });
+    // Handle employee users only if their role is loaded
+    if ('role' in user && user.role) {
+      const rolesRef = ref(db, 'roles');
+      const unsubRoles = onValue(rolesRef, (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+              const decodedPermissions: Partial<RolePermissions> = {};
+              for (const role in data) {
+                  if (Object.prototype.hasOwnProperty.call(data, role)) {
+                      const rolePermissions = data[role as Employee['role']];
+                      const decodedRolePermissions: Permissions = {};
+                      for (const encodedKey in rolePermissions) {
+                          if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
+                             decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
+                          }
+                      }
+                      decodedPermissions[role as Employee['role']] = decodedRolePermissions;
+                  }
+              }
+              setPermissions(decodedPermissions as RolePermissions);
+          }
+      }, (error) => {
+          console.error("Firebase roles error:", error);
+          setPermissions(null);
+      });
+      return () => {
+        unsubPolicies();
+        unsubRoles();
+      };
+    } else {
+        // User data is not fully loaded yet, wait for the next effect run
+        setPermissions(null);
+    }
+    
 
     return () => {
         unsubPolicies();
-        unsubRoles();
     };
   }, [user]);
 
   const getVisibleMenuItems = () => {
-    if (!user) return [];
-    if (user.username === 'admin') return [...allMenuItems, ...settingsMenuItems];
+    if (!user || !permissions) return [];
     
-    if (!('role' in user)) return []; // Should not happen if not admin
-    const employee = user as Employee;
-    
-    if (!permissions || !employee.role || !permissions[employee.role]) return [];
+    let userRole: Employee['role'] | 'admin' = 'مشرف'; // default
+    if (user.username === 'admin') {
+        userRole = 'admin';
+    } else if ('role' in user) {
+        userRole = (user as Employee).role;
+    }
 
-    const userPermissions = permissions[employee.role];
-    
+    const userPermissions = userRole === 'admin' ? permissions['مدير فرع'] : permissions[userRole];
+    if (!userPermissions) return [];
+
     // Add /sessions to permissions if they can see /tracking
     if (userPermissions['/tracking'] && !userPermissions['/sessions']) {
         userPermissions['/sessions'] = true;
