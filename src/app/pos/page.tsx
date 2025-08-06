@@ -680,38 +680,42 @@ function PosTrackingContent() {
         <div className="space-y-8 z-10">
             {/* Games Section */}
             <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                 {gameCategories.map(category => (
-                    <TabsTrigger key={category.id} value={category.id}>{category.name}</TabsTrigger>
+                    <TabsTrigger 
+                        key={category.id} 
+                        value={category.id} 
+                        className="transition-all"
+                        style={{
+                            backgroundColor: selectedCategory === category.id ? category.color : '',
+                            color: selectedCategory === category.id ? 'white' : '',
+                            borderColor: category.color
+                        }}
+                    >
+                        {category.name}
+                    </TabsTrigger>
                 ))}
                 </TabsList>
-                {gameCategories.map(category => (
-                    <TabsContent key={category.id} value={category.id}>
-                        <Card className="min-h-[200px]">
-                            <CardHeader>
-                                <CardTitle>ألعاب: {category.name}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                {gamesForSelectedCategory.map(game => (
-                                    <button 
-                                        key={game.id} 
-                                        onClick={() => openCheckInDialog(game)} 
-                                        disabled={!hasActiveShift}
-                                        className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                                    >
-                                        <p className="font-semibold text-sm">{game.name}</p>
-                                        <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
-                                    </button>
-                                ))}
-                                {gamesForSelectedCategory.length === 0 && (
-                                    <div className="col-span-full text-center text-muted-foreground py-16">
-                                        لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                ))}
+                 <Card className="min-h-[200px] mt-4">
+                    <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
+                        {gamesForSelectedCategory.map(game => (
+                            <button 
+                                key={game.id} 
+                                onClick={() => openCheckInDialog(game)} 
+                                disabled={!hasActiveShift}
+                                className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                                <p className="font-semibold text-sm">{game.name}</p>
+                                <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
+                            </button>
+                        ))}
+                        {gamesForSelectedCategory.length === 0 && (
+                            <div className="col-span-full text-center text-muted-foreground py-16">
+                                لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </Tabs>
 
             {/* Active Children Section */}

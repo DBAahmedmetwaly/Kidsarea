@@ -152,6 +152,7 @@ export interface SubscriptionPlan {
 export interface GameCategory {
     id: string;
     name: string;
+    color: string;
 }
 
 export interface ReceiptSettings {

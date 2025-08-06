@@ -63,6 +63,7 @@ import { useEffect } from 'react';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'اسم التصنيف مطلوب'),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'يجب أن يكون لونًا صالحًا (hex format)'),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -84,16 +85,23 @@ function CategoryFormDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
+    defaultValues: {
+      name: '',
+      color: '#4ab7e2'
+    }
   });
+  
+  const watchedColor = watch('color');
 
   useEffect(() => {
     if (isEditMode && initialData) {
       reset(initialData);
     } else {
-      reset({ name: '' });
+      reset({ name: '', color: '#4ab7e2' });
     }
   }, [initialData, isEditMode, open, reset]);
 
@@ -113,6 +121,15 @@ function CategoryFormDialog({
             <Label htmlFor="name">اسم التصنيف</Label>
             <Input id="name" {...register('name')} placeholder="مثال: ألعاب حركية" />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+          </div>
+           <div>
+            <Label htmlFor="color">لون التصنيف</Label>
+            <div className="flex items-center gap-2">
+                 <Input id="color" type="color" {...register('color')} className="w-16 h-10 p-1" />
+                 <Input id="color-text" {...register('color')} placeholder="#4ab7e2" className="flex-1" />
+                 <div className="w-8 h-8 rounded-md" style={{ backgroundColor: watchedColor }} />
+            </div>
+            {errors.color && <p className="text-red-500 text-xs mt-1">{errors.color.message}</p>}
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -198,13 +215,20 @@ function GameCategoriesContent() {
             <TableHeader>
               <TableRow>
                 <TableHead>اسم التصنيف</TableHead>
+                <TableHead className="text-center">اللون</TableHead>
                 <TableHead className="text-center">إجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {gameCategories.map((category) => (
                 <TableRow key={category.id}>
-                  <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell className="font-medium text-right">{category.name}</TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                        <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: category.color }}></div>
+                        <span className="font-mono text-xs">{category.color}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
