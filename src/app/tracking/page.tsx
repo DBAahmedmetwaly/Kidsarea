@@ -644,7 +644,7 @@ function TrackingContent() {
                     <AlertTitle>لا توجد وردية مفتوحة</AlertTitle>
                     <AlertDescription>
                        لا يمكنك تسجيل دخول الأطفال لأنه لا توجد وردية مفتوحة لحسابك. يرجى الذهاب إلى
-                       <Link href="/shift-closing" className="font-bold underline px-1">إدارة الورديات</Link>
+                       <span className="font-bold underline px-1">إدارة الورديات</span>
                        لبدء وردية جديدة.
                     </AlertDescription>
                 </Alert>
