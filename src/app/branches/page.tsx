@@ -2,7 +2,7 @@
 'use client';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 import { Badge } from '@/components/ui/badge';
@@ -48,14 +48,18 @@ import { useToast } from '@/hooks/use-toast';
 import type { Branch, Employee } from '@/lib/types';
 
 
-function AddBranchDialog({
+function BranchFormDialog({
     open,
     onOpenChange,
-    onAddBranch
+    onSubmit,
+    initialData,
+    isEditMode = false,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onAddBranch: (branch: Omit<Branch, 'id' | 'employees'>) => void;
+    onSubmit: (branch: Omit<Branch, 'id' | 'employees'> | Branch) => void;
+    initialData?: Branch | null;
+    isEditMode?: boolean;
 }) {
     const { toast } = useToast();
     const { employees } = useFirebase();
@@ -65,7 +69,19 @@ function AddBranchDialog({
     
     const branchManagers = employees.filter(emp => emp.role === 'مدير فرع');
 
-    const handleAddClick = () => {
+    useEffect(() => {
+        if (isEditMode && initialData) {
+            setName(initialData.name);
+            setManager(initialData.manager);
+            setStatus(initialData.status);
+        } else {
+            setName('');
+            setManager('');
+            setStatus('Active');
+        }
+    }, [initialData, isEditMode, open]);
+
+    const handleFormSubmit = () => {
         if (!name || !manager) {
             toast({
                 title: "خطأ في الإدخال",
@@ -75,17 +91,13 @@ function AddBranchDialog({
             return;
         }
 
-        const newBranch: Omit<Branch, 'id' | 'employees'> = {
+        const branchData: Omit<Branch, 'id' | 'employees'> | Branch = {
+             ...(isEditMode && initialData ? { id: initialData.id } : {}),
             name,
             manager,
             status,
         };
-        onAddBranch(newBranch);
-        
-        // Reset fields
-        setName('');
-        setManager('');
-        setStatus('Active');
+        onSubmit(branchData);
         onOpenChange(false);
     };
 
@@ -93,9 +105,9 @@ function AddBranchDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>إضافة فرع جديد</DialogTitle>
+                    <DialogTitle>{isEditMode ? 'تعديل فرع' : 'إضافة فرع جديد'}</DialogTitle>
                     <DialogDescription>
-                        أدخل تفاصيل الفرع الجديد. انقر على "إضافة" عند الانتهاء.
+                        {isEditMode ? 'قم بتحديث تفاصيل الفرع.' : 'أدخل تفاصيل الفرع الجديد. انقر على "إضافة" عند الانتهاء.'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -141,7 +153,7 @@ function AddBranchDialog({
                             إلغاء
                         </Button>
                     </DialogClose>
-                    <Button type="button" onClick={handleAddClick}>إضافة الفرع</Button>
+                    <Button type="button" onClick={handleFormSubmit}>{isEditMode ? 'حفظ التغييرات' : 'إضافة الفرع'}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -152,6 +164,8 @@ function AddBranchDialog({
 function BranchesContent() {
   const { branches, employees } = useFirebase();
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [showAddButton, setShowAddButton] = useState(false);
   const [titleClickCount, setTitleClickCount] = useState(0);
   const { toast } = useToast();
@@ -179,6 +193,31 @@ function BranchesContent() {
           })
       }
   };
+  
+    const handleUpdateBranch = async (branchData: Branch) => {
+        try {
+            const branchRef = ref(db, `branches/${branchData.id}`);
+            const { id, ...dataToUpdate } = branchData;
+            await update(branchRef, dataToUpdate);
+            toast({ title: 'تم التعديل بنجاح', description: `تم تحديث فرع "${branchData.name}".` });
+        } catch(e) {
+             console.error(e);
+            toast({ title: 'خطأ في التعديل', variant: 'destructive' });
+        }
+    };
+
+    const handleFormSubmit = (data: Omit<Branch, 'id' | 'employees'> | Branch) => {
+        if ('id' in data) {
+            handleUpdateBranch(data as Branch);
+        } else {
+            handleAddBranch(data as Omit<Branch, 'id' | 'employees'>);
+        }
+    }
+  
+    const openEditDialog = (branch: Branch) => {
+        setSelectedBranch(branch);
+        setEditDialogOpen(true);
+    }
 
   const getEmployeeCountForBranch = (branchName: string) => {
     return employees.filter(emp => emp.branch === branchName).length;
@@ -188,12 +227,20 @@ function BranchesContent() {
     const newCount = titleClickCount + 1;
     setTitleClickCount(newCount);
     if (newCount >= 5) {
-        setShowAddButton(true);
-        toast({
-            title: "تمكين الإضافة",
-            description: "تم تفعيل زر إضافة فرع جديد.",
-        });
-        setTitleClickCount(0); // Reset after enabling
+        const password = prompt("يرجى إدخال كلمة المرور لتفعيل الإضافة:");
+        if (password === 'sansan') {
+            setShowAddButton(true);
+            toast({
+                title: "تمكين الإضافة",
+                description: "تم تفعيل زر إضافة فرع جديد.",
+            });
+        } else {
+             toast({
+                title: "كلمة مرور خاطئة",
+                variant: 'destructive'
+            });
+        }
+        setTitleClickCount(0); // Reset after trying
     }
   }
 
@@ -270,7 +317,7 @@ function BranchesContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>تعديل</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(branch)}>تعديل</DropdownMenuItem>
                         <DropdownMenuItem>حذف</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -281,7 +328,14 @@ function BranchesContent() {
           </Table>
         </CardContent>
       </Card>
-      <AddBranchDialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen} onAddBranch={handleAddBranch} />
+      <BranchFormDialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen} onSubmit={handleFormSubmit} />
+      <BranchFormDialog 
+        open={isEditDialogOpen} 
+        onOpenChange={setEditDialogOpen} 
+        onSubmit={handleFormSubmit}
+        initialData={selectedBranch}
+        isEditMode={true}
+       />
     </div>
   );
 }
