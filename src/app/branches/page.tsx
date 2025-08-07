@@ -2,7 +2,7 @@
 'use client';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { ref, push, set, update } from 'firebase/database';
+import { ref, push, set, update, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,17 @@ import {
     DialogFooter,
     DialogClose,
   } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -173,13 +184,14 @@ function BranchesContent() {
 
   const handleAddBranch = async (newBranchData: Omit<Branch, 'id' | 'employees'>) => {
       try {
-          const branchesRef = ref(db, 'branches');
-          const newBranchRef = push(branchesRef);
+          const newBranchId = push(ref(db, 'branches')).key;
+          if (!newBranchId) throw new Error("Could not generate a new ID for the branch.");
+          
           const newBranch = {
               ...newBranchData,
               employees: 0 // Initial employee count
           }
-          await set(newBranchRef, newBranch);
+          await set(ref(db, `branches/${newBranchId}`), newBranch);
            toast({
               title: "تمت الإضافة بنجاح",
               description: `تمت إضافة فرع "${newBranch.name}" إلى القائمة.`,
@@ -205,6 +217,16 @@ function BranchesContent() {
             toast({ title: 'خطأ في التعديل', variant: 'destructive' });
         }
     };
+
+    const handleDeleteBranch = async (branchId: string) => {
+        try {
+            await remove(ref(db, `branches/${branchId}`));
+            toast({ title: 'تم الحذف بنجاح' });
+        } catch(e) {
+             console.error(e);
+            toast({ title: 'خطأ', description: 'لم يتم حذف الفرع.', variant: 'destructive' });
+        }
+    }
 
     const handleFormSubmit = (data: Omit<Branch, 'id' | 'employees'> | Branch) => {
         if ('id' in data) {
@@ -234,7 +256,7 @@ function BranchesContent() {
                 title: "تمكين الإضافة",
                 description: "تم تفعيل زر إضافة فرع جديد.",
             });
-        } else {
+        } else if (password !== null) { // This handles the case where user clicks "Cancel"
              toast({
                 title: "كلمة مرور خاطئة",
                 variant: 'destructive'
@@ -255,7 +277,10 @@ function BranchesContent() {
         {showAddButton && (
             <div className="ms-auto">
                 <Button 
-                    onClick={() => setAddDialogOpen(true)}
+                    onClick={() => {
+                        setSelectedBranch(null);
+                        setAddDialogOpen(true);
+                    }}
                     size="sm"
                 >
                     <PlusCircle className="me-2 h-4 w-4" />
@@ -318,7 +343,23 @@ function BranchesContent() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => openEditDialog(branch)}>تعديل</DropdownMenuItem>
-                        <DropdownMenuItem>حذف</DropdownMenuItem>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">حذف</DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    سيؤدي هذا الإجراء إلى حذف الفرع بشكل دائم. لا يمكن التراجع عن هذا الإجراء.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteBranch(branch.id)}>متابعة الحذف</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -328,7 +369,12 @@ function BranchesContent() {
           </Table>
         </CardContent>
       </Card>
-      <BranchFormDialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen} onSubmit={handleFormSubmit} />
+      <BranchFormDialog 
+        open={isAddDialogOpen} 
+        onOpenChange={setAddDialogOpen} 
+        onSubmit={handleFormSubmit}
+        isEditMode={false} 
+      />
       <BranchFormDialog 
         open={isEditDialogOpen} 
         onOpenChange={setEditDialogOpen} 
