@@ -109,7 +109,7 @@ function CustomerDetailsContent() {
             </CardHeader>
             <CardContent>
                 <ul className="list-disc list-inside space-y-2">
-                    {customer.children.map((child, index) => (
+                    {customer.children && customer.children.map((child, index) => (
                         <li key={index} className="flex items-center gap-2">
                            <Cake className="h-4 w-4 text-muted-foreground" />
                            {child.name} (العمر: {child.age} سنوات)
