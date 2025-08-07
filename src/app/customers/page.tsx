@@ -78,7 +78,7 @@ export function CustomerFormDialog({
         defaultValues: {
             parentName: '',
             phoneNumber: '',
-            children: [{ name: '', age: 0 }],
+            children: [{ name: '', age: 1 }],
         }
     });
 
@@ -100,7 +100,7 @@ export function CustomerFormDialog({
             reset({
                 parentName: '',
                 phoneNumber: '',
-                children: [{ name: '', age: 0 }],
+                children: [{ name: '', age: 1 }],
             });
         }
     }, [initialData, isEditMode, open, reset]);
@@ -164,7 +164,7 @@ export function CustomerFormDialog({
                         variant="outline"
                         size="sm"
                         className="mt-2 col-span-4"
-                        onClick={() => append({ name: '', age: 0 })}
+                        onClick={() => append({ name: '', age: 1 })}
                     >
                         <PlusCircle className="me-2 h-4 w-4" />
                         إضافة طفل آخر
