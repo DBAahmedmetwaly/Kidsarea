@@ -39,6 +39,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -74,9 +75,9 @@ const categorySchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'يجب أن يكون لونًا صالحًا (hex format)'),
 });
 
-type CategoryFormValues = z.infer<typeof categorySchema>;
+export type CategoryFormValues = z.infer<typeof categorySchema>;
 
-function CategoryFormDialog({
+export function CategoryFormDialog({
   open,
   onOpenChange,
   onSubmit,
@@ -100,10 +101,12 @@ function CategoryFormDialog({
   const watchedColor = form.watch('color');
 
   useEffect(() => {
-    if (isEditMode && initialData) {
-      form.reset(initialData);
-    } else {
-      form.reset({ name: '', color: '#4ab7e2' });
+    if (open) {
+      if (isEditMode && initialData) {
+        form.reset(initialData);
+      } else {
+        form.reset({ name: '', color: '#4ab7e2' });
+      }
     }
   }, [initialData, isEditMode, open, form]);
 
@@ -117,6 +120,7 @@ function CategoryFormDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'تعديل التصنيف' : 'إضافة تصنيف جديد'}</DialogTitle>
+          <DialogDescription>أدخل اسم التصنيف واختر لونًا مميزًا له.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ChevronsUpDown, Check } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -47,9 +47,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Game } from '@/lib/types';
+import type { Game, GameCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, push, set, remove, update } from 'firebase/database';
@@ -66,7 +68,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/components/AuthProvider';
-
+import { cn } from '@/lib/utils';
+import { CategoryFormDialog, type CategoryFormValues } from '../game-categories/page';
 
 function GameFormDialog({ 
     open, 
@@ -91,26 +94,52 @@ function GameFormDialog({
     const [branch, setBranch] = useState('');
     const [status, setStatus] = useState<'Available' | 'Maintenance'>('Available');
     const [categoryId, setCategoryId] = useState('');
+
+    const [openCategoryCombobox, setOpenCategoryCombobox] = useState(false);
+    const [isAddCategoryOpen, setAddCategoryOpen] = useState(false);
     
     useEffect(() => {
-        if (isEditMode && initialData) {
-            setName(initialData.name);
-            setHourlyRate(String(initialData.hourly_rate));
-            setBranch(initialData.branch);
-            setStatus(initialData.status);
-            setCategoryId(initialData.categoryId || '');
-        } else {
-            setName('');
-            setHourlyRate('');
-            if (currentUser && currentUser.branch !== 'كل الفروع') {
-                setBranch(currentUser.branch);
+        if (open) { // Reset state when dialog opens
+            if (isEditMode && initialData) {
+                setName(initialData.name);
+                setHourlyRate(String(initialData.hourly_rate));
+                setBranch(initialData.branch);
+                setStatus(initialData.status);
+                setCategoryId(initialData.categoryId || '');
             } else {
-                setBranch('');
+                setName('');
+                setHourlyRate('');
+                if (currentUser && currentUser.branch !== 'كل الفروع') {
+                    setBranch(currentUser.branch);
+                } else {
+                    setBranch('');
+                }
+                setStatus('Available');
+                setCategoryId('');
             }
-            setStatus('Available');
-            setCategoryId('');
         }
     }, [initialData, isEditMode, open, currentUser]);
+    
+    const handleCategorySelect = (id: string) => {
+        setCategoryId(id);
+        setOpenCategoryCombobox(false);
+    }
+    
+    const handleAddCategory = async (data: CategoryFormValues) => {
+        try {
+            const categoriesRef = ref(db, 'gameCategories');
+            const newCategoryRef = push(categoriesRef);
+            await set(newCategoryRef, data);
+            toast({ title: 'تمت الإضافة بنجاح', description: `تمت إضافة التصنيف "${data.name}".` });
+            // Select the newly added category
+            if(newCategoryRef.key) {
+                setCategoryId(newCategoryRef.key);
+            }
+        } catch (e) {
+            console.error(e);
+            toast({ title: 'خطأ', description: 'فشلت عملية إضافة التصنيف.', variant: 'destructive' });
+        }
+    };
 
     const handleSubmit = () => {
         if (!name || !hourlyRate || !branch || !status || !categoryId) {
@@ -138,7 +167,10 @@ function GameFormDialog({
         onOpenChange(false);
     };
 
+    const selectedCategoryName = gameCategories.find(c => c.id === categoryId)?.name;
+
     return (
+        <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
@@ -158,16 +190,57 @@ function GameFormDialog({
                         <Label htmlFor="category" className="text-right">
                             التصنيف
                         </Label>
-                        <Select value={categoryId} onValueChange={setCategoryId}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="اختر التصنيف" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {gameCategories.map((c) => (
-                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Popover open={openCategoryCombobox} onOpenChange={setOpenCategoryCombobox}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openCategoryCombobox}
+                                className="col-span-3 justify-between"
+                                >
+                                {selectedCategoryName || "اختر التصنيف..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="ابحث عن تصنيف..." />
+                                    <CommandList>
+                                        <CommandEmpty>لم يتم العثور على تصنيف.</CommandEmpty>
+                                        <CommandGroup>
+                                            {gameCategories.map((c) => (
+                                            <CommandItem
+                                                key={c.id}
+                                                value={c.name}
+                                                onSelect={() => handleCategorySelect(c.id)}
+                                            >
+                                                <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    categoryId === c.id ? "opacity-100" : "opacity-0"
+                                                )}
+                                                />
+                                                {c.name}
+                                            </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                        <CommandSeparator />
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setOpenCategoryCombobox(false);
+                                                    setAddCategoryOpen(true);
+                                                }}
+                                            >
+                                                <PlusCircle className="mr-2 h-4 w-4" />
+                                                إضافة تصنيف جديد
+                                            </CommandItem>
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="hourly_rate" className="text-right">
@@ -216,6 +289,14 @@ function GameFormDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+         <CategoryFormDialog
+            open={isAddCategoryOpen}
+            onOpenChange={setAddCategoryOpen}
+            onSubmit={handleAddCategory}
+            isEditMode={false}
+            initialData={null}
+        />
+        </>
     );
 }
 
