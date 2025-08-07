@@ -21,7 +21,7 @@ import {
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Customer, CompletedSession } from '@/lib/types';
-import { Contact, ArrowLeft, Loader2, Phone, Users, Cake } from 'lucide-react';
+import { Contact, ArrowLeft, Loader2, Phone, Users, Cake, Gamepad2, Home, Clock, DollarSign, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCustomers } from '@/context/CustomerContext';
 import { useSession } from '@/context/SessionContext';
@@ -127,40 +127,44 @@ function CustomerDetailsContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>اسم الطفل</TableHead>
-                <TableHead>اللعبة</TableHead>
-                <TableHead>الفرع</TableHead>
-                <TableHead>مدة اللعب</TableHead>
-                <TableHead>التكلفة</TableHead>
-                <TableHead>وقت الخروج</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customerSessions.length > 0 ? (
-                customerSessions.map((session) => (
-                  <TableRow key={session.id}>
-                    <TableCell className="font-medium">{session.name}</TableCell>
-                    <TableCell>{session.game}</TableCell>
-                    <TableCell>{session.branchName}</TableCell>
-                    <TableCell>{formatDuration(session.durationMs)}</TableCell>
-                    <TableCell>{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
-                    <TableCell>
-                      {new Date(session.checkOutTime).toLocaleString('ar-EG')}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">
-                    لا توجد زيارات مسجلة لهذا العميل حتى الآن.
-                  </TableCell>
+                    <TableHead><Users className="inline-block me-1 h-4 w-4"/> أسماء الأطفال</TableHead>
+                    <TableHead><Gamepad2 className="inline-block me-1 h-4 w-4"/> اللعبة</TableHead>
+                    <TableHead><Home className="inline-block me-1 h-4 w-4"/> الفرع</TableHead>
+                    <TableHead><Clock className="inline-block me-1 h-4 w-4"/> مدة اللعب</TableHead>
+                    <TableHead><DollarSign className="inline-block me-1 h-4 w-4"/> التكلفة</TableHead>
+                    <TableHead><Calendar className="inline-block me-1 h-4 w-4"/> وقت الخروج</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                {customerSessions.length > 0 ? (
+                    customerSessions.map((session) => (
+                    <TableRow key={session.id}>
+                        <TableCell className="font-medium">
+                          {session.children.map(c => c.name).join(', ')}
+                        </TableCell>
+                        <TableCell>{session.game}</TableCell>
+                        <TableCell>{session.branchName}</TableCell>
+                        <TableCell>{formatDuration(session.durationMs)}</TableCell>
+                        <TableCell>{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
+                        <TableCell>
+                        {new Date(session.checkOutTime).toLocaleString('ar-EG')}
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                    <TableCell colSpan={6} className="text-center py-10">
+                        لا توجد زيارات مسجلة لهذا العميل حتى الآن.
+                    </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
