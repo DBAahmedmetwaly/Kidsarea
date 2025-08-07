@@ -117,10 +117,10 @@ export function CustomerFormDialog({
 
 
     const handleFormSubmit = (data: { parentName: string, phoneNumber: string, children: ChildFormField[]}) => {
-        if (data.children.some(c => !c.name || c.age <= 0)) {
+        if (data.children.some(c => !c.name || c.age < 1)) {
             toast({
                 title: "خطأ في الإدخال",
-                description: "يرجى تعبئة جميع بيانات الأطفال بشكل صحيح.",
+                description: "يرجى تعبئة جميع بيانات الأطفال بشكل صحيح. يجب أن يكون العمر سنة واحدة على الأقل.",
                 variant: "destructive",
             });
             return;
