@@ -4,7 +4,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { add, differenceInDays } from 'date-fns';
@@ -23,14 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -79,10 +71,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePosPrint } from '@/hooks/use-pos-print';
 import { SubscriptionReceipt, SubscriptionReceiptProps } from '@/components/SubscriptionReceipt';
 import { SubscriptionCard, type SubscriptionCardProps } from '@/components/SubscriptionCard';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 const subscriptionSchema = z.object({
   customerId: z.string().min(1, 'يجب اختيار العميل'),
-  childName: z.string().min(1, 'يجب اختيار الطفل'),
+  childNames: z.array(z.string()).min(1, 'يجب اختيار طفل واحد على الأقل'),
   planId: z.string().min(1, 'يجب اختيار باقة الاشتراك'),
 });
 
@@ -95,7 +89,7 @@ function SubscriptionFormDialog({
 }: { 
     open: boolean, 
     onOpenChange: (open: boolean) => void,
-    initialData?: Partial<SubscriptionFormValues>
+    initialData?: Partial<Omit<SubscriptionFormValues, 'childNames'> & { childName: string }>
 }) {
   const { customers } = useCustomers();
   const { subscriptionPlans, subscriptions, employees, policies } = useFirebase();
@@ -110,20 +104,24 @@ function SubscriptionFormDialog({
     resolver: zodResolver(subscriptionSchema),
     defaultValues: {
         customerId: '',
-        childName: '',
+        childNames: [],
         planId: '',
     },
   });
 
    useEffect(() => {
     if (open && initialData) {
-        form.reset(initialData);
+        form.reset({
+            customerId: initialData.customerId || '',
+            childNames: initialData.childName ? [initialData.childName] : [],
+            planId: initialData.planId || '',
+        });
         if (initialData.customerId) {
             const customer = customers.find(c => c.id === initialData.customerId);
             setSelectedCustomer(customer || null);
         }
     } else if (!open) {
-        form.reset({ customerId: '', childName: '', planId: '' });
+        form.reset({ customerId: '', childNames: [], planId: '' });
         setSelectedCustomer(null);
     }
   }, [open, initialData, form, customers]);
@@ -131,7 +129,7 @@ function SubscriptionFormDialog({
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
     form.setValue('customerId', customer.id);
-    form.setValue('childName', ''); // Reset child selection
+    form.setValue('childNames', []); // Reset child selection
     setOpenCombobox(false);
   }
 
@@ -146,75 +144,84 @@ function SubscriptionFormDialog({
         toast({ title: "خطأ", description: "بيانات العميل أو الباقة غير صحيحة."});
         return;
     };
+    
+    let subscriptionsCreatedCount = 0;
 
-    // Prevent duplicate active subscriptions, allow renewal within 5 days.
-    const activeSubscription = subscriptions.find(sub => 
-        sub.customerId === values.customerId &&
-        sub.childName === values.childName &&
-        sub.status === 'Active'
-    );
+    for (const childName of values.childNames) {
+        // Prevent duplicate active subscriptions, allow renewal within 5 days.
+        const activeSubscription = subscriptions.find(sub => 
+            sub.customerId === values.customerId &&
+            sub.childName === childName &&
+            sub.status === 'Active'
+        );
 
-    if (activeSubscription) {
-        const daysLeft = differenceInDays(new Date(activeSubscription.endDate), new Date());
-        if (daysLeft > 5) {
-            toast({
-                title: "اشتراك مكرر",
-                description: `هذا الطفل لديه اشتراك فعال بالفعل. يمكن تجديده قبل 5 أيام من تاريخ الانتهاء.`,
-                variant: 'destructive'
-            });
-            return;
+        if (activeSubscription) {
+            const daysLeft = differenceInDays(new Date(activeSubscription.endDate), new Date());
+            if (daysLeft > 5) {
+                toast({
+                    title: "اشتراك مكرر",
+                    description: `الطفل "${childName}" لديه اشتراك فعال بالفعل. يمكن تجديده قبل 5 أيام من تاريخ الانتهاء.`,
+                    variant: 'destructive'
+                });
+                continue; // Skip this child and move to the next
+            }
+        }
+
+
+        const startDate = new Date();
+        const endDate = add(startDate, { days: plan.duration });
+
+        const newSubscription: Omit<Subscription, 'id'> = {
+        customerId: customer.id,
+        customerName: customer.parentName,
+        childName: childName,
+        planId: plan.id,
+        planName: plan.name,
+        planDescription: plan.description,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        price: plan.price,
+        status: 'Active',
+        createdAt: new Date().toISOString(),
+        cashierUsername: user.username,
+        };
+        
+        try {
+            const subscriptionsRef = ref(db, 'subscriptions');
+            const newSubRef = push(subscriptionsRef);
+            await set(newSubRef, newSubscription);
+            
+            subscriptionsCreatedCount++;
+            
+            const cashier = employees.find(e => e.username === user.username);
+            const cashierName = user?.username === 'admin' 
+                ? 'Admin' 
+                : cashier?.name || user?.username || 'N/A';
+            
+            const receiptDetails: SubscriptionReceiptProps = {
+                appName: policies?.appName || 'FunTrack',
+                customerName: customer.parentName,
+                childName: childName,
+                planName: plan.name,
+                startDate: startDate,
+                endDate: endDate,
+                price: plan.price,
+                cashierName: cashierName,
+            };
+
+            printReceipt(<SubscriptionReceipt {...receiptDetails} />);
+
+        } catch(e) {
+            console.error(e);
+            toast({ title: "خطأ", description: `فشل إنشاء الاشتراك للطفل ${childName}`, variant: 'destructive'})
         }
     }
 
-
-    const startDate = new Date();
-    const endDate = add(startDate, { days: plan.duration });
-
-    const newSubscription: Omit<Subscription, 'id'> = {
-      customerId: customer.id,
-      customerName: customer.parentName,
-      childName: values.childName,
-      planId: plan.id,
-      planName: plan.name,
-      planDescription: plan.description,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      price: plan.price,
-      status: 'Active',
-      createdAt: new Date().toISOString(),
-      cashierUsername: user.username,
-    };
-    
-    try {
-        const subscriptionsRef = ref(db, 'subscriptions');
-        const newSubRef = push(subscriptionsRef);
-        await set(newSubRef, newSubscription);
-        
-        const cashier = employees.find(e => e.username === user.username);
-        const cashierName = user?.username === 'admin' 
-            ? 'Admin' 
-            : cashier?.name || user?.username || 'N/A';
-        
-        const receiptDetails: SubscriptionReceiptProps = {
-            appName: policies?.appName || 'FunTrack',
-            customerName: customer.parentName,
-            childName: values.childName,
-            planName: plan.name,
-            startDate: startDate,
-            endDate: endDate,
-            price: plan.price,
-            cashierName: cashierName,
-        };
-
-        printReceipt(<SubscriptionReceipt {...receiptDetails} />);
-
-        toast({ title: "تم إنشاء الاشتراك بنجاح!"});
+    if (subscriptionsCreatedCount > 0) {
+        toast({ title: `تم إنشاء ${subscriptionsCreatedCount} اشتراك بنجاح!`});
         onOpenChange(false);
         form.reset();
         setSelectedCustomer(null);
-    } catch(e) {
-        console.error(e);
-        toast({ title: "خطأ", description: "فشل إنشاء الاشتراك", variant: 'destructive'})
     }
   }
 
@@ -274,28 +281,51 @@ function SubscriptionFormDialog({
               )}
             />
             {selectedCustomer && (
-              <FormField
-                control={form.control}
-                name="childName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>اختر الطفل</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر من أطفال العميل..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {selectedCustomer.children.map((child, index) => (
-                          <SelectItem key={index} value={child.name}>{child.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="childNames"
+                    render={() => (
+                        <FormItem>
+                            <FormLabel>اختر الأطفال</FormLabel>
+                             <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
+                                {selectedCustomer.children.map((child) => (
+                                    <FormField
+                                    key={child.name}
+                                    control={form.control}
+                                    name="childNames"
+                                    render={({ field }) => {
+                                        return (
+                                        <FormItem
+                                            key={child.name}
+                                            className="flex flex-row items-start space-x-3 space-y-0"
+                                        >
+                                            <FormControl>
+                                            <Checkbox
+                                                checked={field.value?.includes(child.name)}
+                                                onCheckedChange={(checked) => {
+                                                return checked
+                                                    ? field.onChange([...(field.value || []), child.name])
+                                                    : field.onChange(
+                                                        field.value?.filter(
+                                                        (value) => value !== child.name
+                                                        )
+                                                    )
+                                                }}
+                                            />
+                                            </FormControl>
+                                            <FormLabel className="font-normal">
+                                                {child.name}
+                                            </FormLabel>
+                                        </FormItem>
+                                        )
+                                    }}
+                                    />
+                                ))}
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                    />
             )}
              <FormField
                 control={form.control}
@@ -337,7 +367,7 @@ function SubscriptionsContent() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
-  const [formInitialData, setFormInitialData] = useState<Partial<SubscriptionFormValues> | undefined>();
+  const [formInitialData, setFormInitialData] = useState<Partial<Omit<SubscriptionFormValues, 'childNames'> & { childName: string }> | undefined>();
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'EndingSoon' | 'Expired'>('all');
   const { toast } = useToast();
