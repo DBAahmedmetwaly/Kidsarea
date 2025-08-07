@@ -186,7 +186,7 @@ function PasswordDialog({ open, onOpenChange, onConfirm }: { open: boolean, onOp
                 <DialogHeader>
                     <DialogTitle>التحقق من الأمان</DialogTitle>
                     <DialogDescription>
-                        يرجى إدخال كلمة المرور لتفعيل الإضافة.
+                        اكتب كلمة المرور
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
