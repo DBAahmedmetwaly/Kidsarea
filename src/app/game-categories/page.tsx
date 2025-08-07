@@ -151,12 +151,7 @@ export function CategoryFormDialog({
                                         {...field}
                                     />
                                 </FormControl>
-                                <Input 
-                                    {...field}
-                                    placeholder="#4ab7e2" 
-                                    className="flex-1" 
-                                />
-                                <div className="w-8 h-8 rounded-md border" style={{ backgroundColor: watchedColor }} />
+                                <div className="w-8 h-8 rounded-md border flex-1" style={{ backgroundColor: watchedColor }} />
                             </div>
                         <FormMessage />
                     </FormItem>
@@ -258,7 +253,6 @@ function GameCategoriesContent() {
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-2">
                         <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: category.color }}></div>
-                        <span className="font-mono text-xs">{category.color}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
