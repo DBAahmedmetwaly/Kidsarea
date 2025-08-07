@@ -14,9 +14,17 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useCustomers } from '@/context/CustomerContext';
-import { useMemo } from 'react';
-import { getHours } from 'date-fns';
-import { Subscription } from '@/lib/types';
+import { useMemo, useState } from 'react';
+import { getHours, format, startOfDay, endOfDay, isWithinInterval, parseISO, getMonth, getDate } from 'date-fns';
+import { Subscription, CustomerChild } from '@/lib/types';
+import { ar } from 'date-fns/locale';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { Calendar as CalendarIcon, Cake } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 const gameProfitChartConfig = {
   profit: {
@@ -53,6 +61,126 @@ const topCustomersChartConfig = {
     },
 } satisfies ChartConfig;
 
+
+function BirthdayReport() {
+    const { customers } = useCustomers();
+    const [fromDate, setFromDate] = useState<Date | undefined>();
+    const [toDate, setToDate] = useState<Date | undefined>();
+
+    const upcomingBirthdays = useMemo(() => {
+        if (!fromDate || !toDate) return [];
+
+        const start = { month: getMonth(fromDate) + 1, day: getDate(fromDate) };
+        const end = { month: getMonth(toDate) + 1, day: getDate(toDate) };
+        
+        const allChildren: (CustomerChild & { parentName: string })[] = [];
+        customers.forEach(c => {
+            c.children.forEach(child => {
+                if(child.birthdate) {
+                    allChildren.push({ ...child, parentName: c.parentName });
+                }
+            })
+        });
+
+        return allChildren.filter(child => {
+            const birthdate = parseISO(child.birthdate as string);
+            const birth = { month: getMonth(birthdate) + 1, day: getDate(birthdate) };
+            
+            // Handle date range spanning across the year end
+            if (start.month > end.month || (start.month === end.month && start.day > end.day)) {
+                // Range is like Dec 15 to Jan 15
+                return (birth.month > start.month || (birth.month === start.month && birth.day >= start.day)) ||
+                       (birth.month < end.month || (birth.month === end.month && birth.day <= end.day));
+            } else {
+                 // Range is within the same year, e.g., Jan 15 to Feb 15
+                return (birth.month > start.month || (birth.month === start.month && birth.day >= start.day)) &&
+                       (birth.month < end.month || (birth.month === end.month && birth.day <= end.day));
+            }
+        });
+
+    }, [customers, fromDate, toDate]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>تقرير أعياد الميلاد القادمة</CardTitle>
+                <CardDescription>عرض أعياد ميلاد الأطفال في فترة محددة.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex gap-4 items-center">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn("w-[280px] justify-start text-left font-normal", !fromDate && "text-muted-foreground")}
+                        >
+                            <CalendarIcon className="me-2 h-4 w-4" />
+                            {fromDate ? format(fromDate, "PPP", { locale: ar }) : <span>اختر تاريخ البداية</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={fromDate}
+                            onSelect={setFromDate}
+                            initialFocus
+                            locale={ar}
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn("w-[280px] justify-start text-left font-normal", !toDate && "text-muted-foreground")}
+                        >
+                            <CalendarIcon className="me-2 h-4 w-4" />
+                            {toDate ? format(toDate, "PPP", { locale: ar }) : <span>اختر تاريخ النهاية</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={toDate}
+                            onSelect={setToDate}
+                            disabled={(date) => fromDate ? date < fromDate : false}
+                            initialFocus
+                            locale={ar}
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>اسم الطفل</TableHead>
+                            <TableHead>ولي الأمر</TableHead>
+                            <TableHead>تاريخ الميلاد</TableHead>
+                            <TableHead>العمر القادم</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {upcomingBirthdays.length > 0 ? upcomingBirthdays.map((child, i) => (
+                            <TableRow key={i}>
+                                <TableCell className="font-medium">{child.name}</TableCell>
+                                <TableCell>{child.parentName}</TableCell>
+                                <TableCell>{format(parseISO(child.birthdate!), "d MMMM", { locale: ar })}</TableCell>
+                                <TableCell>{(new Date().getFullYear() - parseISO(child.birthdate!).getFullYear()) + 1}</TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center h-24">
+                                    {(fromDate && toDate) ? "لا توجد أعياد ميلاد في هذه الفترة." : "يرجى تحديد فترة زمنية."}
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    )
+}
 
 function ReportsContent() {
     const { completedSessions } = useSession();
@@ -172,6 +300,9 @@ function ReportsContent() {
         </div>
         <h1 className="text-lg font-semibold md:text-2xl">التقارير</h1>
       </div>
+
+      <BirthdayReport />
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -342,5 +473,3 @@ export default function ReportsPage() {
         </SidebarProvider>
     );
 }
-
-    

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { MoreHorizontal, PlusCircle, Trash, Edit } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash, Edit, Calendar as CalendarIcon } from 'lucide-react';
 import { ref, set, remove, update, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCustomers } from '@/context/CustomerContext';
@@ -56,8 +56,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, Controller } from 'react-hook-form';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { ar } from 'date-fns/locale';
 
+type ChildFormField = {
+    name: string;
+    age: number;
+    birthdate?: Date | undefined;
+}
 
 export function CustomerFormDialog({
     open,
@@ -74,11 +84,11 @@ export function CustomerFormDialog({
 }) {
     const { toast } = useToast();
     
-    const form = useForm<{ parentName: string, phoneNumber: string, children: { name: string, age: number }[]}>({
+    const form = useForm<{ parentName: string, phoneNumber: string, children: ChildFormField[]}>({
         defaultValues: {
             parentName: '',
             phoneNumber: '',
-            children: [{ name: '', age: 1 }],
+            children: [{ name: '', age: 1, birthdate: undefined }],
         }
     });
 
@@ -94,19 +104,19 @@ export function CustomerFormDialog({
             reset({
                 parentName: initialData.parentName,
                 phoneNumber: initialData.phoneNumber,
-                children: initialData.children,
+                children: initialData.children.map(c => ({...c, birthdate: c.birthdate ? new Date(c.birthdate) : undefined })),
             });
         } else {
             reset({
                 parentName: '',
                 phoneNumber: '',
-                children: [{ name: '', age: 1 }],
+                children: [{ name: '', age: 1, birthdate: undefined }],
             });
         }
     }, [initialData, isEditMode, open, reset]);
 
 
-    const handleFormSubmit = (data: { parentName: string, phoneNumber: string, children: { name: string, age: number }[]}) => {
+    const handleFormSubmit = (data: { parentName: string, phoneNumber: string, children: ChildFormField[]}) => {
         if (data.children.some(c => !c.name || c.age <= 0)) {
             toast({
                 title: "خطأ في الإدخال",
@@ -119,6 +129,10 @@ export function CustomerFormDialog({
         const customerData: Omit<Customer, 'id' | 'createdAt'> | Customer = {
             ...(isEditMode && initialData ? { id: initialData.id, createdAt: initialData.createdAt } : {}),
             ...data,
+            children: data.children.map(c => ({
+                ...c,
+                birthdate: c.birthdate ? c.birthdate.toISOString().split('T')[0] : '', // Store as YYYY-MM-DD
+            }))
         };
         onSubmit(customerData);
         onOpenChange(false);
@@ -131,7 +145,7 @@ export function CustomerFormDialog({
                     <DialogTitle>{isEditMode ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(handleFormSubmit)}>
-                <div className="grid gap-4 py-4">
+                <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-2">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="parentName" className="text-right">اسم ولي الأمر</Label>
                         <Input id="parentName" {...register("parentName", { required: true })} className="col-span-3" />
@@ -143,16 +157,48 @@ export function CustomerFormDialog({
                     
                     <h3 className="text-md font-medium mt-4 col-span-4">الأطفال</h3>
                      {fields.map((item, index) => (
-                        <div key={item.id} className="grid grid-cols-11 items-center gap-2 col-span-4 border p-2 rounded-md">
-                            <div className="col-span-5">
+                        <div key={item.id} className="grid grid-cols-12 items-center gap-2 col-span-4 border p-2 rounded-md">
+                            <div className="col-span-4">
                                 <Label>اسم الطفل</Label>
                                 <Input {...register(`children.${index}.name`, { required: true })} placeholder="اسم الطفل"/>
                             </div>
-                            <div className="col-span-4">
+                            <div className="col-span-3">
                                 <Label>العمر</Label>
                                 <Input type="number" {...register(`children.${index}.age`, { required: true, valueAsNumber: true, min: 1 })} placeholder="العمر"/>
                             </div>
-                            <div className="col-span-2 flex justify-end items-end h-full">
+                             <div className="col-span-4">
+                                <Label>تاريخ الميلاد</Label>
+                                <Controller
+                                    control={control}
+                                    name={`children.${index}.birthdate`}
+                                    render={({ field }) => (
+                                         <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant={"outline"}
+                                                    className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                                                >
+                                                    <CalendarIcon className="me-2 h-4 w-4" />
+                                                    {field.value ? format(field.value, "PPP", { locale: ar }) : <span>اختياري</span>}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                initialFocus
+                                                locale={ar}
+                                                captionLayout="dropdown-buttons"
+                                                fromYear={1990}
+                                                toYear={new Date().getFullYear()}
+                                            />
+                                            </PopoverContent>
+                                        </Popover>
+                                    )}
+                                />
+                            </div>
+                            <div className="col-span-1 flex justify-end items-end h-full">
                                 <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
                                     <Trash className="h-4 w-4" />
                                 </Button>
@@ -164,13 +210,13 @@ export function CustomerFormDialog({
                         variant="outline"
                         size="sm"
                         className="mt-2 col-span-4"
-                        onClick={() => append({ name: '', age: 1 })}
+                        onClick={() => append({ name: '', age: 1, birthdate: undefined })}
                     >
                         <PlusCircle className="me-2 h-4 w-4" />
                         إضافة طفل آخر
                     </Button>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="pt-4">
                     <DialogClose asChild>
                         <Button type="button" variant="secondary">إلغاء</Button>
                     </DialogClose>
@@ -362,5 +408,3 @@ export default function CustomersPage() {
         </SidebarProvider>
     );
 }
-
-    

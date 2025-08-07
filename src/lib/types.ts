@@ -3,6 +3,7 @@
 export interface CustomerChild {
     name: string;
     age: number;
+    birthdate?: string; // YYYY-MM-DD format
 }
 
 export interface Child {
