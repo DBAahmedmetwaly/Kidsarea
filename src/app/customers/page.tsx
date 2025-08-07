@@ -104,7 +104,9 @@ export function CustomerFormDialog({
             reset({
                 parentName: initialData.parentName,
                 phoneNumber: initialData.phoneNumber,
-                children: initialData.children.map(c => ({...c, birthdate: c.birthdate ? new Date(c.birthdate) : undefined })),
+                children: initialData.children.length > 0 
+                    ? initialData.children.map(c => ({...c, birthdate: c.birthdate ? new Date(c.birthdate) : undefined }))
+                    : [{ name: '', age: 1, birthdate: undefined }],
             });
         } else {
             reset({
@@ -117,10 +119,18 @@ export function CustomerFormDialog({
 
 
     const handleFormSubmit = (data: { parentName: string, phoneNumber: string, children: ChildFormField[]}) => {
-        if (data.children.some(c => !c.name || c.age < 1)) {
+        const validChildren = data.children
+            .filter(c => c.name.trim() !== '') // Filter out children with no name
+            .map(c => ({
+                ...c,
+                birthdate: c.birthdate ? c.birthdate.toISOString().split('T')[0] : '', // Store as YYYY-MM-DD
+            }));
+        
+        // Validate that if a child name is entered, age must be valid
+        if (data.children.some(c => c.name.trim() !== '' && c.age < 1)) {
             toast({
                 title: "خطأ في الإدخال",
-                description: "يرجى تعبئة جميع بيانات الأطفال بشكل صحيح. يجب أن يكون العمر سنة واحدة على الأقل.",
+                description: "عمر الطفل يجب أن يكون سنة واحدة على الأقل.",
                 variant: "destructive",
             });
             return;
@@ -128,11 +138,9 @@ export function CustomerFormDialog({
 
         const customerData: Omit<Customer, 'id' | 'createdAt'> | Customer = {
             ...(isEditMode && initialData ? { id: initialData.id, createdAt: initialData.createdAt } : {}),
-            ...data,
-            children: data.children.map(c => ({
-                ...c,
-                birthdate: c.birthdate ? c.birthdate.toISOString().split('T')[0] : '', // Store as YYYY-MM-DD
-            }))
+            parentName: data.parentName,
+            phoneNumber: data.phoneNumber,
+            children: validChildren,
         };
         onSubmit(customerData);
         onOpenChange(false);
@@ -155,16 +163,16 @@ export function CustomerFormDialog({
                         <Input id="phoneNumber" {...register("phoneNumber", { required: true })} className="col-span-3" />
                     </div>
                     
-                    <h3 className="text-md font-medium mt-4 col-span-4">الأطفال</h3>
+                    <h3 className="text-md font-medium mt-4 col-span-4">الأطفال (اختياري)</h3>
                      {fields.map((item, index) => (
                         <div key={item.id} className="grid grid-cols-12 items-center gap-2 col-span-4 border p-2 rounded-md">
                             <div className="col-span-4">
                                 <Label>اسم الطفل</Label>
-                                <Input {...register(`children.${index}.name`, { required: true })} placeholder="اسم الطفل"/>
+                                <Input {...register(`children.${index}.name`)} placeholder="اسم الطفل"/>
                             </div>
                             <div className="col-span-3">
                                 <Label>العمر</Label>
-                                <Input type="number" {...register(`children.${index}.age`, { required: true, valueAsNumber: true, min: 1 })} placeholder="العمر"/>
+                                <Input type="number" {...register(`children.${index}.age`, { valueAsNumber: true, min: 1 })} placeholder="العمر"/>
                             </div>
                              <div className="col-span-4">
                                 <Label>تاريخ الميلاد</Label>
