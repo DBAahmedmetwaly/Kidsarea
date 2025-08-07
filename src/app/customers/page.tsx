@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { MoreHorizontal, PlusCircle, Trash, Edit } from 'lucide-react';
-import { ref, set, remove, update } from 'firebase/database';
+import { ref, set, remove, update, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCustomers } from '@/context/CustomerContext';
 import { Button } from '@/components/ui/button';
