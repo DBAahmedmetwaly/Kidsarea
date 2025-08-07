@@ -100,26 +100,28 @@ export function CustomerFormDialog({
     });
 
     useEffect(() => {
-        if (isEditMode && initialData) {
-            reset({
-                parentName: initialData.parentName,
-                phoneNumber: initialData.phoneNumber,
-                children: initialData.children.length > 0 
-                    ? initialData.children.map(c => ({...c, birthdate: c.birthdate ? new Date(c.birthdate) : undefined }))
-                    : [{ name: '', age: 1, birthdate: undefined }],
-            });
-        } else {
-            reset({
-                parentName: '',
-                phoneNumber: '',
-                children: [{ name: '', age: 1, birthdate: undefined }],
-            });
+        if (open) {
+            if (isEditMode && initialData) {
+                reset({
+                    parentName: initialData.parentName,
+                    phoneNumber: initialData.phoneNumber,
+                    children: initialData.children && initialData.children.length > 0 
+                        ? initialData.children.map(c => ({...c, birthdate: c.birthdate ? new Date(c.birthdate) : undefined }))
+                        : [{ name: '', age: 1, birthdate: undefined }],
+                });
+            } else {
+                reset({
+                    parentName: '',
+                    phoneNumber: '',
+                    children: [{ name: '', age: 1, birthdate: undefined }],
+                });
+            }
         }
     }, [initialData, isEditMode, open, reset]);
 
 
     const handleFormSubmit = (data: { parentName: string, phoneNumber: string, children: ChildFormField[]}) => {
-        const validChildren = data.children
+        const validChildren = (data.children || [])
             .filter(c => c.name.trim() !== '') // Filter out children with no name
             .map(c => ({
                 ...c,
@@ -127,7 +129,7 @@ export function CustomerFormDialog({
             }));
         
         // Validate that if a child name is entered, age must be valid
-        if (data.children.some(c => c.name.trim() !== '' && c.age < 1)) {
+        if (data.children && data.children.some(c => c.name.trim() !== '' && c.age < 1)) {
             toast({
                 title: "خطأ في الإدخال",
                 description: "عمر الطفل يجب أن يكون سنة واحدة على الأقل.",
@@ -359,7 +361,7 @@ function CustomersContent() {
                      </Link>
                   </TableCell>
                   <TableCell className="text-right">{customer.phoneNumber}</TableCell>
-                  <TableCell className="text-right">{customer.children.map(c => `${c.name} (${c.age})`).join(', ')}</TableCell>
+                  <TableCell className="text-right">{customer.children?.map(c => `${c.name} (${c.age})`).join(', ')}</TableCell>
                   <TableCell className="text-center">{new Date(customer.createdAt).toLocaleDateString('ar-EG')}</TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>
@@ -416,3 +418,5 @@ export default function CustomersPage() {
         </SidebarProvider>
     );
 }
+
+    
