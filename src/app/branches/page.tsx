@@ -171,6 +171,38 @@ function BranchFormDialog({
     );
 }
 
+function PasswordDialog({ open, onOpenChange, onConfirm }: { open: boolean, onOpenChange: (open: boolean) => void, onConfirm: (password: string) => void }) {
+    const [password, setPassword] = useState('');
+
+    const handleConfirm = () => {
+        onConfirm(password);
+        onOpenChange(false);
+        setPassword('');
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-xs">
+                <DialogHeader>
+                    <DialogTitle>التحقق من الأمان</DialogTitle>
+                    <DialogDescription>
+                        يرجى إدخال كلمة المرور لتفعيل الإضافة.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="password">كلمة المرور</Label>
+                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="secondary">إلغاء</Button>
+                    </DialogClose>
+                    <Button onClick={handleConfirm}>تأكيد</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 function BranchesContent() {
   const { branches, employees } = useFirebase();
@@ -179,6 +211,7 @@ function BranchesContent() {
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [showAddButton, setShowAddButton] = useState(false);
   const [titleClickCount, setTitleClickCount] = useState(0);
+  const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
   const { toast } = useToast();
   const { toggleSidebar } = useSidebar();
 
@@ -249,20 +282,23 @@ function BranchesContent() {
     const newCount = titleClickCount + 1;
     setTitleClickCount(newCount);
     if (newCount >= 5) {
-        const password = prompt("يرجى إدخال كلمة المرور لتفعيل الإضافة:");
-        if (password === 'sansan') {
-            setShowAddButton(true);
-            toast({
-                title: "تمكين الإضافة",
-                description: "تم تفعيل زر إضافة فرع جديد.",
-            });
-        } else if (password !== null) { // This handles the case where user clicks "Cancel"
-             toast({
-                title: "كلمة مرور خاطئة",
-                variant: 'destructive'
-            });
-        }
+        setPasswordDialogOpen(true);
         setTitleClickCount(0); // Reset after trying
+    }
+  }
+
+  const handlePasswordConfirm = (password: string) => {
+     if (password === 'sansan') {
+        setShowAddButton(true);
+        toast({
+            title: "تمكين الإضافة",
+            description: "تم تفعيل زر إضافة فرع جديد.",
+        });
+    } else {
+         toast({
+            title: "كلمة مرور خاطئة",
+            variant: 'destructive'
+        });
     }
   }
 
@@ -382,6 +418,7 @@ function BranchesContent() {
         initialData={selectedBranch}
         isEditMode={true}
        />
+       <PasswordDialog open={isPasswordDialogOpen} onOpenChange={setPasswordDialogOpen} onConfirm={handlePasswordConfirm} />
     </div>
   );
 }
