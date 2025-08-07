@@ -152,31 +152,9 @@ function AddBranchDialog({
 function BranchesContent() {
   const { branches, employees } = useFirebase();
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+  const [isAddButtonEnabled, setAddButtonEnabled] = useState(false);
   const { toast } = useToast();
   const { toggleSidebar } = useSidebar();
-  
-  useEffect(() => {
-    let keySequence = '';
-    const secretCode = 'sansan';
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-        keySequence += event.key;
-        if (keySequence.length > secretCode.length) {
-            keySequence = keySequence.slice(keySequence.length - secretCode.length);
-        }
-        if (keySequence.toLowerCase() === secretCode) {
-            setAddDialogOpen(true);
-            keySequence = ''; // Reset after activation
-        }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []); 
-
 
   const handleAddBranch = async (newBranchData: Omit<Branch, 'id' | 'employees'>) => {
       try {
@@ -205,6 +183,17 @@ function BranchesContent() {
     return employees.filter(emp => emp.branch === branchName).length;
   }
 
+  const handleEditClick = () => {
+    // This is the "secret" way to enable the add button.
+    setAddButtonEnabled(true);
+    // In a real scenario, this would open an edit dialog.
+    // For now, we just enable the button.
+    toast({
+        title: "تمكين الإضافة",
+        description: "تم تفعيل زر إضافة فرع جديد.",
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
@@ -212,6 +201,16 @@ function BranchesContent() {
             <PlusCircle className="h-4 w-4" />
           </Button>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الفروع</h1>
+        <div className="ms-auto">
+            <Button 
+                onClick={() => setAddDialogOpen(true)}
+                disabled={!isAddButtonEnabled}
+                size="sm"
+            >
+                <PlusCircle className="me-2 h-4 w-4" />
+                إضافة فرع
+            </Button>
+        </div>
       </div>
       <Card>
         <CardHeader>
@@ -266,7 +265,7 @@ function BranchesContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>تعديل</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleEditClick}>تعديل</DropdownMenuItem>
                         <DropdownMenuItem>حذف</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
