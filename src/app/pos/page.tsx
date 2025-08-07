@@ -856,6 +856,8 @@ function PosTrackingContent() {
                                 <TableRow>
                                     <TableHead className="text-right">الطفل</TableHead>
                                     <TableHead className="text-right">ولي الأمر</TableHead>
+                                    <TableHead className="text-center">وقت الدخول</TableHead>
+                                    <TableHead className="text-center">وقت الخروج</TableHead>
                                     <TableHead className="text-center">التكلفة</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -865,6 +867,8 @@ function PosTrackingContent() {
                                         <TableRow key={session.id}>
                                             <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
                                             <TableCell className="text-right">{session.parentName}</TableCell>
+                                            <TableCell className="text-center">{new Date(session.checkInTime).toLocaleTimeString('ar-EG')}</TableCell>
+                                            <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
                                             <TableCell className="font-bold text-center">
                                                 {session.subscriptionId ? (
                                                     <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
@@ -874,7 +878,7 @@ function PosTrackingContent() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center">
+                                        <TableCell colSpan={5} className="h-24 text-center">
                                             لم تكتمل أي جلسات في ورديتك بعد.
                                         </TableCell>
                                     </TableRow>
