@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { History, Calendar as CalendarIcon, FilterX, Printer } from 'lucide-react';
+import { History, Calendar as CalendarIcon, FilterX, Printer, Star } from 'lucide-react';
 import { useFirebase } from '@/context/FirebaseContext';
 import type { CompletedSession } from '@/lib/types';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -162,6 +162,7 @@ function SessionsContent() {
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -172,7 +173,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={8} className="h-24 text-center">
+            <TableCell colSpan={9} className="h-24 text-center">
               لا توجد جلسات مطابقة للبحث.
             </TableCell>
           </TableRow>
@@ -193,7 +194,12 @@ function SessionsContent() {
                 <TableCell className="text-center">
                 {formatDuration(session.durationMs)}
                 </TableCell>
-                <TableCell className="font-bold text-center">{`ج.م ${session.cost.toFixed(2)}`}</TableCell>
+                 <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
+                <TableCell className="font-bold text-center">
+                    {session.subscriptionId ? (
+                        <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
+                    ) : `ج.م ${session.cost.toFixed(2)}`}
+                </TableCell>
                 <TableCell className="text-center">
                 {new Date(
                     session.checkOutTime
@@ -321,6 +327,7 @@ function SessionsContent() {
                         <TableHead className="text-right">الفرع</TableHead>
                         <TableHead className="text-right">اللعبة</TableHead>
                         <TableHead className="text-center">مدة اللعب</TableHead>
+                        <TableHead className="text-center">الخصم</TableHead>
                         <TableHead className="text-center">التكلفة</TableHead>
                         <TableHead className="text-center">وقت الخروج</TableHead>
                         <TableHead className="text-center">إجراء</TableHead>

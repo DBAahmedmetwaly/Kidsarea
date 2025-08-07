@@ -475,7 +475,7 @@ function CheckInDialog({
 
 
 function PosTrackingContent() {
-  const { activeChildren, completedSessions, subscriptions } = useFirebase();
+  const { activeChildren, completedSessions: firebaseCompletedSessions, subscriptions } = useFirebase();
   const { games, policies, openShifts, employees, branches, gameCategories } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -543,18 +543,18 @@ function PosTrackingContent() {
         const openShift = openShifts.find(s => s.cashierUsername === user.username);
         const filterStartTime = openShift ? new Date(openShift.startTime) : todayStart;
 
-        return completedSessions.filter(s => {
+        return firebaseCompletedSessions.filter(s => {
             const cashierMatch = s.cashierUsername === user.username;
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
             const timeMatch = new Date(s.checkOutTime) >= filterStartTime;
             return cashierMatch && branchMatch && timeMatch;
         }).slice(0, 5); // Show last 5
-  }, [completedSessions, selectedBranchFilter, user, openShifts]);
+  }, [firebaseCompletedSessions, selectedBranchFilter, user, openShifts]);
 
     const dailyStats = useMemo(() => {
         const activeCount = activeChildrenByBranch.length;
         
-        const todaysSessions = completedSessions.filter(s => {
+        const todaysSessions = firebaseCompletedSessions.filter(s => {
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
             return branchMatch && isToday(new Date(s.checkOutTime));
         });
@@ -564,7 +564,7 @@ function PosTrackingContent() {
 
         return { activeCount, visitorsToday, sessionsToday };
 
-    }, [activeChildrenByBranch, completedSessions, selectedBranchFilter]);
+    }, [activeChildrenByBranch, firebaseCompletedSessions, selectedBranchFilter]);
 
   const openCheckInDialog = (game: Game) => {
     setSelectedGame(game);
@@ -856,8 +856,8 @@ function PosTrackingContent() {
                                 <TableRow>
                                     <TableHead className="text-right">الطفل</TableHead>
                                     <TableHead className="text-right">ولي الأمر</TableHead>
-                                    <TableHead className="text-center">وقت الدخول</TableHead>
                                     <TableHead className="text-center">وقت الخروج</TableHead>
+                                    <TableHead className="text-center">الخصم</TableHead>
                                     <TableHead className="text-center">التكلفة</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -867,8 +867,8 @@ function PosTrackingContent() {
                                         <TableRow key={session.id}>
                                             <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
                                             <TableCell className="text-right">{session.parentName}</TableCell>
-                                            <TableCell className="text-center">{new Date(session.checkInTime).toLocaleTimeString('ar-EG')}</TableCell>
                                             <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
+                                            <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
                                             <TableCell className="font-bold text-center">
                                                 {session.subscriptionId ? (
                                                     <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
