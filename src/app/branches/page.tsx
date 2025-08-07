@@ -154,6 +154,28 @@ function BranchesContent() {
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const { toast } = useToast();
   const { toggleSidebar } = useSidebar();
+  
+  useEffect(() => {
+    let keySequence = '';
+    const secretCode = 'sansan';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+        keySequence += event.key;
+        if (keySequence.length > secretCode.length) {
+            keySequence = keySequence.slice(keySequence.length - secretCode.length);
+        }
+        if (keySequence.toLowerCase() === secretCode) {
+            setAddDialogOpen(true);
+            keySequence = ''; // Reset after activation
+        }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []); 
 
 
   const handleAddBranch = async (newBranchData: Omit<Branch, 'id' | 'employees'>) => {
@@ -190,14 +212,6 @@ function BranchesContent() {
             <PlusCircle className="h-4 w-4" />
           </Button>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الفروع</h1>
-        <div className="ms-auto flex items-center gap-2">
-          <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
-            <PlusCircle className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              إضافة فرع
-            </span>
-          </Button>
-        </div>
       </div>
       <Card>
         <CardHeader>
