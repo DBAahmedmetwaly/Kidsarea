@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,7 +16,7 @@ import { Shield, FileCog, History, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ALL_SCREENS = [
-  { href: '/', label: 'لوحة التحكم' },
+  { href: '/dashboard', label: 'لوحة التحكم' },
   { href: '/pos', label: 'نقاط البيع' },
   { href: '/sessions', label: 'سجل الجلسات' },
   { href: '/shift-closing', label: 'إدارة الورديات' },
@@ -24,7 +25,6 @@ const ALL_SCREENS = [
   { href: '/games', label: 'الألعاب' },
   { href: '/game-categories', label: 'تصنيفات الألعاب' },
   { href: '/safes', label: 'الخزائن' },
-  { href: '/roles', label: 'الصلاحيات' },
   { href: '/policies', label: 'السياسات' },
   { href: '/receipt-designer', label: 'تصميم الإيصال' },
   { href: '/transactions', label: 'سجل الحركات'},
@@ -33,6 +33,7 @@ const ALL_SCREENS = [
   { href: '/subscription-plans', label: 'باقات الاشتراكات' },
   { href: '/data-management', label: 'إدارة البيانات' },
   { href: '/branches', label: 'الفروع' },
+  { href: '/roles', label: 'الصلاحيات' },
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
