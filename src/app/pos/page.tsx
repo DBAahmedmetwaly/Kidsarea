@@ -131,7 +131,7 @@ function CheckOutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   child: Child | null;
-  onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
+  onConfirm: (child: Child, receiptDetails: PosReceiptProps, costBeforeDiscount: number) => void;
 }) {
   const { games, policies, employees, receiptSettings, subscriptions } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
@@ -172,6 +172,7 @@ function CheckOutDialog({
     return {
         duration: formatDuration(durationMs),
         totalCost: finalCost,
+        costBeforeDiscount: totalCost,
         durationCost,
         entryFee,
         discount: discountAmount,
@@ -234,7 +235,7 @@ function CheckOutDialog({
     if (receiptSettings) {
         printReceipt(<PosReceipt {...receiptDetails} />);
     }
-    onConfirm(child, receiptDetails);
+    onConfirm(child, receiptDetails, checkoutData.costBeforeDiscount);
   }
 
   if (!child || !checkoutData) return null;
@@ -576,7 +577,7 @@ function PosTrackingContent() {
     setCheckoutDialogOpen(true);
   }
   
-  const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
+  const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps, costBeforeDiscount: number) => {
     setCheckoutDialogOpen(false);
     
     const activeSubs = subscriptions.filter(sub => 
@@ -590,6 +591,7 @@ function PosTrackingContent() {
         checkOutTime: receiptDetails.checkOutTime.getTime(),
         durationMs: receiptDetails.checkOutTime.getTime() - child.checkInTime,
         cost: receiptDetails.totalCost,
+        costBeforeDiscount: costBeforeDiscount,
         durationCost: receiptDetails.durationCost,
         entryFee: receiptDetails.entryFee,
         discount: receiptDetails.discount,
@@ -858,7 +860,7 @@ function PosTrackingContent() {
                                     <TableHead className="text-right">ولي الأمر</TableHead>
                                     <TableHead className="text-center">وقت الخروج</TableHead>
                                     <TableHead className="text-center">الخصم</TableHead>
-                                    <TableHead className="text-center">التكلفة</TableHead>
+                                    <TableHead className="text-center">بعد الخصم</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

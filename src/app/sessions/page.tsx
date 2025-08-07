@@ -173,7 +173,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={9} className="h-24 text-center">
+            <TableCell colSpan={10} className="h-24 text-center">
               لا توجد جلسات مطابقة للبحث.
             </TableCell>
           </TableRow>
@@ -194,6 +194,7 @@ function SessionsContent() {
                 <TableCell className="text-center">
                 {formatDuration(session.durationMs)}
                 </TableCell>
+                <TableCell className="text-center">{`ج.م ${(session.costBeforeDiscount || 0).toFixed(2)}`}</TableCell>
                  <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
                 <TableCell className="font-bold text-center">
                     {session.subscriptionId ? (
@@ -327,8 +328,9 @@ function SessionsContent() {
                         <TableHead className="text-right">الفرع</TableHead>
                         <TableHead className="text-right">اللعبة</TableHead>
                         <TableHead className="text-center">مدة اللعب</TableHead>
+                        <TableHead className="text-center">قبل الخصم</TableHead>
                         <TableHead className="text-center">الخصم</TableHead>
-                        <TableHead className="text-center">التكلفة</TableHead>
+                        <TableHead className="text-center">بعد الخصم</TableHead>
                         <TableHead className="text-center">وقت الخروج</TableHead>
                         <TableHead className="text-center">إجراء</TableHead>
                     </TableRow>

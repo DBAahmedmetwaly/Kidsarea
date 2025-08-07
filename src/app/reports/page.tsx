@@ -22,8 +22,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon, Cake } from 'lucide-react';
+import { Calendar as CalendarIcon, Cake, Percent, TrendingDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { StatCard } from '@/components/StatCard';
 
 
 const gameProfitChartConfig = {
@@ -75,11 +76,13 @@ function BirthdayReport() {
         
         const allChildren: (CustomerChild & { parentName: string })[] = [];
         customers.forEach(c => {
-            c.children.forEach(child => {
-                if(child.birthdate) {
-                    allChildren.push({ ...child, parentName: c.parentName });
-                }
-            })
+            if(c.children) {
+                c.children.forEach(child => {
+                    if(child.birthdate) {
+                        allChildren.push({ ...child, parentName: c.parentName });
+                    }
+                })
+            }
         });
 
         return allChildren.filter(child => {
@@ -290,6 +293,13 @@ function ReportsContent() {
             .slice(0, 10); // Top 10 customers
 
     }, [completedSessions]);
+    
+    const discountStats = useMemo(() => {
+        const totalDiscounts = completedSessions.reduce((sum, s) => sum + (s.discount || 0), 0);
+        const totalRevenueWithDiscounts = completedSessions.reduce((sum, s) => sum + (s.costBeforeDiscount || s.cost), 0);
+        const discountPercentage = totalRevenueWithDiscounts > 0 ? (totalDiscounts / totalRevenueWithDiscounts) * 100 : 0;
+        return { totalDiscounts, discountPercentage };
+    }, [completedSessions]);
 
 
   return (
@@ -299,6 +309,21 @@ function ReportsContent() {
             <SidebarTrigger />
         </div>
         <h1 className="text-lg font-semibold md:text-2xl">التقارير</h1>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         <StatCard 
+            title="إجمالي الخصومات"
+            value={`ج.م ${discountStats.totalDiscounts.toFixed(2)}`}
+            icon={TrendingDown}
+            description="مجموع كل الخصومات الممنوحة على الجلسات"
+         />
+         <StatCard 
+            title="نسبة الخصم من الإيرادات"
+            value={`${discountStats.discountPercentage.toFixed(2)}%`}
+            icon={Percent}
+            description="نسبة الخصومات من إجمالي الإيرادات قبل الخصم"
+         />
       </div>
 
       <BirthdayReport />
