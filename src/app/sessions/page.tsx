@@ -183,7 +183,12 @@ function SessionsContent() {
 
     return (
       <TableBody>
-        {filteredSessions.map((session) => (
+        {filteredSessions.map((session) => {
+            const costBeforeDiscount = session.costBeforeDiscount > 0
+                ? session.costBeforeDiscount
+                : session.cost + (session.discount || 0);
+
+            return (
             <TableRow key={session.id}>
                 <TableCell className="font-medium text-right">
                 {session.children?.map(c => c.name).join(', ') ?? 'N/A'}
@@ -194,7 +199,7 @@ function SessionsContent() {
                 <TableCell className="text-center">
                 {formatDuration(session.durationMs)}
                 </TableCell>
-                <TableCell className="text-center">{`ج.م ${(session.costBeforeDiscount || 0).toFixed(2)}`}</TableCell>
+                <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
                  <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
                 <TableCell className="font-bold text-center">
                     {session.subscriptionId ? (
@@ -217,7 +222,7 @@ function SessionsContent() {
                 </Button>
                 </TableCell>
             </TableRow>
-        ))}
+        )})}
       </TableBody>
     );
   };

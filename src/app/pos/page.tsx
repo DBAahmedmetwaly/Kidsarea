@@ -438,7 +438,7 @@ function CheckInDialog({
                              <div className="space-y-2">
                                 <Label>اختر الأطفال</Label>
                                 <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
-                                    {selectedCustomer.children && selectedCustomer.children.map((child, index) => (
+                                    {selectedCustomer.children?.map((child, index) => (
                                         <div key={index} className="flex items-center space-x-2">
                                             <Checkbox
                                                 id={`child-${index}`}
