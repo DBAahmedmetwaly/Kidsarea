@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -48,7 +47,6 @@ import type { Subscription, SubscriptionPlan } from '@/lib/types';
 import { Star, PlusCircle, Trash, RotateCw, MoreHorizontal, Printer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePosPrint } from '@/hooks/use-pos-print';
-import { SubscriptionReceipt } from '@/components/SubscriptionReceipt';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { Table, TableHead, TableHeader, TableRow, TableBody, TableCell } from '@/components/ui/table';
 import dynamic from 'next/dynamic';
@@ -306,5 +304,3 @@ export default function SubscriptionsPage() {
         </SidebarProvider>
     );
 }
-
-    
