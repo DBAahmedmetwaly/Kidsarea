@@ -57,152 +57,17 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch, Employee } from '@/lib/types';
+import dynamic from 'next/dynamic';
+import { Skeleton } from '@/components/ui/skeleton';
 
+const BranchFormDialog = dynamic(() => import('./_components/BranchFormDialog'), {
+    loading: () => <Skeleton className="w-full h-96" />,
+});
 
-function BranchFormDialog({
-    open,
-    onOpenChange,
-    onSubmit,
-    initialData,
-    isEditMode = false,
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    onSubmit: (branch: Omit<Branch, 'id' | 'employees'> | Branch) => void;
-    initialData?: Branch | null;
-    isEditMode?: boolean;
-}) {
-    const { toast } = useToast();
-    const { employees } = useFirebase();
-    const [name, setName] = useState('');
-    const [manager, setManager] = useState('');
-    const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
-    
-    const branchManagers = employees.filter(emp => emp.role === 'مدير فرع');
+const PasswordDialog = dynamic(() => import('./_components/PasswordDialog'), {
+    loading: () => <Skeleton className="w-full h-64" />,
+});
 
-    useEffect(() => {
-        if (isEditMode && initialData) {
-            setName(initialData.name);
-            setManager(initialData.manager);
-            setStatus(initialData.status);
-        } else {
-            setName('');
-            setManager('');
-            setStatus('Active');
-        }
-    }, [initialData, isEditMode, open]);
-
-    const handleFormSubmit = () => {
-        if (!name || !manager) {
-            toast({
-                title: "خطأ في الإدخال",
-                description: "يرجى تعبئة جميع الحقول.",
-                variant: "destructive",
-            });
-            return;
-        }
-
-        const branchData: Omit<Branch, 'id' | 'employees'> | Branch = {
-             ...(isEditMode && initialData ? { id: initialData.id } : {}),
-            name,
-            manager,
-            status,
-        };
-        onSubmit(branchData);
-        onOpenChange(false);
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{isEditMode ? 'تعديل فرع' : 'إضافة فرع جديد'}</DialogTitle>
-                    <DialogDescription>
-                        {isEditMode ? 'قم بتحديث تفاصيل الفرع.' : 'أدخل تفاصيل الفرع الجديد. انقر على "إضافة" عند الانتهاء.'}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">
-                            اسم الفرع
-                        </Label>
-                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="مثال: فرع الرياض" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="manager" className="text-right">
-                            المدير المسؤول
-                        </Label>
-                        <Select value={manager} onValueChange={setManager}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="اختر مديرًا" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {branchManagers.map(m => (
-                                    <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="status" className="text-right">
-                            الحالة
-                        </Label>
-                         <Select value={status} onValueChange={(value) => setStatus(value as any)}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="اختر الحالة" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Active">نشط</SelectItem>
-                                <SelectItem value="Inactive">غير نشط</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button type="button" variant="secondary">
-                            إلغاء
-                        </Button>
-                    </DialogClose>
-                    <Button type="button" onClick={handleFormSubmit}>{isEditMode ? 'حفظ التغييرات' : 'إضافة الفرع'}</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function PasswordDialog({ open, onOpenChange, onConfirm }: { open: boolean, onOpenChange: (open: boolean) => void, onConfirm: (password: string) => void }) {
-    const [password, setPassword] = useState('');
-
-    const handleConfirm = () => {
-        onConfirm(password);
-        onOpenChange(false);
-        setPassword('');
-    }
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-xs">
-                <DialogHeader>
-                    <DialogTitle>التحقق من الأمان</DialogTitle>
-                    <DialogDescription>
-                        اكتب كلمة المرور
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                    <Label htmlFor="password">كلمة المرور</Label>
-                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="secondary">إلغاء</Button>
-                    </DialogClose>
-                    <Button onClick={handleConfirm}>تأكيد</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
-}
 
 function BranchesContent() {
   const { branches, employees } = useFirebase();
@@ -388,20 +253,20 @@ function BranchesContent() {
           </Table>
         </CardContent>
       </Card>
-      <BranchFormDialog 
+      {isAddDialogOpen && <BranchFormDialog 
         open={isAddDialogOpen} 
         onOpenChange={setAddDialogOpen} 
         onSubmit={handleFormSubmit}
         isEditMode={false} 
-      />
-      <BranchFormDialog 
+      />}
+       {isEditDialogOpen && <BranchFormDialog 
         open={isEditDialogOpen} 
         onOpenChange={setEditDialogOpen} 
         onSubmit={handleFormSubmit}
         initialData={selectedBranch}
         isEditMode={true}
-       />
-       <PasswordDialog open={isPasswordDialogOpen} onOpenChange={setPasswordDialogOpen} onConfirm={handlePasswordConfirm} />
+       />}
+       {isPasswordDialogOpen && <PasswordDialog open={isPasswordDialogOpen} onOpenChange={setPasswordDialogOpen} onConfirm={handlePasswordConfirm} />}
     </div>
   );
 }
@@ -416,3 +281,5 @@ export default function BranchesPage() {
         </div>
     );
 }
+
+    
