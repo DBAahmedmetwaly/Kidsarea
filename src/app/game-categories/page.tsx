@@ -59,10 +59,12 @@ const CategoryFormDialog = dynamic(() => import('./_components/CategoryFormDialo
     loading: () => <Skeleton className="w-full h-96" />,
 });
 
-export type CategoryFormValues = z.infer<typeof z.object({
+const categoryFormSchema = z.object({
   name: z.string().min(2, 'اسم التصنيف مطلوب'),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'يجب أن يكون لونًا صالحًا (hex format)'),
-})>;
+});
+
+export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
 
 function GameCategoriesContent() {
@@ -211,5 +213,3 @@ export default function GameCategoriesPage() {
     </SidebarProvider>
   );
 }
-
-    
