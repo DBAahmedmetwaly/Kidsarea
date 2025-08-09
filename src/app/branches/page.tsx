@@ -87,7 +87,8 @@ function BranchesContent() {
           
           const newBranch = {
               ...newBranchData,
-              employees: 0 // Initial employee count
+              employees: 0, // Initial employee count
+              nextReceiptNumber: 0, // Initialize receipt counter
           }
           await set(ref(db, `branches/${newBranchId}`), newBranch);
            toast({
@@ -281,5 +282,3 @@ export default function BranchesPage() {
         </div>
     );
 }
-
-    

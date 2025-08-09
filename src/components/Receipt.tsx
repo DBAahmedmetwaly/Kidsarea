@@ -6,6 +6,7 @@ import React from 'react';
 import type { ReceiptSettings, CustomerChild } from '@/lib/types';
 
 export interface PosReceiptProps {
+  receiptId?: string;
   settings: ReceiptSettings | null;
   appName: string;
   children: CustomerChild[];
@@ -30,6 +31,7 @@ const ReceiptRow = ({ label, value }: { label: string, value: string | number })
 );
 
 export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
+  receiptId,
   settings,
   appName,
   children,
@@ -45,8 +47,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   cashierName,
   isSubscription,
 }, ref) => {
-  const receiptId = `R-${checkOutTime.getTime().toString().slice(-6)}`;
-
+  
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
 
   return (

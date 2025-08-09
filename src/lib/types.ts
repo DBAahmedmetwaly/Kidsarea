@@ -18,6 +18,7 @@ export interface Child {
 }
 
 export interface CompletedSession extends Child {
+    receiptNumber?: number;
     checkOutTime: number;
     durationMs: number;
     cost: number; // Total cost
@@ -55,6 +56,7 @@ export interface Branch {
     name: string;
     manager: string;
     status: 'Active' | 'Inactive';
+    nextReceiptNumber?: number;
 }
 
 export interface ShiftRecord {

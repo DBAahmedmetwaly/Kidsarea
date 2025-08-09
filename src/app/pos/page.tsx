@@ -24,10 +24,10 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
-import { ref, set, onValue, push } from 'firebase/database';
+import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { useCustomers } from '@/context/CustomerContext';
@@ -133,7 +133,7 @@ function CheckOutDialog({
   child: Child | null;
   onConfirm: (child: Child, receiptDetails: PosReceiptProps, costBeforeDiscount: number) => void;
 }) {
-  const { games, policies, employees, receiptSettings, subscriptions } = useFirebase();
+  const { games, policies, employees, receiptSettings, subscriptions, branches } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
   const [discount, setDiscount] = useState('');
   const [activeSubscriptions, setActiveSubscriptions] = useState<Subscription[]>([]);
@@ -204,7 +204,7 @@ function CheckOutDialog({
     setDiscount('');
   }, [child]);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if(!child || !checkoutData) return;
     
     const cashier = employees.find(e => e.username === user?.username);
@@ -215,7 +215,23 @@ function CheckOutDialog({
     const finalCost = checkoutData.totalCost;
     const isFullySubscribed = child.children.every(c => activeSubscriptions.some(s => s.childName === c.name));
     
+    const branch = branches.find(b => b.name === child.branchName);
+    const branchId = branch?.id;
+
+    let receiptNumber = 0;
+    if (branchId) {
+        const counterRef = ref(db, `branches/${branchId}/nextReceiptNumber`);
+        const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => {
+            return (currentValue || 0) + 1;
+        });
+        if (committed) {
+            receiptNumber = snapshot.val();
+        }
+    }
+
+
     const receiptDetails: PosReceiptProps = {
+        receiptId: `${branch?.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
         settings: receiptSettings,
         appName: policies?.appName || 'FunTrack',
         children: child.children,
@@ -595,6 +611,7 @@ function PosTrackingContent() {
         durationCost: receiptDetails.durationCost,
         entryFee: receiptDetails.entryFee,
         discount: receiptDetails.discount,
+        receiptNumber: Number(receiptDetails.receiptId?.split('-')[1]) || 0,
     };
     
     let completedSession: Partial<CompletedSession> = { ...baseSession };
