@@ -32,6 +32,7 @@ interface FirebaseContextType {
   activeChildren: Child[];
   completedSessions: CompletedSession[];
   loading: boolean;
+  isInitialLoad: boolean; // To track the very first load
   error: Error | null;
 }
 
@@ -60,6 +61,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [activeChildren, setActiveChildren] = useState<Child[]>([]);
   const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const pathname = usePathname();
 
@@ -88,6 +90,9 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       loadedCount++;
       if (loadedCount >= totalListeners && isMounted) {
         setLoading(false);
+        if (isInitialLoad) {
+            setIsInitialLoad(false);
+        }
       }
     };
 
@@ -126,10 +131,10 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       unsubscribes.forEach((unsub) => unsub());
     };
-  }, []);
+  }, [isInitialLoad]);
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, receiptSettings, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, activeChildren, completedSessions, loading, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, receiptSettings, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, activeChildren, completedSessions, loading, isInitialLoad, error }}>
       {children}
     </FirebaseContext.Provider>
   );

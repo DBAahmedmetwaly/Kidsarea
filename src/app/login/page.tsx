@@ -33,10 +33,19 @@ export default function LoginPage() {
     setLoading(true);
 
     const user = employees.find(
-        (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع' || emp.role === 'مشرف') && emp.username === username && emp.password === password && emp.status !== 'Disabled'
+        (emp) => (emp.role === 'كاشير' || emp.role === 'مدير فرع' || emp.role === 'مشرف') && emp.username === username && emp.password === password
     );
 
     if (user) {
+        if(user.status === 'Disabled') {
+            toast({
+                title: 'الحساب معطل',
+                description: 'تم تعطيل هذا الحساب. يرجى مراجعة المدير.',
+                variant: 'destructive',
+            });
+            setLoading(false);
+            return;
+        }
         login(user);
         toast({
         title: 'تم تسجيل الدخول بنجاح',
@@ -51,7 +60,7 @@ export default function LoginPage() {
     } else {
         toast({
         title: 'فشل تسجيل الدخول',
-        description: 'اسم المستخدم أو كلمة المرور غير صحيحة أو الحساب معطل.',
+        description: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
         variant: 'destructive',
         });
     }

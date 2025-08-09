@@ -500,8 +500,7 @@ function CheckInDialog({
 
 
 function PosTrackingContent() {
-  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions } = useFirebase();
-  const { games, policies, openShifts, employees, branches, gameCategories } = useFirebase();
+  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies, openShifts, employees, branches, gameCategories, loading: firebaseLoading, isInitialLoad } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -523,15 +522,13 @@ function PosTrackingContent() {
 
 
     useEffect(() => {
-        if (currentUser && currentUser.branch !== 'كل الفروع') {
+        if (!isInitialLoad && currentUser && currentUser.branch !== 'كل الفروع') {
             setSelectedBranchFilter(currentUser.branch);
         }
-        // Select the first category by default
-        if (gameCategories.length > 0 && !selectedCategory) {
+        if (!isInitialLoad && gameCategories.length > 0 && !selectedCategory) {
             setSelectedCategory(gameCategories[0].id);
         }
-
-    }, [currentUser, gameCategories, selectedCategory]);
+    }, [currentUser, gameCategories, selectedCategory, isInitialLoad]);
 
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
@@ -540,7 +537,7 @@ function PosTrackingContent() {
 
   const activeChildren = useMemo(() => {
     if (selectedBranchFilter === 'all') return firebaseActiveChildren;
-    return firebaseActiveChildren.filter(child => child.branchName === selectedBranchFilter);
+    return firebaseActiveChildren.filter(child => child.branchName === selectedBranchFilter || child.branchName === "كل الفروع");
   }, [firebaseActiveChildren, selectedBranchFilter]);
 
   const searchedActiveChildren = useMemo(() => {
@@ -666,7 +663,7 @@ function PosTrackingContent() {
         toast({
             title: 'طفل نشط بالفعل',
             description: `الطفل "${alreadyActiveChildren[0].name}" موجود بالفعل في جلسة نشطة.`,
-            variant: 'destructive',
+            variant: 'destructive'
         });
         return;
     }
@@ -687,7 +684,7 @@ function PosTrackingContent() {
       parentName: customer.parentName,
       phoneNumber: customer.phoneNumber,
       game: game.name,
-      branchName: branch,
+      branchName: game.branch === 'كل الفروع' ? currentUser!.branch : game.branch,
       checkInTime: Date.now(),
       cashierUsername: user.username,
     };
