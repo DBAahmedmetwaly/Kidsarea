@@ -561,6 +561,10 @@ function PosTrackingContent() {
     );
   }, [games, selectedCategory, selectedBranchFilter]);
 
+  const categoryColor = useMemo(() => {
+      return gameCategories.find(c => c.id === selectedCategory)?.color || '#ffffff';
+  }, [gameCategories, selectedCategory])
+
     const todaysCompletedSessions = useMemo(() => {
         if (!user || !user.username) return [];
 
@@ -800,6 +804,7 @@ function PosTrackingContent() {
                                     onClick={() => openCheckInDialog(game)} 
                                     disabled={!hasActiveShift}
                                     className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                    style={{ backgroundColor: `${categoryColor}33` }} // 33 for ~20% opacity
                                 >
                                     <p className="font-semibold text-sm">{game.name}</p>
                                     <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
