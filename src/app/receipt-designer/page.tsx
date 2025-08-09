@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -57,6 +58,27 @@ const receiptSettingsSchema = z.object({
 });
 
 type ReceiptSettingsValues = z.infer<typeof receiptSettingsSchema>;
+
+const labelsMap: { [key in keyof ReceiptSettings]: string } = {
+    showLogo: 'إظهار الشعار',
+    showAppName: 'إظهار اسم التطبيق',
+    showThankYouMessage: 'إظهار رسالة الشكر',
+    thankYouMessage: 'رسالة الشكر',
+    showChildName: 'إظهار اسم الطفل',
+    showParentName: 'إظهار اسم ولي الأمر',
+    showGameName: 'إظهار اسم اللعبة',
+    showCheckInTime: 'إظهار وقت الدخول',
+    showCheckOutTime: 'إظهار وقت الخروج',
+    showDuration: 'إظهار المدة',
+    showDurationCost: 'إظهار تكلفة اللعب',
+    showEntryFee: 'إظهار رسوم الدخول',
+    showDiscount: 'إظهار الخصم',
+    showTotalCost: 'إظهار التكلفة الإجمالية',
+    showCashierName: 'إظهار اسم الكاشير',
+    showReceiptId: 'إظهار رقم الإيصال',
+    showTimestamp: 'إظهار التاريخ والوقت',
+    customFooter: 'تذييل الإيصال',
+};
 
 
 function ReceiptDesignerContent() {
@@ -133,8 +155,10 @@ function ReceiptDesignerContent() {
   }
 
   const dummyReceiptProps = {
+    receiptId: "EX-1234",
     settings: watchedSettings,
     appName: 'FunTrack',
+    branchName: "الفرع الرئيسي",
     children: [{name: 'اسم الطفل', age: 5}],
     parentName: 'اسم ولي الأمر',
     gameName: 'لعبة افتراضية',
@@ -181,11 +205,11 @@ function ReceiptDesignerContent() {
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                                     <FormLabel className="text-sm">
-                                    {fieldKey.replace('show', 'إظهار ')}
+                                    {labelsMap[fieldKey] || fieldKey}
                                     </FormLabel>
                                     <FormControl>
                                     <Switch
-                                        checked={field.value}
+                                        checked={field.value as boolean}
                                         onCheckedChange={field.onChange}
                                     />
                                     </FormControl>
@@ -207,7 +231,7 @@ function ReceiptDesignerContent() {
                         name="thankYouMessage"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>رسالة الشكر</FormLabel>
+                            <FormLabel>{labelsMap.thankYouMessage}</FormLabel>
                             <FormControl>
                                 <Input {...field} />
                             </FormControl>
@@ -220,7 +244,7 @@ function ReceiptDesignerContent() {
                         name="customFooter"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>تذييل الإيصال</FormLabel>
+                            <FormLabel>{labelsMap.customFooter}</FormLabel>
                             <FormControl>
                                 <Textarea {...field} />
                             </FormControl>
