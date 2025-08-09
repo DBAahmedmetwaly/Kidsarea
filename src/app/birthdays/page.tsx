@@ -138,21 +138,21 @@ function BirthdaysContent() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>اسم الطفل</TableHead>
-                                <TableHead>ولي الأمر</TableHead>
-                                <TableHead>رقم الهاتف</TableHead>
-                                <TableHead>تاريخ الميلاد</TableHead>
-                                <TableHead>العمر القادم</TableHead>
+                                <TableHead className="text-right">اسم الطفل</TableHead>
+                                <TableHead className="text-right">ولي الأمر</TableHead>
+                                <TableHead className="text-center">رقم الهاتف</TableHead>
+                                <TableHead className="text-center">تاريخ الميلاد</TableHead>
+                                <TableHead className="text-center">العمر القادم</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {upcomingBirthdays.length > 0 ? upcomingBirthdays.map((child, i) => (
                                 <TableRow key={i}>
-                                    <TableCell className="font-medium">{child.name}</TableCell>
-                                    <TableCell>{child.parentName}</TableCell>
-                                    <TableCell>{child.phoneNumber}</TableCell>
-                                    <TableCell>{format(parseISO(child.birthdate!), "d MMMM", { locale: ar })}</TableCell>
-                                    <TableCell>{(new Date().getFullYear() - parseISO(child.birthdate!).getFullYear()) + 1}</TableCell>
+                                    <TableCell className="font-medium text-right">{child.name}</TableCell>
+                                    <TableCell className="text-right">{child.parentName}</TableCell>
+                                    <TableCell className="text-center">{child.phoneNumber}</TableCell>
+                                    <TableCell className="text-center">{format(parseISO(child.birthdate!), "d MMMM", { locale: ar })}</TableCell>
+                                    <TableCell className="text-center">{(new Date().getFullYear() - parseISO(child.birthdate!).getFullYear()) + 1}</TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>
