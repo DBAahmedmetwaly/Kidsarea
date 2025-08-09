@@ -3,6 +3,7 @@
 
 import { Gamepad2, Smile, User, Calendar, Star, Tag } from 'lucide-react';
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 export interface SubscriptionReceiptProps {
   appName: string;
@@ -15,10 +16,10 @@ export interface SubscriptionReceiptProps {
   cashierName: string;
 }
 
-const ReceiptRow = ({ label, value }: { label: string, value: string | number }) => (
-    <div className="flex justify-between items-center text-sm">
-        <span>{label}</span>
-        <span className="font-bold">{value}</span>
+const ReceiptRow = ({ label, value, valueClass = '' }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string }) => (
+    <div className="flex justify-between items-center text-xs py-1 border-b border-dashed border-gray-400">
+        <span className="font-semibold flex items-center gap-1">{label}</span>
+        <span className={cn("font-bold text-left", valueClass)}>{value}</span>
     </div>
 );
 
@@ -38,25 +39,24 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
   return (
     <div ref={ref} className="bg-white p-2 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
       <div className="text-center mb-2">
-        <div className="flex justify-center items-center gap-2">
-            <Gamepad2 className="w-8 h-8" />
-            <h1 className="text-xl font-bold">{appName}</h1>
-        </div>
-        <p className="text-xs">إيصال اشتراك</p>
+        <Gamepad2 className="w-8 h-8 mx-auto text-primary" />
+        <h1 className="text-xl font-bold">{appName}</h1>
+        <p className="text-xs font-semibold">إيصال اشتراك</p>
       </div>
 
-      <div className="space-y-1 text-xs">
-        <ReceiptRow label="ولي الأمر" value={customerName} />
-        <ReceiptRow label="اسم الطفل" value={childName} />
+      <div className="space-y-0.5">
+        <ReceiptRow label={<><User/> ولي الأمر</>} value={customerName} />
+        <ReceiptRow label={<><Smile/> الطفل</>} value={childName} />
 
-        <hr className="border-dashed border-gray-400 my-1" />
+        <div className='my-2 border-t border-dashed border-gray-400' />
         
-        <ReceiptRow label="الباقة" value={planName} />
-        <ReceiptRow label="تاريخ البدء" value={startDate.toLocaleDateString('ar-EG')} />
-        <ReceiptRow label="تاريخ الانتهاء" value={endDate.toLocaleDateString('ar-EG')} />
+        <ReceiptRow label={<><Star/> الباقة</>} value={planName} />
+        <ReceiptRow label={<><Calendar/> تاريخ البدء</>} value={startDate.toLocaleDateString('ar-EG')} />
+        <ReceiptRow label={<><Calendar/> تاريخ الانتهاء</>} value={endDate.toLocaleDateString('ar-EG')} />
 
-        <hr className="border-dashed border-gray-400 my-1" />
-        <div className="flex justify-between items-center text-lg font-bold p-1 bg-gray-200 rounded-md">
+        <div className='my-2 border-t border-dashed border-gray-400' />
+        
+        <div className="flex justify-between items-center text-lg font-bold p-2 mt-1 bg-gray-200 rounded-md">
             <span>الإجمالي المدفوع</span>
             <span>{`ج.م ${price.toFixed(2)}`}</span>
         </div>
