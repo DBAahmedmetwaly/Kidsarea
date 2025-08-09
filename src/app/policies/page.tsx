@@ -66,7 +66,7 @@ const policiesSchema = z.object({
     friday: z.boolean(),
   }),
   showPosStats: z.boolean(),
-  showActiveSessions: z.boolean(),
+  showCompletedSessions: z.boolean(),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -105,7 +105,7 @@ function PoliciesContent() {
         friday: true, // Default weekend
       },
       showPosStats: true,
-      showActiveSessions: true,
+      showCompletedSessions: true,
     },
   });
 
@@ -136,7 +136,7 @@ function PoliciesContent() {
                 friday: true,
             },
             showPosStats: data.showPosStats !== false,
-            showActiveSessions: data.showActiveSessions !== false,
+            showCompletedSessions: data.showCompletedSessions !== false,
         });
       }
       setLoading(false);
@@ -280,15 +280,15 @@ function PoliciesContent() {
                 />
                  <FormField
                     control={form.control}
-                    name="showActiveSessions"
+                    name="showCompletedSessions"
                     render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                         <FormLabel className="text-base">
-                            إظهار قائمة الأطفال النشطين
+                            إظهار قائمة الجلسات المنتهية
                         </FormLabel>
                         <FormDescription>
-                           عرض جدول الأطفال الذين يلعبون حالياً في منطقة الألعاب.
+                           عرض جدول أحدث الجلسات التي انتهت خلال ورديتك الحالية.
                         </FormDescription>
                         </div>
                         <FormControl>

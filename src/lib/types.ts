@@ -120,7 +120,7 @@ export interface Policies {
     entryFee: number;
     weekendDays: Record<DayOfWeek, boolean>;
     showPosStats: boolean;
-    showActiveSessions: boolean;
+    showCompletedSessions: boolean;
 }
 
 export interface Customer {

@@ -500,7 +500,7 @@ function CheckInDialog({
 
 
 function PosTrackingContent() {
-  const { activeChildren, completedSessions: firebaseCompletedSessions, subscriptions } = useFirebase();
+  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions } = useFirebase();
   const { games, policies, openShifts, employees, branches, gameCategories } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -538,18 +538,18 @@ function PosTrackingContent() {
     return openShifts.some(shift => shift.cashierUsername === user.username);
   }, [user, openShifts]);
 
-  const activeChildrenByBranch = useMemo(() => {
-    if (selectedBranchFilter === 'all') return activeChildren;
-    return activeChildren.filter(child => child.branchName === selectedBranchFilter);
-  }, [activeChildren, selectedBranchFilter]);
+  const activeChildren = useMemo(() => {
+    if (selectedBranchFilter === 'all') return firebaseActiveChildren;
+    return firebaseActiveChildren.filter(child => child.branchName === selectedBranchFilter);
+  }, [firebaseActiveChildren, selectedBranchFilter]);
 
   const searchedActiveChildren = useMemo(() => {
-    if (!activeSearch) return activeChildrenByBranch;
-    return activeChildrenByBranch.filter(child => 
+    if (!activeSearch) return activeChildren;
+    return activeChildren.filter(child => 
         child.parentName.toLowerCase().includes(activeSearch.toLowerCase()) ||
         child.children.some(c => c.name.toLowerCase().includes(activeSearch.toLowerCase()))
     );
-  }, [activeChildrenByBranch, activeSearch]);
+  }, [activeChildren, activeSearch]);
 
 
   const gamesForSelectedCategory = useMemo(() => {
@@ -577,7 +577,7 @@ function PosTrackingContent() {
   }, [firebaseCompletedSessions, selectedBranchFilter, user, openShifts]);
 
     const dailyStats = useMemo(() => {
-        const activeCount = activeChildrenByBranch.length;
+        const activeCount = activeChildren.length;
         
         const todaysSessions = firebaseCompletedSessions.filter(s => {
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
@@ -589,7 +589,7 @@ function PosTrackingContent() {
 
         return { activeCount, visitorsToday, sessionsToday };
 
-    }, [activeChildrenByBranch, firebaseCompletedSessions, selectedBranchFilter]);
+    }, [activeChildren, firebaseCompletedSessions, selectedBranchFilter]);
 
   const openCheckInDialog = (game: Game) => {
     setSelectedGame(game);
@@ -645,7 +645,7 @@ function PosTrackingContent() {
   const handleCheckIn = async (data: { customer: Customer, children: CustomerChild[], game: Game, branch: string }) => {
     const { customer, children, game, branch } = data;
     
-    if (policies && policies.maxCapacity && (activeChildren.length + children.length) > policies.maxCapacity) {
+    if (policies && policies.maxCapacity && (firebaseActiveChildren.length + children.length) > policies.maxCapacity) {
         toast({
             title: 'تم الوصول للحد الأقصى',
             description: `لا يمكن إضافة المزيد من الأطفال. السعة القصوى هي ${policies.maxCapacity} طفل.`,
@@ -655,7 +655,7 @@ function PosTrackingContent() {
     }
 
     // Check if any of the selected children are already in an active session
-    const activeChildNames = activeChildren.flatMap(ac => ac.children.map(c => c.name));
+    const activeChildNames = firebaseActiveChildren.flatMap(ac => ac.children.map(c => c.name));
     const alreadyActiveChildren = children.filter(c => activeChildNames.includes(c.name));
 
     if (alreadyActiveChildren.length > 0) {
@@ -815,126 +815,126 @@ function PosTrackingContent() {
                 </Tabs>
 
                 {/* Active Children Section */}
-                {policies?.showActiveSessions && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>الأطفال النشطون حاليًا</CardTitle>
-                            <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder="ابحث بالطفل أو ولي الأمر..."
-                                    value={activeSearch}
-                                    onChange={(e) => setActiveSearch(e.target.value)}
-                                    className="w-full pl-8"
-                                />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="text-right">الطفل</TableHead>
-                                        <TableHead className="text-right">ولي الأمر</TableHead>
-                                        <TableHead className="text-right">اللعبة</TableHead>
-                                        <TableHead className="text-center">الوقت</TableHead>
-                                        <TableHead className="text-center">إجراء</TableHead>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="ابحث بالطفل أو ولي الأمر..."
+                                value={activeSearch}
+                                onChange={(e) => setActiveSearch(e.target.value)}
+                                className="w-full pl-8"
+                            />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-right">الطفل</TableHead>
+                                    <TableHead className="text-right">ولي الأمر</TableHead>
+                                    <TableHead className="text-right">اللعبة</TableHead>
+                                    <TableHead className="text-center">الوقت</TableHead>
+                                    <TableHead className="text-center">إجراء</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {searchedActiveChildren.length > 0 ? (
+                                searchedActiveChildren.map((session) => (
+                                    <TableRow key={session.id}>
+                                    <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
+                                    <TableCell className="text-right">{session.parentName}</TableCell>
+                                    <TableCell className="text-right">{session.game}</TableCell>
+                                    <TableCell className="text-center">
+                                        <TimeCounter startTime={session.checkInTime} />
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => openCheckOutDialog(session)}
+                                        disabled={!hasActiveShift}
+                                        >
+                                        <Square className="me-2 h-4 w-4" />
+                                        خروج
+                                        </Button>
+                                    </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {searchedActiveChildren.length > 0 ? (
-                                    searchedActiveChildren.map((session) => (
-                                        <TableRow key={session.id}>
-                                        <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
-                                        <TableCell className="text-right">{session.parentName}</TableCell>
-                                        <TableCell className="text-right">{session.game}</TableCell>
-                                        <TableCell className="text-center">
-                                            <TimeCounter startTime={session.checkInTime} />
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={() => openCheckOutDialog(session)}
-                                            disabled={!hasActiveShift}
-                                            >
-                                            <Square className="me-2 h-4 w-4" />
-                                            خروج
-                                            </Button>
-                                        </TableCell>
-                                        </TableRow>
-                                    ))
-                                    ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">
-                                        لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
-                                        </TableCell>
-                                    </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                )}
+                                ))
+                                ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                    لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
+                                    </TableCell>
+                                </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
 
 
                  {/* Completed Sessions Section */}
-                <Collapsible>
-                    <Card>
-                        <CardHeader>
-                            <CollapsibleTrigger asChild>
-                                <button className="flex justify-between items-center w-full">
-                                    <CardTitle>أحدث الجلسات المنتهية (في ورديتك)</CardTitle>
-                                    <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
-                                </button>
-                            </CollapsibleTrigger>
-                        </CardHeader>
-                        <CollapsibleContent>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-right">الطفل</TableHead>
-                                            <TableHead className="text-right">ولي الأمر</TableHead>
-                                            <TableHead className="text-center">وقت الخروج</TableHead>
-                                            <TableHead className="text-center">قبل الخصم</TableHead>
-                                            <TableHead className="text-center">الخصم</TableHead>
-                                            <TableHead className="text-center">بعد الخصم</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {todaysCompletedSessions.length > 0 ? (
-                                            todaysCompletedSessions.map((session) => {
-                                                const costBeforeDiscount = session.costBeforeDiscount > 0
-                                                    ? session.costBeforeDiscount
-                                                    : session.cost + (session.discount || 0);
+                {policies?.showCompletedSessions && (
+                     <Collapsible>
+                        <Card>
+                            <CardHeader>
+                                <CollapsibleTrigger asChild>
+                                    <button className="flex justify-between items-center w-full">
+                                        <CardTitle>أحدث الجلسات المنتهية (في ورديتك)</CardTitle>
+                                        <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
+                                    </button>
+                                </CollapsibleTrigger>
+                            </CardHeader>
+                            <CollapsibleContent>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="text-right">الطفل</TableHead>
+                                                <TableHead className="text-right">ولي الأمر</TableHead>
+                                                <TableHead className="text-center">وقت الخروج</TableHead>
+                                                <TableHead className="text-center">قبل الخصم</TableHead>
+                                                <TableHead className="text-center">الخصم</TableHead>
+                                                <TableHead className="text-center">بعد الخصم</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {todaysCompletedSessions.length > 0 ? (
+                                                todaysCompletedSessions.map((session) => {
+                                                    const costBeforeDiscount = session.costBeforeDiscount > 0
+                                                        ? session.costBeforeDiscount
+                                                        : session.cost + (session.discount || 0);
 
-                                                return (
-                                                <TableRow key={session.id}>
-                                                    <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
-                                                    <TableCell className="text-right">{session.parentName}</TableCell>
-                                                    <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
-                                                    <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
-                                                    <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
-                                                    <TableCell className="font-bold text-center">
-                                                        {session.subscriptionId ? (
-                                                            <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
-                                                        ) : `ج.م ${session.cost.toFixed(2)}`}
+                                                    return (
+                                                    <TableRow key={session.id}>
+                                                        <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
+                                                        <TableCell className="text-right">{session.parentName}</TableCell>
+                                                        <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
+                                                        <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
+                                                        <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
+                                                        <TableCell className="font-bold text-center">
+                                                            {session.subscriptionId ? (
+                                                                <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
+                                                            ) : `ج.م ${session.cost.toFixed(2)}`}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )})
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={6} className="h-24 text-center">
+                                                        لم تكتمل أي جلسات في ورديتك بعد.
                                                     </TableCell>
                                                 </TableRow>
-                                            )})
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={6} className="h-24 text-center">
-                                                    لم تكتمل أي جلسات في ورديتك بعد.
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </CollapsibleContent>
-                    </Card>
-                </Collapsible>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
+                )}
             </div>
            
           <CheckInDialog
