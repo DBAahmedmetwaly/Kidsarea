@@ -194,26 +194,9 @@ function BirthdayReport() {
     )
 }
 
-function CashierPerformanceReport() {
-    const { completedSessions } = useSession();
-    const { employees, subscriptions, branches } = useFirebase();
-    const { user } = useAuth();
+function CashierPerformanceReport({ sessions, subscriptions, selectedBranch } : { sessions: CompletedSession[], subscriptions: Subscription[], selectedBranch: string }) {
+    const { employees } = useFirebase();
     
-    const [selectedBranch, setSelectedBranch] = useState('all');
-    const [fromDate, setFromDate] = useState<Date | undefined>();
-    const [toDate, setToDate] = useState<Date | undefined>();
-    
-    const currentUser = useMemo(() => {
-        if (!user) return null;
-        return employees.find(e => e.username === user.username);
-    }, [user, employees]);
-
-    useEffect(() => {
-        if (currentUser && currentUser.branch !== 'كل الفروع') {
-            setSelectedBranch(currentUser.branch);
-        }
-    }, [currentUser]);
-
     const performanceData = useMemo(() => {
         const cashiers = employees.filter(emp => {
             const isCashierRole = emp.role === 'كاشير' || emp.role === 'مدير فرع' || emp.role === 'مشرف';
@@ -222,8 +205,6 @@ function CashierPerformanceReport() {
             const isBranchMatch = selectedBranch === 'all' || emp.branch === selectedBranch || emp.branch === 'كل الفروع';
             return isBranchMatch;
         });
-
-        const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
 
         return cashiers.map(cashier => {
             if (!cashier.username) {
@@ -237,28 +218,19 @@ function CashierPerformanceReport() {
                 };
             }
 
-            const sessions = completedSessions.filter(s => {
-                if (s.cashierUsername !== cashier.username) return false;
-                if (range && !isWithinInterval(new Date(s.checkOutTime), range)) return false;
-                return true;
-            });
+            const cashierSessions = sessions.filter(s => s.cashierUsername === cashier.username);
+            const cashierSubs = subscriptions.filter(s => s.cashierUsername === cashier.username);
 
-            const subs = subscriptions.filter(s => {
-                if(s.cashierUsername !== cashier.username) return false;
-                 if (range && !isWithinInterval(new Date(s.createdAt), range)) return false;
-                return true;
-            });
-
-            const totalSessionsIncome = sessions.reduce((sum, s) => sum + s.cost, 0);
-            const totalSubscriptionsIncome = subs.reduce((sum, s) => sum + s.price, 0);
+            const totalSessionsIncome = cashierSessions.reduce((sum, s) => sum + s.cost, 0);
+            const totalSubscriptionsIncome = cashierSubs.reduce((sum, s) => sum + s.price, 0);
             const totalIncome = totalSessionsIncome + totalSubscriptionsIncome;
 
-            const totalDiscount = sessions.reduce((sum, s) => sum + (s.discount || 0), 0);
-            const totalRevenueBeforeDiscount = sessions.reduce((sum, s) => sum + (s.costBeforeDiscount > 0 ? s.costBeforeDiscount : (s.cost + (s.discount || 0))), 0) + totalSubscriptionsIncome;
+            const totalDiscount = cashierSessions.reduce((sum, s) => sum + (s.discount || 0), 0);
+            const totalRevenueBeforeDiscount = cashierSessions.reduce((sum, s) => sum + (s.costBeforeDiscount > 0 ? s.costBeforeDiscount : (s.cost + (s.discount || 0))), 0) + totalSubscriptionsIncome;
 
             const discountPercentage = totalRevenueBeforeDiscount > 0 ? (totalDiscount / totalRevenueBeforeDiscount) * 100 : 0;
 
-            const sessionCount = sessions.length + subs.length;
+            const sessionCount = cashierSessions.length + cashierSubs.length;
             const averageSale = sessionCount > 0 ? totalIncome / sessionCount : 0;
             
             return {
@@ -271,95 +243,16 @@ function CashierPerformanceReport() {
             };
         });
 
-    }, [completedSessions, employees, subscriptions, selectedBranch, fromDate, toDate]);
+    }, [sessions, employees, subscriptions, selectedBranch]);
     
-     const clearFilters = () => {
-        if (currentUser && currentUser.branch !== 'كل الفروع') {
-            // Don't clear branch if it's locked
-        } else {
-            setSelectedBranch('all');
-        }
-        setFromDate(undefined);
-        setToDate(undefined);
-    }
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle>تقرير أداء الموظفين</CardTitle>
-                <CardDescription>تحليل شامل لأداء الموظفين بناءً على المبيعات والخصومات.</CardDescription>
+                <CardDescription>تحليل شامل لأداء الموظفين بناءً على المبيعات والخصومات في الفترة المحددة.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 border rounded-md bg-muted/50">
-                    <div className="flex-1 space-y-2">
-                         <label className="text-sm font-medium">الفرع</label>
-                         <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="اختر الفرع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">كل الفروع</SelectItem>
-                                {branches.map(branch => (
-                                    <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div className="flex-1 space-y-2">
-                        <label className="text-sm font-medium">من تاريخ</label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn("w-full justify-start text-left font-normal bg-background", !fromDate && "text-muted-foreground")}
-                            >
-                                <CalendarIcon className="me-2 h-4 w-4" />
-                                {fromDate ? format(fromDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
-                            </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                                mode="single"
-                                selected={fromDate}
-                                onSelect={setFromDate}
-                                disabled={(date) => toDate ? date > toDate : false}
-                                initialFocus
-                                locale={ar}
-                            />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                     <div className="flex-1 space-y-2">
-                        <label className="text-sm font-medium">إلى تاريخ</label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn("w-full justify-start text-left font-normal bg-background", !toDate && "text-muted-foreground")}
-                            >
-                                <CalendarIcon className="me-2 h-4 w-4" />
-                                {toDate ? format(toDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
-                            </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                                mode="single"
-                                selected={toDate}
-                                onSelect={setToDate}
-                                disabled={(date) => fromDate ? date < fromDate : false}
-                                initialFocus
-                                locale={ar}
-                            />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                     <div className="flex items-end">
-                        <Button variant="ghost" onClick={clearFilters} className="h-10">
-                            <FilterX className="me-2 h-4 w-4" />
-                            مسح
-                        </Button>
-                    </div>
-                </div>
                  <Table>
                     <TableHeader>
                         <TableRow>
@@ -397,18 +290,57 @@ function CashierPerformanceReport() {
 }
 
 function ReportsContent() {
-    const { completedSessions } = useSession();
-    const { games, employees, branches, subscriptions } = useFirebase();
+    const { completedSessions, subscriptions } = useSession();
+    const { games, employees, branches } = useFirebase();
     const { customers } = useCustomers();
+    const { user } = useAuth();
+    
+    const [selectedBranch, setSelectedBranch] = useState('all');
+    const [fromDate, setFromDate] = useState<Date | undefined>();
+    const [toDate, setToDate] = useState<Date | undefined>();
+
+    const currentUser = useMemo(() => {
+        if (!user) return null;
+        return employees.find(e => e.username === user.username);
+    }, [user, employees]);
+
+     useEffect(() => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            setSelectedBranch(currentUser.branch);
+        }
+    }, [currentUser]);
+
+    const filteredData = useMemo(() => {
+        const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
+
+        const filteredSessions = completedSessions.filter(session => {
+            const branchMatch = selectedBranch === 'all' || session.branchName === selectedBranch;
+            const dateMatch = range ? isWithinInterval(new Date(session.checkOutTime), range) : true;
+            return branchMatch && dateMatch;
+        });
+        
+        const filteredSubscriptions = subscriptions.filter(sub => {
+            // Note: Subscription branch is not stored, so we can't filter by branch directly.
+            // Assuming subscriptions are global for now.
+            const dateMatch = range ? isWithinInterval(new Date(sub.createdAt), range) : true;
+            return dateMatch;
+        });
+
+        return { sessions: filteredSessions, subscriptions: filteredSubscriptions };
+
+    }, [completedSessions, subscriptions, selectedBranch, fromDate, toDate]);
+
 
     const gameProfitData = useMemo(() => {
         const profitByGame: { [key: string]: number } = {};
 
         games.forEach(game => {
-            profitByGame[game.name] = 0;
+            if (selectedBranch === 'all' || game.branch === selectedBranch || game.branch === 'كل الفروع') {
+               profitByGame[game.name] = 0;
+            }
         });
 
-        completedSessions.forEach(session => {
+        filteredData.sessions.forEach(session => {
             if (profitByGame[session.game] !== undefined) {
                 profitByGame[session.game] += session.cost;
             }
@@ -417,12 +349,16 @@ function ReportsContent() {
         return Object.entries(profitByGame).map(([name, profit]) => ({
             name,
             profit,
-        })).filter(item => item.profit > 0);
-    }, [completedSessions, games]);
+        })).filter(item => item.profit > 0).sort((a,b) => b.profit - a.profit).slice(0, 10);
+    }, [filteredData.sessions, games, selectedBranch]);
 
     const employeeIncomeData = useMemo(() => {
         const incomeByEmployee: { [key: string]: number } = {};
-        const cashiers = employees.filter(e => e.role === 'كاشير');
+        const cashiers = employees.filter(e => {
+            const roleMatch = e.role === 'كاشير' || e.role === 'مدير فرع' || e.role === 'مشرف';
+            const branchMatch = selectedBranch === 'all' || e.branch === selectedBranch || e.branch === 'كل الفروع';
+            return roleMatch && branchMatch;
+        });
 
         cashiers.forEach(emp => {
             if (emp.username) {
@@ -430,15 +366,13 @@ function ReportsContent() {
             }
         });
 
-        // Add income from completed sessions
-        completedSessions.forEach(session => {
+        filteredData.sessions.forEach(session => {
             if (incomeByEmployee[session.cashierUsername] !== undefined) {
                 incomeByEmployee[session.cashierUsername] += session.cost;
             }
         });
         
-        // Add income from subscriptions
-        subscriptions.forEach(sub => {
+        filteredData.subscriptions.forEach(sub => {
             if (incomeByEmployee[sub.cashierUsername] !== undefined) {
                 incomeByEmployee[sub.cashierUsername] += sub.price;
             }
@@ -451,7 +385,7 @@ function ReportsContent() {
                 income,
             };
         }).filter(item => item.income > 0);
-    }, [completedSessions, employees, subscriptions]);
+    }, [filteredData, employees, selectedBranch]);
     
     const peakHoursData = useMemo(() => {
         const visitsByHour: { [key: number]: number } = {};
@@ -459,16 +393,16 @@ function ReportsContent() {
             visitsByHour[i] = 0;
         }
 
-        completedSessions.forEach(session => {
+        filteredData.sessions.forEach(session => {
             const hour = getHours(new Date(session.checkInTime));
             visitsByHour[hour]++;
         });
 
         return Object.entries(visitsByHour).map(([hour, visitors]) => ({
-            hour: `${parseInt(hour) % 12 || 12} ${parseInt(hour) >= 12 ? 'PM' : 'AM'}`,
+            hour: `${parseInt(hour) % 12 || 12} ${parseInt(hour) >= 12 ? 'مساءً' : 'صباحًا'}`,
             visitors,
         }));
-    }, [completedSessions]);
+    }, [filteredData.sessions]);
 
 
     const branchRevenueData = useMemo(() => {
@@ -479,22 +413,26 @@ function ReportsContent() {
         });
 
         completedSessions.forEach(session => {
-            const game = games.find(g => g.name === session.game);
-            if(game && revenueByBranch[game.branch] !== undefined) {
-                revenueByBranch[game.branch] += session.cost;
+             if(revenueByBranch[session.branchName] !== undefined) {
+                revenueByBranch[session.branchName] += session.cost;
             }
+        });
+        
+         subscriptions.forEach(sub => {
+            // How to attribute subscription revenue to a branch?
+            // For now, let's assume it's not tied to a branch or we skip it in this chart
         });
 
         return Object.entries(revenueByBranch).map(([name, revenue]) => ({
             name,
             revenue
         })).filter(item => item.revenue > 0);
-    }, [completedSessions, games, branches]);
+    }, [completedSessions, subscriptions, branches]);
 
     const topCustomersData = useMemo(() => {
         const visitsByCustomer: { [key: string]: number } = {};
         
-        completedSessions.forEach(session => {
+        filteredData.sessions.forEach(session => {
             visitsByCustomer[session.parentName] = (visitsByCustomer[session.parentName] || 0) + 1;
         });
 
@@ -503,14 +441,24 @@ function ReportsContent() {
             .sort((a, b) => b.visits - a.visits)
             .slice(0, 10); // Top 10 customers
 
-    }, [completedSessions]);
+    }, [filteredData.sessions]);
     
     const discountStats = useMemo(() => {
-        const totalDiscounts = completedSessions.reduce((sum, s) => sum + (s.discount || 0), 0);
-        const totalRevenueWithDiscounts = completedSessions.reduce((sum, s) => sum + (s.costBeforeDiscount || s.cost), 0);
+        const totalDiscounts = filteredData.sessions.reduce((sum, s) => sum + (s.discount || 0), 0);
+        const totalRevenueWithDiscounts = filteredData.sessions.reduce((sum, s) => sum + (s.costBeforeDiscount > 0 ? s.costBeforeDiscount : (s.cost + (s.discount || 0))), 0);
         const discountPercentage = totalRevenueWithDiscounts > 0 ? (totalDiscounts / totalRevenueWithDiscounts) * 100 : 0;
         return { totalDiscounts, discountPercentage };
-    }, [completedSessions]);
+    }, [filteredData.sessions]);
+    
+    const clearFilters = () => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            // Don't clear branch if it's locked
+        } else {
+            setSelectedBranch('all');
+        }
+        setFromDate(undefined);
+        setToDate(undefined);
+    }
 
 
   return (
@@ -521,6 +469,89 @@ function ReportsContent() {
         </div>
         <h1 className="text-lg font-semibold md:text-2xl">التقارير</h1>
       </div>
+
+       <Card>
+            <CardHeader className="flex-row items-center justify-between">
+                 <div>
+                    <CardTitle>فلاتر التقارير العامة</CardTitle>
+                    <CardDescription>
+                    استخدم الفلاتر أدناه لتخصيص البيانات المعروضة في الإحصائيات والمخططات أدناه.
+                    </CardDescription>
+                </div>
+                <Button variant="ghost" onClick={clearFilters}>
+                    <FilterX className="me-2 h-4 w-4" />
+                    مسح الفلاتر
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">الفرع</label>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر الفرع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الفروع</SelectItem>
+                                {branches.map(branch => (
+                                    <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">من تاريخ</label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal", !fromDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {fromDate ? format(fromDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={fromDate}
+                                onSelect={setFromDate}
+                                disabled={(date) => toDate ? date > toDate : false}
+                                initialFocus
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">إلى تاريخ</label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal", !toDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {toDate ? format(toDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={toDate}
+                                onSelect={setToDate}
+                                disabled={(date) => fromDate ? date < fromDate : false}
+                                initialFocus
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
          <StatCard 
@@ -537,13 +568,13 @@ function ReportsContent() {
          />
       </div>
 
-      <CashierPerformanceReport />
+      <CashierPerformanceReport sessions={filteredData.sessions} subscriptions={filteredData.subscriptions} selectedBranch={selectedBranch} />
       <BirthdayReport />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>تقرير أرباح الألعاب</CardTitle>
+            <CardTitle>تقرير أرباح الألعاب (أعلى 10)</CardTitle>
             <CardDescription>عرض إجمالي الأرباح لكل لعبة بناءً على الجلسات المسجلة.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -633,10 +664,11 @@ function ReportsContent() {
             </CardContent>
         </Card>
         
+        {selectedBranch === 'all' && (
         <Card>
             <CardHeader>
                 <CardTitle>تقرير إيرادات الفروع</CardTitle>
-                <CardDescription>مقارنة إجمالي الإيرادات بين جميع الفروع.</CardDescription>
+                <CardDescription>مقارنة إجمالي الإيرادات بين جميع الفروع (لا تشمل الاشتراكات).</CardDescription>
             </CardHeader>
             <CardContent>
                 <ChartContainer config={branchRevenueChartConfig} className="h-72 w-full">
@@ -664,10 +696,11 @@ function ReportsContent() {
                 </ChartContainer>
             </CardContent>
         </Card>
+        )}
 
         <Card>
             <CardHeader>
-                <CardTitle>تقرير العملاء الأكثر زيارة</CardTitle>
+                <CardTitle>تقرير العملاء الأكثر زيارة (أعلى 10)</CardTitle>
                 <CardDescription>عرض العملاء الأكثر زيارة بناءً على عدد الجلسات المسجلة.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -710,3 +743,4 @@ export default function ReportsPage() {
         </SidebarProvider>
     );
 }
+
