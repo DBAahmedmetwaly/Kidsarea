@@ -61,46 +61,59 @@ function DemoDataGenerator() {
         toast({ title: "بدء إنشاء البيانات التجريبية...", description: "قد تستغرق هذه العملية بضع لحظات." });
 
         try {
-            // Generate Categories and Games
-            const categories: Omit<GameCategory, 'id'>[] = [];
-            for (let i = 1; i <= 10; i++) {
-                categories.push({
-                    name: `تصنيف تجريبي ${i}`,
-                    color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`
-                });
-            }
+            const demoCategoriesAndGames = [
+                {
+                    category: { name: 'ألعاب حركية', color: '#ff6347' },
+                    games: ['الترامبولين', 'الزحليقة العملاقة', 'بيت الكور', 'مسار العقبات', 'التسلق الملون', 'النطاطات الهوائية', 'سباق الأكياس', 'حرب الوسائد']
+                },
+                {
+                    category: { name: 'ألعاب الفيديو', color: '#4682b4' },
+                    games: ['سباق السيارات', 'مغامرات الفضاء', 'كرة القدم الإلكترونية', 'تحدي الأبطال', 'بناء العوالم', 'فيفا 2024', 'ماريو كارت', 'ماين كرافت']
+                },
+                {
+                    category: { name: 'ركن الفنون', color: '#9370db' },
+                    games: ['تلوين الجبس', 'صناعة الأساور', 'الرسم على الوجوه', 'تشكيل الصلصال', 'فن الأوريغامي', 'تزيين الكب كيك', 'الطباعة على القمصان', 'صناعة الأقنعة']
+                },
+                {
+                    category: { name: 'ألعاب الذكاء', color: '#3cb371' },
+                    games: ['مكعبات التركيب (ليغو)', 'بازل الصور', 'لعبة الذاكرة', 'تحدي الشطرنج', 'سودوكو للأطفال', 'لعبة الأربعة تربح', 'مكعب روبيك', 'كلمات متقاطعة']
+                },
+                {
+                    category: { name: 'المسرح والدمى', color: '#ffa500' },
+                    games: ['مسرح العرائس', 'عرض الأزياء التنكرية', 'صناعة الدمى', 'تقليد الأصوات', 'سرد القصص', 'مسرح خيال الظل', 'كاريوكي الأطفال', 'تمثيل الأدوار']
+                }
+            ];
 
-            const categoryRefs = categories.map(cat => {
+            const categoryRefs: (GameCategory & { games: string[] })[] = [];
+
+            for (const item of demoCategoriesAndGames) {
                 const newCatRef = push(ref(db, 'gameCategories'));
-                set(newCatRef, cat);
-                return { id: newCatRef.key, ...cat };
-            });
+                await set(newCatRef, item.category);
+                categoryRefs.push({ id: newCatRef.key!, ...item.category, games: item.games });
+            }
             
-            await Promise.all(categoryRefs);
-
-            const games: Omit<Game, 'id'>[] = [];
+            const gamePromises = [];
             for (const category of categoryRefs) {
-                for (let i = 1; i <= 20; i++) {
-                     games.push({
-                        name: `لعبة ${i} - ${category.name}`,
+                for (const gameName of category.games) {
+                     const gameData = {
+                        name: gameName,
                         hourly_rate: Math.floor(Math.random() * 100) + 50,
                         branch: 'كل الفروع',
                         status: 'Available',
                         categoryId: category.id!,
                         categoryName: category.name,
                         image: 'https://placehold.co/64x64.png',
-                    });
+                    };
+                    const newGameRef = push(ref(db, 'games'));
+                    gamePromises.push(set(newGameRef, gameData));
                 }
             }
-            
-            const gamePromises = games.map(game => {
-                 const newGameRef = push(ref(db, 'games'));
-                 return set(newGameRef, game);
-            });
-            
             await Promise.all(gamePromises);
 
-            // Generate Customers
+            const firstNames = ["محمد", "أحمد", "علي", "فاطمة", "زينب", "نور", "يوسف", "عمر", "سارة", "مريم"];
+            const lastNames = ["المصري", "السيد", "علي", "حسن", "إبراهيم", "خالد", "محمود", "عبدالله", "جمال", "سليمان"];
+            const childNames = ["آدم", "ليان", "ملك", "ياسين", "جنى", "حمزة", "حلا", "أمير", "تالا", "كريم", "سلمى", "علي", "فرح", "زياد", "نور"];
+
             const customersToCreate: Omit<Customer, 'id'>[] = [];
             for (let i = 1; i <= 20; i++) {
                 const children: CustomerChild[] = [];
@@ -110,13 +123,13 @@ function DemoDataGenerator() {
                      const birthMonth = Math.floor(Math.random() * 12);
                      const birthDay = Math.floor(Math.random() * 28) + 1;
                      children.push({
-                        name: `طفل ${j} للعائلة ${i}`,
+                        name: `${childNames[Math.floor(Math.random() * childNames.length)]}`,
                         age: new Date().getFullYear() - birthYear,
                         birthdate: new Date(birthYear, birthMonth, birthDay).toISOString().split('T')[0]
                      });
                 }
                 customersToCreate.push({
-                    parentName: `ولي أمر تجريبي ${i}`,
+                    parentName: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
                     phoneNumber: `010000000${i.toString().padStart(2, '0')}`,
                     children: children,
                     createdAt: new Date().toISOString()
@@ -128,7 +141,6 @@ function DemoDataGenerator() {
                 return set(newCustRef, cust);
             });
             await Promise.all(customerPromises);
-
 
             toast({ title: "اكتمل بنجاح!", description: "تم إنشاء جميع البيانات التجريبية." });
         } catch (error) {
@@ -453,5 +465,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
-    
