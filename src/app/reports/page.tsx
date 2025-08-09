@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { ChartConfig } from '@/components/ui/chart';
@@ -22,7 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon, Cake, Percent, TrendingDown } from 'lucide-react';
+import { Calendar as CalendarIcon, Cake, Percent, TrendingDown, Users } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard } from '@/components/StatCard';
 
@@ -185,6 +186,86 @@ function BirthdayReport() {
     )
 }
 
+function CashierPerformanceReport() {
+    const { completedSessions } = useSession();
+    const { employees, subscriptions } = useFirebase();
+
+    const performanceData = useMemo(() => {
+        const cashiers = employees.filter(e => e.role === 'كاشير' || e.role === 'مدير فرع' || e.role === 'مشرف');
+        
+        return cashiers.map(cashier => {
+            if (!cashier.username) return null;
+
+            const employeeSessions = completedSessions.filter(s => s.cashierUsername === cashier.username);
+            const employeeSubscriptions = subscriptions.filter(s => s.cashierUsername === cashier.username);
+
+            const totalSessionsIncome = employeeSessions.reduce((sum, s) => sum + s.cost, 0);
+            const totalSubscriptionsIncome = employeeSubscriptions.reduce((sum, s) => sum + s.price, 0);
+            const totalIncome = totalSessionsIncome + totalSubscriptionsIncome;
+
+            const totalDiscount = employeeSessions.reduce((sum, s) => sum + (s.discount || 0), 0);
+            const totalRevenueBeforeDiscount = employeeSessions.reduce((sum, s) => sum + (s.costBeforeDiscount || s.cost + (s.discount || 0)), 0) + totalSubscriptionsIncome;
+
+            const discountPercentage = totalRevenueBeforeDiscount > 0 ? (totalDiscount / totalRevenueBeforeDiscount) * 100 : 0;
+
+            const sessionCount = employeeSessions.length + employeeSubscriptions.length;
+            const averageSale = sessionCount > 0 ? totalIncome / sessionCount : 0;
+
+            return {
+                name: cashier.name,
+                totalIncome,
+                totalDiscount,
+                sessionCount,
+                discountPercentage,
+                averageSale
+            };
+        }).filter(Boolean);
+
+    }, [completedSessions, employees, subscriptions]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>تقرير أداء الموظفين</CardTitle>
+                <CardDescription>تحليل شامل لأداء الموظفين بناءً على المبيعات والخصومات.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>اسم الموظف</TableHead>
+                            <TableHead className="text-center">إجمالي الدخل</TableHead>
+                            <TableHead className="text-center">إجمالي الخصومات</TableHead>
+                            <TableHead className="text-center">عدد الفواتير</TableHead>
+                            <TableHead className="text-center">نسبة الخصم</TableHead>
+                            <TableHead className="text-center">متوسط الفاتورة</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {performanceData.length > 0 ? performanceData.map((data, i) => (
+                            <TableRow key={i}>
+                                <TableCell className="font-medium">{data!.name}</TableCell>
+                                <TableCell className="text-center font-semibold text-green-600">{`ج.م ${data!.totalIncome.toFixed(2)}`}</TableCell>
+                                <TableCell className="text-center text-red-600">{`ج.م ${data!.totalDiscount.toFixed(2)}`}</TableCell>
+                                <TableCell className="text-center">{data!.sessionCount}</TableCell>
+                                <TableCell className="text-center">{`${data!.discountPercentage.toFixed(2)}%`}</TableCell>
+                                <TableCell className="text-center">{`ج.م ${data!.averageSale.toFixed(2)}`}</TableCell>
+                            </TableRow>
+                        )) : (
+                             <TableRow>
+                                <TableCell colSpan={6} className="text-center h-24">
+                                    لا توجد بيانات أداء لعرضها.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    )
+
+}
+
 function ReportsContent() {
     const { completedSessions } = useSession();
     const { games, employees, branches, subscriptions } = useFirebase();
@@ -326,6 +407,7 @@ function ReportsContent() {
          />
       </div>
 
+      <CashierPerformanceReport />
       <BirthdayReport />
 
       <div className="grid gap-6 md:grid-cols-2">
