@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -139,6 +138,7 @@ function CheckOutDialog({
   const [activeSubscriptions, setActiveSubscriptions] = useState<Subscription[]>([]);
   const { user } = useAuth();
   const { printReceipt } = usePosPrint();
+  const amountReceivedInputRef = useRef<HTMLInputElement>(null);
   
 
   const checkoutData = useMemo(() => {
@@ -197,12 +197,17 @@ function CheckOutDialog({
     }
   }, [child, subscriptions]);
 
-
   useEffect(() => {
-    // Reset amount received when a new child is selected for checkout
-    setAmountReceived('');
-    setDiscount('');
-  }, [child]);
+    if (open) {
+        // Reset amounts and set focus when dialog opens
+        setAmountReceived('');
+        setDiscount('');
+        // Timeout to allow dialog to render before focusing
+        setTimeout(() => {
+            amountReceivedInputRef.current?.focus();
+        }, 100);
+    }
+  }, [open]);
 
   const handleConfirm = async () => {
     if(!child || !checkoutData) return;
@@ -298,6 +303,7 @@ function CheckOutDialog({
                     <Label htmlFor="amount-received">المبلغ المستلم</Label>
                     <Input
                     id="amount-received"
+                    ref={amountReceivedInputRef}
                     type="number"
                     value={amountReceived}
                     onChange={(e) => setAmountReceived(e.target.value)}
