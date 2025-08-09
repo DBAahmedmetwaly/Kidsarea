@@ -25,12 +25,15 @@ export interface PosReceiptProps {
   isSubscription?: boolean;
 }
 
-const ReceiptRow = ({ label, value, valueClass = '' }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string }) => (
-    <div className="flex justify-between items-center text-xs py-1 border-b border-dashed border-gray-400">
-        <span className="font-semibold flex items-center gap-1">{label}</span>
-        <span className={cn("font-bold text-left", valueClass)}>{value}</span>
-    </div>
-);
+const ReceiptRow = ({ label, value, valueClass = '', show }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string, show?: boolean }) => {
+    if (show === false) return null;
+    return (
+        <div className="flex justify-between items-start text-xs py-1">
+            <span className="font-semibold flex items-center gap-1">{label}</span>
+            <span className={cn("font-bold text-left break-all", valueClass)}>{value}</span>
+        </div>
+    );
+};
 
 
 export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
@@ -62,57 +65,36 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         <p className="text-xs">{branchName}</p>
       </div>
 
-      <div className="space-y-0.5">
-        {show('showParentName') && (
-            <ReceiptRow label={<><User/> ولي الأمر</>} value={parentName} />
-        )}
-        {show('showChildName') && (
-            <ReceiptRow label={<><Smile/> الطفل</>} value={children.map(c => c.name).join(', ')} />
-        )}
-        
-        {(show('showParentName') || show('showChildName')) && <div className='my-2 border-t border-dashed border-gray-400' />}
-        
-        {show('showGameName') && (
-            <ReceiptRow label={<><Gamepad2/> اللعبة</>} value={gameName} />
-        )}
-        {show('showCheckInTime') && (
-            <ReceiptRow label={<><Clock/> دخول</>} value={checkInTime.toLocaleTimeString('ar-EG')} />
-        )}
-        {show('showCheckOutTime') && (
-            <ReceiptRow label={<><Clock/> خروج</>} value={checkOutTime.toLocaleTimeString('ar-EG')} />
-        )}
-         {show('showDuration') && (
-            <ReceiptRow label={<><Calendar/> المدة</>} value={duration} />
-        )}
-        
-        {(show('showGameName') || show('showCheckInTime') || show('showCheckOutTime') || show('showDuration')) && <div className='my-2 border-t border-dashed border-gray-400' />}
-        
+      <div className="space-y-0.5 border-t border-b border-dashed border-gray-400 py-2 my-2">
+        <ReceiptRow show={show('showParentName')} label={<><User size={12}/> ولي الأمر</>} value={parentName} />
+        <ReceiptRow show={show('showChildName')} label={<><Smile size={12}/> الطفل</>} value={children.map(c => c.name).join(', ')} />
+        <ReceiptRow show={show('showGameName')} label={<><Gamepad2 size={12}/> اللعبة</>} value={gameName} />
+        <ReceiptRow show={show('showCheckInTime')} label={<><Clock size={12}/> دخول</>} value={checkInTime.toLocaleTimeString('ar-EG')} />
+        <ReceiptRow show={show('showCheckOutTime')} label={<><Clock size={12}/> خروج</>} value={checkOutTime.toLocaleTimeString('ar-EG')} />
+        <ReceiptRow show={show('showDuration')} label={<><Calendar size={12}/> المدة</>} value={duration} />
+      </div>
+
         {isSubscription ? (
              <div className="flex justify-center items-center text-md font-bold p-2 mt-1 bg-green-100 text-green-800 rounded-md">
                 <span className="flex items-center gap-2"><Star size={16} /> مدفوع بالاشتراك</span>
             </div>
         ) : (
-            <>
-                {show('showDurationCost') && (
-                    <ReceiptRow label={<><Tag/> تكلفة اللعب</>} value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
-                )}
-                {show('showEntryFee') && entryFee && entryFee > 0 && (
-                     <ReceiptRow label={<><PlusCircle/> رسوم دخول</>} value={`ج.م ${entryFee.toFixed(2)}`} />
-                )}
-                 {show('showDiscount') && discount && discount > 0 && (
-                     <ReceiptRow label={<><MinusCircle/> الخصم</>} value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
-                 )}
+            <div className="space-y-0.5">
+                <ReceiptRow show={show('showDurationCost')} label={<><Tag size={12}/> تكلفة اللعب</>} value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
+                <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0} label={<><PlusCircle size={12}/> رسوم دخول</>} value={`ج.م ${entryFee.toFixed(2)}`} />
+                <ReceiptRow show={show('showDiscount') && !!discount && discount > 0} label={<><MinusCircle size={12}/> الخصم</>} value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
+                
                 {show('showTotalCost') && (
-                    <div className="flex justify-between items-center text-lg font-bold p-2 mt-1 bg-gray-200 rounded-md">
+                    <div className="flex justify-between items-center text-lg font-bold p-2 mt-2 bg-gray-200 rounded-md">
                         <span>الإجمالي</span>
                         <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
                     </div>
                 )}
-            </>
+            </div>
         )}
-      </div>
+      
 
-       <div className="mt-4 text-center text-xs text-gray-600 space-y-0.5">
+       <div className="mt-4 text-center text-xs text-gray-600 space-y-1">
             {show('showThankYouMessage') && <p className="font-bold text-sm">{settings?.thankYouMessage}</p>}
             {show('showCashierName') && <p>الكاشير: {cashierName}</p>}
             {show('showReceiptId') && receiptId && <p>رقم الإيصال: {receiptId}</p>}
