@@ -9,6 +9,7 @@ export interface PosReceiptProps {
   receiptId?: string;
   settings: ReceiptSettings | null;
   appName: string;
+  branchName: string;
   children: CustomerChild[];
   parentName: string;
   gameName: string;
@@ -23,10 +24,10 @@ export interface PosReceiptProps {
   isSubscription?: boolean;
 }
 
-const ReceiptRow = ({ label, value }: { label: string, value: string | number }) => (
-    <div className="flex justify-between items-center text-sm">
-        <span>{label}</span>
-        <span className="font-bold">{value}</span>
+const ReceiptRow = ({ label, value }: { label: string, value: React.ReactNode }) => (
+    <div className="flex justify-between items-center text-xs py-1 border-b border-dashed border-gray-400">
+        <span className="font-bold">{label}</span>
+        <span>{value}</span>
     </div>
 );
 
@@ -34,6 +35,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   receiptId,
   settings,
   appName,
+  branchName,
   children,
   parentName,
   gameName,
@@ -58,14 +60,13 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         {show('showThankYouMessage') && <p className="text-xs">{settings?.thankYouMessage}</p>}
       </div>
 
-      <div className="space-y-1 text-xs">
+      <div className="space-y-0.5">
         {show('showChildName') && (
             <ReceiptRow label="اسم الطفل" value={children.map(c => c.name).join(', ')} />
         )}
         {show('showParentName') && (
             <ReceiptRow label="ولي الأمر" value={parentName} />
         )}
-        <hr className="border-dashed border-gray-400 my-1" />
         {show('showGameName') && (
             <ReceiptRow label="اللعبة" value={gameName} />
         )}
@@ -78,29 +79,25 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
          {show('showDuration') && (
             <ReceiptRow label="المدة" value={duration} />
         )}
-        <hr className="border-dashed border-gray-400 my-1" />
         {isSubscription ? (
-             <div className="flex justify-center items-center text-md font-bold p-1 bg-green-100 text-green-800 rounded-md">
+             <div className="flex justify-center items-center text-md font-bold p-2 mt-1 bg-green-100 text-green-800 rounded-md">
                 <span className="flex items-center gap-2"><Star size={16} /> مدفوع بالاشتراك</span>
             </div>
         ) : (
             <>
-                <div className="space-y-1">
-                    {show('showDurationCost') && (
-                        <ReceiptRow label="تكلفة اللعب" value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
-                    )}
-                    {show('showEntryFee') && entryFee && entryFee > 0 && (
-                         <ReceiptRow label="رسوم دخول" value={`ج.م ${entryFee.toFixed(2)}`} />
-                    )}
-                     {show('showDiscount') && discount && discount > 0 && (
-                         <ReceiptRow label="الخصم" value={`-ج.م ${discount.toFixed(2)}`} />
-                    )}
-                </div>
-                <hr className="border-dashed border-gray-400 my-1" />
+                {show('showDurationCost') && (
+                    <ReceiptRow label="تكلفة اللعب" value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
+                )}
+                {show('showEntryFee') && entryFee && entryFee > 0 && (
+                     <ReceiptRow label="رسوم دخول" value={`ج.م ${entryFee.toFixed(2)}`} />
+                )}
+                 {show('showDiscount') && discount && discount > 0 && (
+                     <ReceiptRow label="الخصم" value={`-ج.م ${discount.toFixed(2)}`} />
+                 )}
                 {show('showTotalCost') && (
-                    <div className="flex justify-between items-center text-lg font-bold p-1 bg-gray-200 rounded-md">
-                    <span>الإجمالي</span>
-                    <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
+                    <div className="flex justify-between items-center text-lg font-bold p-2 mt-1 bg-gray-200 rounded-md">
+                        <span>الإجمالي</span>
+                        <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
                     </div>
                 )}
             </>
@@ -110,6 +107,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
        <div className="mt-4 text-center text-xs text-gray-600 space-y-0.5">
             {show('showCashierName') && <p>الكاشير: {cashierName}</p>}
             {show('showReceiptId') && <p>رقم الإيصال: {receiptId}</p>}
+            <p>الفرع: {branchName}</p>
             {show('showTimestamp') && <p>{new Date().toLocaleString('ar-EG')}</p>}
             {settings?.customFooter && <p>{settings.customFooter}</p>}
        </div>

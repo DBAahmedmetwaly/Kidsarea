@@ -239,6 +239,7 @@ function CheckOutDialog({
         receiptId: `${branch?.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
         settings: receiptSettings,
         appName: policies?.appName || 'FunTrack',
+        branchName: child.branchName,
         children: child.children,
         parentName: child.parentName,
         gameName: child.game,
@@ -882,17 +883,24 @@ function PosTrackingContent() {
                                     <TableHead className="text-right">الطفل</TableHead>
                                     <TableHead className="text-right">ولي الأمر</TableHead>
                                     <TableHead className="text-center">وقت الخروج</TableHead>
+                                    <TableHead className="text-center">قبل الخصم</TableHead>
                                     <TableHead className="text-center">الخصم</TableHead>
                                     <TableHead className="text-center">بعد الخصم</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {todaysCompletedSessions.length > 0 ? (
-                                    todaysCompletedSessions.map((session) => (
+                                    todaysCompletedSessions.map((session) => {
+                                        const costBeforeDiscount = session.costBeforeDiscount > 0
+                                            ? session.costBeforeDiscount
+                                            : session.cost + (session.discount || 0);
+
+                                        return (
                                         <TableRow key={session.id}>
                                             <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
                                             <TableCell className="text-right">{session.parentName}</TableCell>
                                             <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
+                                            <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
                                             <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
                                             <TableCell className="font-bold text-center">
                                                 {session.subscriptionId ? (
@@ -900,10 +908,10 @@ function PosTrackingContent() {
                                                 ) : `ج.م ${session.cost.toFixed(2)}`}
                                             </TableCell>
                                         </TableRow>
-                                    ))
+                                    )})
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">
+                                        <TableCell colSpan={6} className="h-24 text-center">
                                             لم تكتمل أي جلسات في ورديتك بعد.
                                         </TableCell>
                                     </TableRow>
@@ -944,5 +952,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
