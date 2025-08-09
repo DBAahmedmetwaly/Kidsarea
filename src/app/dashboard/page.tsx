@@ -115,6 +115,7 @@ function DemoDataGenerator() {
             const childNames = ["آدم", "ليان", "ملك", "ياسين", "جنى", "حمزة", "حلا", "أمير", "تالا", "كريم", "سلمى", "علي", "فرح", "زياد", "نور"];
 
             const customersToCreate: Omit<Customer, 'id'>[] = [];
+            let childIdCounter = 1;
             for (let i = 1; i <= 20; i++) {
                 const children: CustomerChild[] = [];
                 const numChildren = Math.floor(Math.random() * 3) + 1;
@@ -123,6 +124,7 @@ function DemoDataGenerator() {
                      const birthMonth = Math.floor(Math.random() * 12);
                      const birthDay = Math.floor(Math.random() * 28) + 1;
                      children.push({
+                        id: `child-${childIdCounter++}`,
                         name: `${childNames[Math.floor(Math.random() * childNames.length)]}`,
                         age: new Date().getFullYear() - birthYear,
                         birthdate: new Date(birthYear, birthMonth, birthDay).toISOString().split('T')[0]
