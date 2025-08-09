@@ -17,7 +17,7 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { useCustomers } from '@/context/CustomerContext';
 import { useMemo, useState, useEffect } from 'react';
 import { getHours, format, startOfDay, endOfDay, isWithinInterval, parseISO, getMonth, getDate } from 'date-fns';
-import { Subscription, CustomerChild } from '@/lib/types';
+import { Subscription, CustomerChild, CompletedSession } from '@/lib/types';
 import { ar } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -290,8 +290,8 @@ function CashierPerformanceReport({ sessions, subscriptions, selectedBranch } : 
 }
 
 function ReportsContent() {
-    const { completedSessions, subscriptions } = useSession();
-    const { games, employees, branches } = useFirebase();
+    const { completedSessions } = useSession();
+    const { games, employees, branches, subscriptions } = useFirebase();
     const { customers } = useCustomers();
     const { user } = useAuth();
     
@@ -743,4 +743,5 @@ export default function ReportsPage() {
         </SidebarProvider>
     );
 }
+
 
