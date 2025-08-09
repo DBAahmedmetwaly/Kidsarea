@@ -159,7 +159,7 @@ function ReceiptDesignerContent() {
     settings: watchedSettings,
     appName: 'FunTrack',
     branchName: "الفرع الرئيسي",
-    children: [{id: '1', name: 'اسم الطفل', age: 5}],
+    children: [{id: '1', name: 'اسم الطفل', age: 5, birthdate: ''}],
     parentName: 'اسم ولي الأمر',
     gameName: 'لعبة افتراضية',
     checkInTime: new Date(Date.now() - 3600 * 1000),

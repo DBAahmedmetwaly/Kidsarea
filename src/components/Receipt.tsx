@@ -69,7 +69,9 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         {show('showChildName') && (
             <ReceiptRow label={<><Smile/> الطفل</>} value={children.map(c => c.name).join(', ')} />
         )}
-        <div className='my-2 border-t border-dashed border-gray-400' />
+        
+        {(show('showParentName') || show('showChildName')) && <div className='my-2 border-t border-dashed border-gray-400' />}
+        
         {show('showGameName') && (
             <ReceiptRow label={<><Gamepad2/> اللعبة</>} value={gameName} />
         )}
@@ -82,7 +84,9 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
          {show('showDuration') && (
             <ReceiptRow label={<><Calendar/> المدة</>} value={duration} />
         )}
-         <div className='my-2 border-t border-dashed border-gray-400' />
+        
+        {(show('showGameName') || show('showCheckInTime') || show('showCheckOutTime') || show('showDuration')) && <div className='my-2 border-t border-dashed border-gray-400' />}
+        
         {isSubscription ? (
              <div className="flex justify-center items-center text-md font-bold p-2 mt-1 bg-green-100 text-green-800 rounded-md">
                 <span className="flex items-center gap-2"><Star size={16} /> مدفوع بالاشتراك</span>
@@ -111,7 +115,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
        <div className="mt-4 text-center text-xs text-gray-600 space-y-0.5">
             {show('showThankYouMessage') && <p className="font-bold text-sm">{settings?.thankYouMessage}</p>}
             {show('showCashierName') && <p>الكاشير: {cashierName}</p>}
-            {show('showReceiptId') && <p>رقم الإيصال: {receiptId}</p>}
+            {show('showReceiptId') && receiptId && <p>رقم الإيصال: {receiptId}</p>}
             {show('showTimestamp') && <p>{new Date().toLocaleString('ar-EG')}</p>}
             {settings?.customFooter && <p>{settings.customFooter}</p>}
        </div>
