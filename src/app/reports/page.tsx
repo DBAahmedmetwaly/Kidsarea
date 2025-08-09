@@ -215,12 +215,27 @@ function CashierPerformanceReport() {
     }, [currentUser]);
 
     const performanceData = useMemo(() => {
-        const cashiers = employees.filter(e => e.role === 'كاشير' || e.role === 'مدير فرع' || e.role === 'مشرف');
+        const cashiers = employees.filter(emp => {
+            const isCashierRole = emp.role === 'كاشير' || emp.role === 'مدير فرع' || emp.role === 'مشرف';
+            if (!isCashierRole) return false;
+
+            const isBranchMatch = selectedBranch === 'all' || emp.branch === selectedBranch || emp.branch === 'كل الفروع';
+            return isBranchMatch;
+        });
+
         const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
 
         return cashiers.map(cashier => {
-            if (!cashier.username) return null;
-            if (selectedBranch !== 'all' && cashier.branch !== selectedBranch) return null;
+            if (!cashier.username) {
+                 return {
+                    name: cashier.name,
+                    totalIncome: 0,
+                    totalDiscount: 0,
+                    sessionCount: 0,
+                    discountPercentage: 0,
+                    averageSale: 0
+                };
+            }
 
             const sessions = completedSessions.filter(s => {
                 if (s.cashierUsername !== cashier.username) return false;
@@ -239,15 +254,13 @@ function CashierPerformanceReport() {
             const totalIncome = totalSessionsIncome + totalSubscriptionsIncome;
 
             const totalDiscount = sessions.reduce((sum, s) => sum + (s.discount || 0), 0);
-            const totalRevenueBeforeDiscount = sessions.reduce((sum, s) => sum + (s.costBeforeDiscount || s.cost + (s.discount || 0)), 0) + totalSubscriptionsIncome;
+            const totalRevenueBeforeDiscount = sessions.reduce((sum, s) => sum + (s.costBeforeDiscount > 0 ? s.costBeforeDiscount : (s.cost + (s.discount || 0))), 0) + totalSubscriptionsIncome;
 
             const discountPercentage = totalRevenueBeforeDiscount > 0 ? (totalDiscount / totalRevenueBeforeDiscount) * 100 : 0;
 
             const sessionCount = sessions.length + subs.length;
             const averageSale = sessionCount > 0 ? totalIncome / sessionCount : 0;
             
-            if (sessionCount === 0) return null;
-
             return {
                 name: cashier.name,
                 totalIncome,
@@ -256,7 +269,7 @@ function CashierPerformanceReport() {
                 discountPercentage,
                 averageSale
             };
-        }).filter(Boolean);
+        });
 
     }, [completedSessions, employees, subscriptions, selectedBranch, fromDate, toDate]);
     
