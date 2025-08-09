@@ -15,7 +15,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useCustomers } from '@/context/CustomerContext';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { getHours, format, startOfDay, endOfDay, isWithinInterval, parseISO, getMonth, getDate } from 'date-fns';
 import { Subscription, CustomerChild } from '@/lib/types';
 import { ar } from 'date-fns/locale';
@@ -23,9 +23,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon, Cake, Percent, TrendingDown, Users } from 'lucide-react';
+import { Calendar as CalendarIcon, Cake, Percent, TrendingDown, Users, FilterX } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard } from '@/components/StatCard';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAuth } from '@/components/AuthProvider';
 
 
 const gameProfitChartConfig = {
@@ -188,28 +196,57 @@ function BirthdayReport() {
 
 function CashierPerformanceReport() {
     const { completedSessions } = useSession();
-    const { employees, subscriptions } = useFirebase();
+    const { employees, subscriptions, branches } = useFirebase();
+    const { user } = useAuth();
+    
+    const [selectedBranch, setSelectedBranch] = useState('all');
+    const [fromDate, setFromDate] = useState<Date | undefined>();
+    const [toDate, setToDate] = useState<Date | undefined>();
+    
+    const currentUser = useMemo(() => {
+        if (!user) return null;
+        return employees.find(e => e.username === user.username);
+    }, [user, employees]);
+
+    useEffect(() => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            setSelectedBranch(currentUser.branch);
+        }
+    }, [currentUser]);
 
     const performanceData = useMemo(() => {
         const cashiers = employees.filter(e => e.role === 'كاشير' || e.role === 'مدير فرع' || e.role === 'مشرف');
-        
+        const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
+
         return cashiers.map(cashier => {
             if (!cashier.username) return null;
+            if (selectedBranch !== 'all' && cashier.branch !== selectedBranch) return null;
 
-            const employeeSessions = completedSessions.filter(s => s.cashierUsername === cashier.username);
-            const employeeSubscriptions = subscriptions.filter(s => s.cashierUsername === cashier.username);
+            const sessions = completedSessions.filter(s => {
+                if (s.cashierUsername !== cashier.username) return false;
+                if (range && !isWithinInterval(new Date(s.checkOutTime), range)) return false;
+                return true;
+            });
 
-            const totalSessionsIncome = employeeSessions.reduce((sum, s) => sum + s.cost, 0);
-            const totalSubscriptionsIncome = employeeSubscriptions.reduce((sum, s) => sum + s.price, 0);
+            const subs = subscriptions.filter(s => {
+                if(s.cashierUsername !== cashier.username) return false;
+                 if (range && !isWithinInterval(new Date(s.createdAt), range)) return false;
+                return true;
+            });
+
+            const totalSessionsIncome = sessions.reduce((sum, s) => sum + s.cost, 0);
+            const totalSubscriptionsIncome = subs.reduce((sum, s) => sum + s.price, 0);
             const totalIncome = totalSessionsIncome + totalSubscriptionsIncome;
 
-            const totalDiscount = employeeSessions.reduce((sum, s) => sum + (s.discount || 0), 0);
-            const totalRevenueBeforeDiscount = employeeSessions.reduce((sum, s) => sum + (s.costBeforeDiscount || s.cost + (s.discount || 0)), 0) + totalSubscriptionsIncome;
+            const totalDiscount = sessions.reduce((sum, s) => sum + (s.discount || 0), 0);
+            const totalRevenueBeforeDiscount = sessions.reduce((sum, s) => sum + (s.costBeforeDiscount || s.cost + (s.discount || 0)), 0) + totalSubscriptionsIncome;
 
             const discountPercentage = totalRevenueBeforeDiscount > 0 ? (totalDiscount / totalRevenueBeforeDiscount) * 100 : 0;
 
-            const sessionCount = employeeSessions.length + employeeSubscriptions.length;
+            const sessionCount = sessions.length + subs.length;
             const averageSale = sessionCount > 0 ? totalIncome / sessionCount : 0;
+            
+            if (sessionCount === 0) return null;
 
             return {
                 name: cashier.name,
@@ -221,7 +258,17 @@ function CashierPerformanceReport() {
             };
         }).filter(Boolean);
 
-    }, [completedSessions, employees, subscriptions]);
+    }, [completedSessions, employees, subscriptions, selectedBranch, fromDate, toDate]);
+    
+     const clearFilters = () => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            // Don't clear branch if it's locked
+        } else {
+            setSelectedBranch('all');
+        }
+        setFromDate(undefined);
+        setToDate(undefined);
+    }
 
     return (
         <Card>
@@ -230,6 +277,76 @@ function CashierPerformanceReport() {
                 <CardDescription>تحليل شامل لأداء الموظفين بناءً على المبيعات والخصومات.</CardDescription>
             </CardHeader>
             <CardContent>
+                <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 border rounded-md bg-muted/50">
+                    <div className="flex-1 space-y-2">
+                         <label className="text-sm font-medium">الفرع</label>
+                         <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر الفرع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الفروع</SelectItem>
+                                {branches.map(branch => (
+                                    <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="flex-1 space-y-2">
+                        <label className="text-sm font-medium">من تاريخ</label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal bg-background", !fromDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {fromDate ? format(fromDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={fromDate}
+                                onSelect={setFromDate}
+                                disabled={(date) => toDate ? date > toDate : false}
+                                initialFocus
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                     <div className="flex-1 space-y-2">
+                        <label className="text-sm font-medium">إلى تاريخ</label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal bg-background", !toDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {toDate ? format(toDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={toDate}
+                                onSelect={setToDate}
+                                disabled={(date) => fromDate ? date < fromDate : false}
+                                initialFocus
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                     <div className="flex items-end">
+                        <Button variant="ghost" onClick={clearFilters} className="h-10">
+                            <FilterX className="me-2 h-4 w-4" />
+                            مسح
+                        </Button>
+                    </div>
+                </div>
                  <Table>
                     <TableHeader>
                         <TableRow>
@@ -254,7 +371,7 @@ function CashierPerformanceReport() {
                         )) : (
                              <TableRow>
                                 <TableCell colSpan={6} className="text-center h-24">
-                                    لا توجد بيانات أداء لعرضها.
+                                    لا توجد بيانات أداء لعرضها حسب الفلاتر المحددة.
                                 </TableCell>
                             </TableRow>
                         )}
