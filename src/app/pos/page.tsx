@@ -20,7 +20,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch } from '@/lib/types';
@@ -47,6 +47,7 @@ import { PosReceipt, type PosReceiptProps } from '@/components/Receipt';
 import { usePosPrint } from '@/hooks/use-pos-print';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatCard } from '@/components/StatCard';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const TimeCounter = ({ startTime }: { startTime: number }) => {
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -872,54 +873,63 @@ function PosTrackingContent() {
                 </Card>
 
                  {/* Completed Sessions Section */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>أحدث الجلسات المنتهية (في ورديتك)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="text-right">الطفل</TableHead>
-                                    <TableHead className="text-right">ولي الأمر</TableHead>
-                                    <TableHead className="text-center">وقت الخروج</TableHead>
-                                    <TableHead className="text-center">قبل الخصم</TableHead>
-                                    <TableHead className="text-center">الخصم</TableHead>
-                                    <TableHead className="text-center">بعد الخصم</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {todaysCompletedSessions.length > 0 ? (
-                                    todaysCompletedSessions.map((session) => {
-                                        const costBeforeDiscount = session.costBeforeDiscount > 0
-                                            ? session.costBeforeDiscount
-                                            : session.cost + (session.discount || 0);
-
-                                        return (
-                                        <TableRow key={session.id}>
-                                            <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
-                                            <TableCell className="text-right">{session.parentName}</TableCell>
-                                            <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
-                                            <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
-                                            <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
-                                            <TableCell className="font-bold text-center">
-                                                {session.subscriptionId ? (
-                                                    <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
-                                                ) : `ج.م ${session.cost.toFixed(2)}`}
-                                            </TableCell>
+                <Collapsible>
+                    <Card>
+                        <CardHeader>
+                            <CollapsibleTrigger asChild>
+                                <button className="flex justify-between items-center w-full">
+                                    <CardTitle>أحدث الجلسات المنتهية (في ورديتك)</CardTitle>
+                                    <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
+                                </button>
+                            </CollapsibleTrigger>
+                        </CardHeader>
+                        <CollapsibleContent>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">الطفل</TableHead>
+                                            <TableHead className="text-right">ولي الأمر</TableHead>
+                                            <TableHead className="text-center">وقت الخروج</TableHead>
+                                            <TableHead className="text-center">قبل الخصم</TableHead>
+                                            <TableHead className="text-center">الخصم</TableHead>
+                                            <TableHead className="text-center">بعد الخصم</TableHead>
                                         </TableRow>
-                                    )})
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
-                                            لم تكتمل أي جلسات في ورديتك بعد.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {todaysCompletedSessions.length > 0 ? (
+                                            todaysCompletedSessions.map((session) => {
+                                                const costBeforeDiscount = session.costBeforeDiscount > 0
+                                                    ? session.costBeforeDiscount
+                                                    : session.cost + (session.discount || 0);
+
+                                                return (
+                                                <TableRow key={session.id}>
+                                                    <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
+                                                    <TableCell className="text-right">{session.parentName}</TableCell>
+                                                    <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
+                                                    <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
+                                                    <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
+                                                    <TableCell className="font-bold text-center">
+                                                        {session.subscriptionId ? (
+                                                            <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
+                                                        ) : `ج.م ${session.cost.toFixed(2)}`}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )})
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="h-24 text-center">
+                                                    لم تكتمل أي جلسات في ورديتك بعد.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </CollapsibleContent>
+                    </Card>
+                </Collapsible>
             </div>
            
           <CheckInDialog
@@ -952,3 +962,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
+    
