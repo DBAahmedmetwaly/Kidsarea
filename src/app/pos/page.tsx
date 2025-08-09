@@ -500,7 +500,7 @@ function CheckInDialog({
 
 
 function PosTrackingContent() {
-  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies, openShifts, employees, branches, gameCategories, loading: firebaseLoading, isInitialLoad } = useFirebase();
+  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies, openShifts, employees, branches, gameCategories, loading: firebaseLoading } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -522,13 +522,13 @@ function PosTrackingContent() {
 
 
     useEffect(() => {
-        if (!isInitialLoad && currentUser && currentUser.branch !== 'كل الفروع') {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
             setSelectedBranchFilter(currentUser.branch);
         }
-        if (!isInitialLoad && gameCategories.length > 0 && !selectedCategory) {
+        if (gameCategories.length > 0 && !selectedCategory) {
             setSelectedCategory(gameCategories[0].id);
         }
-    }, [currentUser, gameCategories, selectedCategory, isInitialLoad]);
+    }, [currentUser, gameCategories, selectedCategory]);
 
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
@@ -537,7 +537,7 @@ function PosTrackingContent() {
 
   const activeChildren = useMemo(() => {
     if (selectedBranchFilter === 'all') return firebaseActiveChildren;
-    return firebaseActiveChildren.filter(child => child.branchName === selectedBranchFilter || child.branchName === "كل الفروع");
+    return firebaseActiveChildren.filter(child => child.branchName === selectedBranchFilter);
   }, [firebaseActiveChildren, selectedBranchFilter]);
 
   const searchedActiveChildren = useMemo(() => {
