@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, FileCog, History, FileText } from 'lucide-react';
+import { Shield, FileCog, History, FileText, Cake } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ALL_SCREENS = [
@@ -29,6 +29,7 @@ const ALL_SCREENS = [
   { href: '/receipt-designer', label: 'تصميم الإيصال' },
   { href: '/transactions', label: 'سجل الحركات'},
   { href: '/customers', label: 'العملاء' },
+  { href: '/birthdays', label: 'أعياد الميلاد' },
   { href: '/subscriptions', label: 'الاشتراكات' },
   { href: '/subscription-plans', label: 'باقات الاشتراكات' },
   { href: '/data-management', label: 'إدارة البيانات' },

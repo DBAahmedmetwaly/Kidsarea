@@ -42,6 +42,7 @@ import {
   FileText,
   PanelTopOpen,
   Home,
+  Cake,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -83,6 +84,7 @@ const financialItems = [
 
 const customerItems = [
     { href: '/customers', label: 'العملاء', icon: Contact },
+    { href: '/birthdays', label: 'أعياد الميلاد', icon: Cake },
 ]
 
 const settingsMenuItems = [
