@@ -24,9 +24,9 @@ export interface PosReceiptProps {
 }
 
 const ReceiptRow = ({ label, value }: { label: string, value: string | number }) => (
-    <div>
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="font-bold text-sm">{value}</p>
+    <div className="flex justify-between items-center text-sm">
+        <span>{label}</span>
+        <span className="font-bold">{value}</span>
     </div>
 );
 
@@ -51,21 +51,21 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
 
   return (
-    <div ref={ref} className="bg-white p-2 text-black text-center" style={{ width: '80mm', boxSizing: 'border-box' }}>
-      <div className="mb-4">
-        {show('showLogo') && <Gamepad2 className="w-10 h-10 mx-auto" />}
-        {show('showAppName') && <h1 className="text-2xl font-bold">{appName}</h1>}
-        {show('showThankYouMessage') && <p className="text-sm">{settings?.thankYouMessage}</p>}
+    <div ref={ref} className="bg-white p-2 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
+      <div className="text-center mb-2">
+        {show('showLogo') && <Gamepad2 className="w-8 h-8 mx-auto" />}
+        {show('showAppName') && <h1 className="text-xl font-bold">{appName}</h1>}
+        {show('showThankYouMessage') && <p className="text-xs">{settings?.thankYouMessage}</p>}
       </div>
 
-      <div className="space-y-3 text-sm">
+      <div className="space-y-1 text-xs">
         {show('showChildName') && (
             <ReceiptRow label="اسم الطفل" value={children.map(c => c.name).join(', ')} />
         )}
         {show('showParentName') && (
             <ReceiptRow label="ولي الأمر" value={parentName} />
         )}
-        <hr className="border-dashed border-gray-400 my-2" />
+        <hr className="border-dashed border-gray-400 my-1" />
         {show('showGameName') && (
             <ReceiptRow label="اللعبة" value={gameName} />
         )}
@@ -78,36 +78,27 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
          {show('showDuration') && (
             <ReceiptRow label="المدة" value={duration} />
         )}
-        <hr className="border-dashed border-gray-400 my-2" />
+        <hr className="border-dashed border-gray-400 my-1" />
         {isSubscription ? (
-             <div className="flex justify-center items-center text-lg font-bold p-2 bg-green-100 text-green-800 rounded-md">
-                <span className="flex items-center gap-2"><Star size={18} /> مدفوع بالاشتراك</span>
+             <div className="flex justify-center items-center text-md font-bold p-1 bg-green-100 text-green-800 rounded-md">
+                <span className="flex items-center gap-2"><Star size={16} /> مدفوع بالاشتراك</span>
             </div>
         ) : (
             <>
-                <div className="space-y-2">
+                <div className="space-y-1">
                     {show('showDurationCost') && (
-                        <div className="flex justify-between items-center px-2">
-                            <span>تكلفة اللعب</span>
-                            <span className="font-bold">{`ج.م ${(durationCost ?? 0).toFixed(2)}`}</span>
-                        </div>
+                        <ReceiptRow label="تكلفة اللعب" value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
                     )}
                     {show('showEntryFee') && entryFee && entryFee > 0 && (
-                        <div className="flex justify-between items-center px-2">
-                           <span>رسوم دخول</span>
-                           <span className="font-bold">{`ج.م ${entryFee.toFixed(2)}`}</span>
-                        </div>
+                         <ReceiptRow label="رسوم دخول" value={`ج.م ${entryFee.toFixed(2)}`} />
                     )}
                      {show('showDiscount') && discount && discount > 0 && (
-                        <div className="flex justify-between items-center text-red-600 px-2">
-                            <span>الخصم</span>
-                            <span className="font-bold">{`-ج.م ${discount.toFixed(2)}`}</span>
-                        </div>
+                         <ReceiptRow label="الخصم" value={`-ج.م ${discount.toFixed(2)}`} />
                     )}
                 </div>
-                <hr className="border-dashed border-gray-400 my-2" />
+                <hr className="border-dashed border-gray-400 my-1" />
                 {show('showTotalCost') && (
-                    <div className="flex justify-between items-center text-xl font-bold p-2 bg-gray-200 rounded-md">
+                    <div className="flex justify-between items-center text-lg font-bold p-1 bg-gray-200 rounded-md">
                     <span>الإجمالي</span>
                     <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
                     </div>
@@ -116,7 +107,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         )}
       </div>
 
-       <div className="mt-6 text-xs text-gray-600 space-y-1">
+       <div className="mt-4 text-center text-xs text-gray-600 space-y-0.5">
             {show('showCashierName') && <p>الكاشير: {cashierName}</p>}
             {show('showReceiptId') && <p>رقم الإيصال: {receiptId}</p>}
             {show('showTimestamp') && <p>{new Date().toLocaleString('ar-EG')}</p>}

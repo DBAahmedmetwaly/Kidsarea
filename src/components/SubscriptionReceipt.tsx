@@ -16,9 +16,9 @@ export interface SubscriptionReceiptProps {
 }
 
 const ReceiptRow = ({ label, value }: { label: string, value: string | number }) => (
-    <div>
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="font-bold text-sm">{value}</p>
+    <div className="flex justify-between items-center text-sm">
+        <span>{label}</span>
+        <span className="font-bold">{value}</span>
     </div>
 );
 
@@ -36,33 +36,33 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
   const receiptId = `SUB-${new Date().getTime().toString().slice(-6)}`;
 
   return (
-    <div ref={ref} className="bg-white p-2 text-black text-center" style={{ width: '80mm', boxSizing: 'border-box' }}>
-      <div className="mb-4">
+    <div ref={ref} className="bg-white p-2 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
+      <div className="text-center mb-2">
         <div className="flex justify-center items-center gap-2">
-            <Gamepad2 className="w-10 h-10" />
-            <h1 className="text-2xl font-bold">{appName}</h1>
+            <Gamepad2 className="w-8 h-8" />
+            <h1 className="text-xl font-bold">{appName}</h1>
         </div>
-        <p className="text-sm">إيصال اشتراك</p>
+        <p className="text-xs">إيصال اشتراك</p>
       </div>
 
-      <div className="space-y-3 text-sm">
+      <div className="space-y-1 text-xs">
         <ReceiptRow label="ولي الأمر" value={customerName} />
         <ReceiptRow label="اسم الطفل" value={childName} />
 
-        <hr className="border-dashed border-gray-400 my-2" />
+        <hr className="border-dashed border-gray-400 my-1" />
         
         <ReceiptRow label="الباقة" value={planName} />
         <ReceiptRow label="تاريخ البدء" value={startDate.toLocaleDateString('ar-EG')} />
         <ReceiptRow label="تاريخ الانتهاء" value={endDate.toLocaleDateString('ar-EG')} />
 
-        <hr className="border-dashed border-gray-400 my-2" />
-        <div className="flex justify-between items-center text-xl font-bold p-2 bg-gray-200 rounded-md">
+        <hr className="border-dashed border-gray-400 my-1" />
+        <div className="flex justify-between items-center text-lg font-bold p-1 bg-gray-200 rounded-md">
             <span>الإجمالي المدفوع</span>
             <span>{`ج.م ${price.toFixed(2)}`}</span>
         </div>
       </div>
 
-       <div className="mt-6 text-xs text-gray-600 space-y-1">
+       <div className="mt-4 text-center text-xs text-gray-600 space-y-0.5">
             <p>الكاشير: {cashierName}</p>
             <p>رقم الإيصال: {receiptId}</p>
             <p>{new Date().toLocaleString('ar-EG')}</p>
