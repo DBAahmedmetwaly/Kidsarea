@@ -372,7 +372,7 @@ function CheckInDialog({
     
     const handleChildSelect = (child: CustomerChild, checked: boolean) => {
         setSelectedChildren(prev => 
-            checked ? [...prev, child] : prev.filter(c => c.name !== child.name)
+            checked ? [...prev, child] : prev.filter(c => c.id !== child.id)
         );
     }
 
@@ -463,13 +463,13 @@ function CheckInDialog({
                                 <Label>اختر الأطفال</Label>
                                 <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
                                     {selectedCustomer.children?.map((child, index) => (
-                                        <div key={index} className="flex items-center space-x-2">
+                                        <div key={child.id || index} className="flex items-center space-x-2">
                                             <Checkbox
-                                                id={`child-${index}`}
+                                                id={`child-${child.id || index}`}
                                                 onCheckedChange={(checked) => handleChildSelect(child, !!checked)}
-                                                checked={selectedChildren.some(c => c.name === child.name)}
+                                                checked={selectedChildren.some(c => c.id === child.id)}
                                             />
-                                            <Label htmlFor={`child-${index}`} className="font-normal">
+                                            <Label htmlFor={`child-${child.id || index}`} className="font-normal">
                                                 {child.name} (عمر: {child.age})
                                             </Label>
                                         </div>
@@ -656,8 +656,8 @@ function PosTrackingContent() {
     }
 
     // Check if any of the selected children are already in an active session
-    const activeChildNames = firebaseActiveChildren.flatMap(ac => ac.children.map(c => c.name));
-    const alreadyActiveChildren = children.filter(c => activeChildNames.includes(c.name));
+    const activeChildIds = firebaseActiveChildren.flatMap(ac => ac.children.map(c => c.id));
+    const alreadyActiveChildren = children.filter(c => activeChildIds.includes(c.id));
 
     if (alreadyActiveChildren.length > 0) {
         toast({

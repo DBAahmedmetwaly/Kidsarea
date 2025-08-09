@@ -64,6 +64,7 @@ import { cn } from '@/lib/utils';
 import { ar } from 'date-fns/locale';
 
 type ChildFormField = {
+    id: string;
     name: string;
     age: number;
     birthdate?: Date | undefined;
@@ -88,7 +89,7 @@ export function CustomerFormDialog({
         defaultValues: {
             parentName: '',
             phoneNumber: '',
-            children: [{ name: '', age: 1, birthdate: undefined }],
+            children: [{ id: Date.now().toString(), name: '', age: 1, birthdate: undefined }],
         }
     });
 
@@ -107,13 +108,13 @@ export function CustomerFormDialog({
                     phoneNumber: initialData.phoneNumber,
                     children: initialData.children && initialData.children.length > 0 
                         ? initialData.children.map(c => ({...c, birthdate: c.birthdate ? new Date(c.birthdate) : undefined }))
-                        : [{ name: '', age: 1, birthdate: undefined }],
+                        : [{ id: Date.now().toString(), name: '', age: 1, birthdate: undefined }],
                 });
             } else {
                 reset({
                     parentName: '',
                     phoneNumber: '',
-                    children: [{ name: '', age: 1, birthdate: undefined }],
+                    children: [{ id: Date.now().toString(), name: '', age: 1, birthdate: undefined }],
                 });
             }
         }
@@ -220,7 +221,7 @@ export function CustomerFormDialog({
                         variant="outline"
                         size="sm"
                         className="mt-2 col-span-4"
-                        onClick={() => append({ name: '', age: 1, birthdate: undefined })}
+                        onClick={() => append({ id: Date.now().toString(), name: '', age: 1, birthdate: undefined })}
                     >
                         <PlusCircle className="me-2 h-4 w-4" />
                         إضافة طفل آخر

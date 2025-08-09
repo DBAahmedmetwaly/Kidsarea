@@ -27,8 +27,8 @@ export interface PosReceiptProps {
 
 const ReceiptRow = ({ label, value, valueClass = '' }: { label: string, value: React.ReactNode, valueClass?: string }) => (
     <div className="flex justify-between items-center text-xs py-1 border-b border-dashed border-gray-400">
-        <span className={cn("font-bold", valueClass)}>{value}</span>
         <span className="font-bold">{label}</span>
+        <span className={cn("font-bold", valueClass)}>{value}</span>
     </div>
 );
 
@@ -98,8 +98,8 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
                  )}
                 {show('showTotalCost') && (
                     <div className="flex justify-between items-center text-lg font-bold p-2 mt-1 bg-gray-200 rounded-md">
-                        <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
                         <span>الإجمالي</span>
+                        <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
                     </div>
                 )}
             </>
