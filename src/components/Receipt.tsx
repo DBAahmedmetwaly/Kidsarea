@@ -4,6 +4,7 @@
 import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle, Star, MinusCircle } from 'lucide-react';
 import React from 'react';
 import type { ReceiptSettings, CustomerChild } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export interface PosReceiptProps {
   receiptId?: string;
