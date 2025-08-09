@@ -17,13 +17,13 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { useCustomers } from '@/context/CustomerContext';
 import { useMemo, useState, useEffect } from 'react';
 import { getHours, format, startOfDay, endOfDay, isWithinInterval, parseISO, getMonth, getDate, addMonths } from 'date-fns';
-import { Subscription, CustomerChild, CompletedSession } from '@/lib/types';
+import { Subscription, CustomerChild, CompletedSession, ShiftRecord } from '@/lib/types';
 import { ar } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon, Cake, Percent, TrendingDown, Users, FilterX } from 'lucide-react';
+import { Calendar as CalendarIcon, Cake, Percent, TrendingDown, Users, FilterX, TrendingUp } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard } from '@/components/StatCard';
 import {
@@ -72,7 +72,7 @@ const topCustomersChartConfig = {
 } satisfies ChartConfig;
 
 
-function CashierPerformanceReport({ sessions, subscriptions, selectedBranch, fromDate, toDate } : { sessions: CompletedSession[], subscriptions: Subscription[], selectedBranch: string, fromDate?: Date, toDate?: Date }) {
+function CashierPerformanceReport({ sessions, subscriptions, shiftRecords, selectedBranch, fromDate, toDate } : { sessions: CompletedSession[], subscriptions: Subscription[], shiftRecords: ShiftRecord[], selectedBranch: string, fromDate?: Date, toDate?: Date }) {
     const { employees } = useFirebase();
     
     const performanceData = useMemo(() => {
@@ -94,7 +94,8 @@ function CashierPerformanceReport({ sessions, subscriptions, selectedBranch, fro
                     totalDiscount: 0,
                     sessionCount: 0,
                     discountPercentage: 0,
-                    averageSale: 0
+                    averageSale: 0,
+                    totalDifference: 0,
                 };
             }
             
@@ -109,12 +110,19 @@ function CashierPerformanceReport({ sessions, subscriptions, selectedBranch, fro
                 return usernameMatch && dateMatch;
             });
 
+            const cashierShiftRecords = shiftRecords.filter(r => {
+                const usernameMatch = r.cashierUsername === cashier.username;
+                const dateMatch = range ? isWithinInterval(new Date(r.date), range) : true;
+                return usernameMatch && dateMatch;
+            })
+
             const totalSessionsIncome = cashierSessions.reduce((sum, s) => sum + s.cost, 0);
             const totalSubscriptionsIncome = cashierSubs.reduce((sum, s) => sum + s.price, 0);
             const totalIncome = totalSessionsIncome + totalSubscriptionsIncome;
 
             const totalDiscount = cashierSessions.reduce((sum, s) => sum + (s.discount || 0), 0);
             const totalRevenueBeforeDiscount = cashierSessions.reduce((sum, s) => sum + (s.costBeforeDiscount > 0 ? s.costBeforeDiscount : (s.cost + (s.discount || 0))), 0) + totalSubscriptionsIncome;
+            const totalDifference = cashierShiftRecords.reduce((sum, r) => sum + r.difference, 0);
 
             const discountPercentage = totalRevenueBeforeDiscount > 0 ? (totalDiscount / totalRevenueBeforeDiscount) * 100 : 0;
 
@@ -127,44 +135,49 @@ function CashierPerformanceReport({ sessions, subscriptions, selectedBranch, fro
                 totalDiscount,
                 sessionCount,
                 discountPercentage,
-                averageSale
+                averageSale,
+                totalDifference,
             };
         });
 
-    }, [sessions, employees, subscriptions, selectedBranch, fromDate, toDate]);
+    }, [sessions, employees, subscriptions, shiftRecords, selectedBranch, fromDate, toDate]);
     
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle>تقرير أداء الموظفين</CardTitle>
-                <CardDescription>تحليل شامل لأداء الموظفين بناءً على المبيعات والخصومات في الفترة المحددة.</CardDescription>
+                <CardDescription>تحليل شامل لأداء الموظفين بناءً على المبيعات والخصومات والفروقات المالية في الفترة المحددة.</CardDescription>
             </CardHeader>
             <CardContent>
                  <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>اسم الموظف</TableHead>
+                            <TableHead className="text-right">اسم الموظف</TableHead>
                             <TableHead className="text-center">إجمالي الدخل</TableHead>
                             <TableHead className="text-center">إجمالي الخصومات</TableHead>
                             <TableHead className="text-center">عدد الفواتير</TableHead>
                             <TableHead className="text-center">نسبة الخصم</TableHead>
                             <TableHead className="text-center">متوسط الفاتورة</TableHead>
+                            <TableHead className="text-center">إجمالي الزيادة/العجز</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {performanceData.length > 0 ? performanceData.map((data, i) => (
                             <TableRow key={i}>
-                                <TableCell className="font-medium">{data!.name}</TableCell>
+                                <TableCell className="font-medium text-right">{data!.name}</TableCell>
                                 <TableCell className="text-center font-semibold text-green-600">{`ج.م ${data!.totalIncome.toFixed(2)}`}</TableCell>
                                 <TableCell className="text-center text-red-600">{`ج.م ${data!.totalDiscount.toFixed(2)}`}</TableCell>
                                 <TableCell className="text-center">{data!.sessionCount}</TableCell>
                                 <TableCell className="text-center">{`${data!.discountPercentage.toFixed(2)}%`}</TableCell>
                                 <TableCell className="text-center">{`ج.م ${data!.averageSale.toFixed(2)}`}</TableCell>
+                                <TableCell className={`text-center font-bold ${data!.totalDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {`ج.م ${data!.totalDifference.toFixed(2)}`}
+                                </TableCell>
                             </TableRow>
                         )) : (
                              <TableRow>
-                                <TableCell colSpan={6} className="text-center h-24">
+                                <TableCell colSpan={7} className="text-center h-24">
                                     لا توجد بيانات أداء لعرضها حسب الفلاتر المحددة.
                                 </TableCell>
                             </TableRow>
@@ -179,7 +192,7 @@ function CashierPerformanceReport({ sessions, subscriptions, selectedBranch, fro
 
 function ReportsContent() {
     const { completedSessions } = useSession();
-    const { games, employees, branches, subscriptions } = useFirebase();
+    const { games, employees, branches, subscriptions, shiftRecords } = useFirebase();
     const { customers } = useCustomers();
     const { user } = useAuth();
     
@@ -214,9 +227,15 @@ function ReportsContent() {
             return dateMatch;
         });
 
-        return { sessions: filteredSessions, subscriptions: filteredSubscriptions };
+        const filteredShiftRecords = shiftRecords.filter(record => {
+             const branchMatch = selectedBranch === 'all' || record.branchName === selectedBranch;
+             const dateMatch = range ? isWithinInterval(new Date(record.date), range) : true;
+             return branchMatch && dateMatch;
+        })
 
-    }, [completedSessions, subscriptions, selectedBranch, fromDate, toDate]);
+        return { sessions: filteredSessions, subscriptions: filteredSubscriptions, shiftRecords: filteredShiftRecords };
+
+    }, [completedSessions, subscriptions, shiftRecords, selectedBranch, fromDate, toDate]);
 
 
     const gameProfitData = useMemo(() => {
@@ -331,12 +350,14 @@ function ReportsContent() {
 
     }, [filteredData.sessions]);
     
-    const discountStats = useMemo(() => {
+    const stats = useMemo(() => {
         const totalDiscounts = filteredData.sessions.reduce((sum, s) => sum + (s.discount || 0), 0);
         const totalRevenueWithDiscounts = filteredData.sessions.reduce((sum, s) => sum + (s.costBeforeDiscount > 0 ? s.costBeforeDiscount : (s.cost + (s.discount || 0))), 0);
-        const discountPercentage = totalRevenueWithDiscounts > 0 ? (totalDiscounts / totalRevenueWithDiscounts) * 100 : 0;
-        return { totalDiscounts, discountPercentage };
-    }, [filteredData.sessions]);
+        const discountPercentage = totalRevenueWithDiscounts > 0 ? (totalDiscounts / totalRevenueWithDiscounts) : 0;
+        const totalSurplus = filteredData.shiftRecords.reduce((sum, r) => r.difference > 0 ? sum + r.difference : sum, 0);
+        const totalDeficit = filteredData.shiftRecords.reduce((sum, r) => r.difference < 0 ? sum + r.difference : sum, 0);
+        return { totalDiscounts, discountPercentage, totalSurplus, totalDeficit };
+    }, [filteredData]);
     
     const clearFilters = () => {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -441,22 +462,36 @@ function ReportsContent() {
             </CardContent>
         </Card>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
          <StatCard 
             title="إجمالي الخصومات"
-            value={`ج.م ${discountStats.totalDiscounts.toFixed(2)}`}
+            value={`ج.م ${stats.totalDiscounts.toFixed(2)}`}
             icon={TrendingDown}
             description="مجموع كل الخصومات الممنوحة على الجلسات"
          />
          <StatCard 
+            title="إجمالي الزيادة"
+            value={`ج.م ${stats.totalSurplus.toFixed(2)}`}
+            icon={TrendingUp}
+            description="مجموع فروقات الورديات الإيجابية"
+            className="text-green-600"
+         />
+         <StatCard 
+            title="إجمالي العجز"
+            value={`ج.م ${Math.abs(stats.totalDeficit).toFixed(2)}`}
+            icon={TrendingDown}
+            description="مجموع فروقات الورديات السلبية"
+            className="text-red-600"
+         />
+         <StatCard 
             title="نسبة الخصم من الإيرادات"
-            value={`${discountStats.discountPercentage.toFixed(2)}%`}
+            value={`${(stats.discountPercentage * 100).toFixed(2)}%`}
             icon={Percent}
             description="نسبة الخصومات من إجمالي الإيرادات قبل الخصم"
          />
       </div>
 
-      <CashierPerformanceReport sessions={filteredData.sessions} subscriptions={filteredData.subscriptions} selectedBranch={selectedBranch} fromDate={fromDate} toDate={toDate} />
+      <CashierPerformanceReport sessions={filteredData.sessions} subscriptions={filteredData.subscriptions} shiftRecords={filteredData.shiftRecords} selectedBranch={selectedBranch} fromDate={fromDate} toDate={toDate} />
       
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -612,7 +647,6 @@ function ReportsContent() {
                 </ChartContainer>
             </CardContent>
         </Card>
-
       </div>
     </div>
   );
