@@ -119,6 +119,8 @@ export interface Policies {
     roundingPolicy: 'hour' | 'half-hour' | 'quarter-hour' | 'none';
     entryFee: number;
     weekendDays: Record<DayOfWeek, boolean>;
+    showPosStats: boolean;
+    showActiveSessions: boolean;
 }
 
 export interface Customer {

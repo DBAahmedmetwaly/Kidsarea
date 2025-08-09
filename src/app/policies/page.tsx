@@ -65,6 +65,8 @@ const policiesSchema = z.object({
     thursday: z.boolean(),
     friday: z.boolean(),
   }),
+  showPosStats: z.boolean(),
+  showActiveSessions: z.boolean(),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -102,6 +104,8 @@ function PoliciesContent() {
         thursday: false,
         friday: true, // Default weekend
       },
+      showPosStats: true,
+      showActiveSessions: true,
     },
   });
 
@@ -131,6 +135,8 @@ function PoliciesContent() {
                 thursday: false,
                 friday: true,
             },
+            showPosStats: data.showPosStats !== false,
+            showActiveSessions: data.showActiveSessions !== false,
         });
       }
       setLoading(false);
@@ -239,6 +245,61 @@ function PoliciesContent() {
                   </FormItem>
                 )}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>إعدادات عرض شاشة نقاط البيع</CardTitle>
+              <CardDescription>
+                تحكم في الوحدات التي تظهر في شاشة نقاط البيع.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <FormField
+                    control={form.control}
+                    name="showPosStats"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                            إظهار بطاقات الإحصائيات
+                        </FormLabel>
+                        <FormDescription>
+                           عرض بطاقات (الأطفال النشطون، زوار اليوم، جلسات اليوم) في أعلى الشاشة.
+                        </FormDescription>
+                        </div>
+                        <FormControl>
+                        <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                        />
+                        </FormControl>
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="showActiveSessions"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                            إظهار قائمة الأطفال النشطين
+                        </FormLabel>
+                        <FormDescription>
+                           عرض جدول الأطفال الذين يلعبون حالياً في منطقة الألعاب.
+                        </FormDescription>
+                        </div>
+                        <FormControl>
+                        <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                        />
+                        </FormControl>
+                    </FormItem>
+                    )}
+                />
             </CardContent>
           </Card>
 

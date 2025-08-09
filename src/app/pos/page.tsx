@@ -750,26 +750,28 @@ function PosTrackingContent() {
                 </div>
             </div>
           
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 z-10">
-                 <StatCard
-                    title="الأطفال النشطون حاليًا"
-                    value={`${dailyStats.activeCount}`}
-                    icon={Users}
-                    description={selectedBranchName === 'كل الفروع' ? `في كل الفروع` : `في ${selectedBranchName}`}
-                />
-                <StatCard
-                    title="زوار اليوم"
-                    value={`${dailyStats.visitorsToday}`}
-                    icon={UserCheck}
-                    description="إجمالي عدد الأطفال الذين خرجوا اليوم"
-                />
-                 <StatCard
-                    title="جلسات اليوم المنتهية"
-                    value={`${dailyStats.sessionsToday}`}
-                    icon={Clock}
-                    description="إجمالي عدد الجلسات المنتهية اليوم"
-                />
-            </div>
+            {policies?.showPosStats && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 z-10">
+                    <StatCard
+                        title="الأطفال النشطون حاليًا"
+                        value={`${dailyStats.activeCount}`}
+                        icon={Users}
+                        description={selectedBranchName === 'كل الفروع' ? `في كل الفروع` : `في ${selectedBranchName}`}
+                    />
+                    <StatCard
+                        title="زوار اليوم"
+                        value={`${dailyStats.visitorsToday}`}
+                        icon={UserCheck}
+                        description="إجمالي عدد الأطفال الذين خرجوا اليوم"
+                    />
+                    <StatCard
+                        title="جلسات اليوم المنتهية"
+                        value={`${dailyStats.sessionsToday}`}
+                        icon={Clock}
+                        description="إجمالي عدد الجلسات المنتهية اليوم"
+                    />
+                </div>
+            )}
           
             <div className="space-y-4 z-10">
                 {/* Games Section */}
@@ -813,64 +815,67 @@ function PosTrackingContent() {
                 </Tabs>
 
                 {/* Active Children Section */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>الأطفال النشطون حاليًا</CardTitle>
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="ابحث بالطفل أو ولي الأمر..."
-                                value={activeSearch}
-                                onChange={(e) => setActiveSearch(e.target.value)}
-                                className="w-full pl-8"
-                            />
-                        </div>
-                    </CardHeader>
-                    <CardContent className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="text-right">الطفل</TableHead>
-                                    <TableHead className="text-right">ولي الأمر</TableHead>
-                                    <TableHead className="text-right">اللعبة</TableHead>
-                                    <TableHead className="text-center">الوقت</TableHead>
-                                    <TableHead className="text-center">إجراء</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {searchedActiveChildren.length > 0 ? (
-                                searchedActiveChildren.map((session) => (
-                                    <TableRow key={session.id}>
-                                    <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
-                                    <TableCell className="text-right">{session.parentName}</TableCell>
-                                    <TableCell className="text-right">{session.game}</TableCell>
-                                    <TableCell className="text-center">
-                                        <TimeCounter startTime={session.checkInTime} />
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => openCheckOutDialog(session)}
-                                        disabled={!hasActiveShift}
-                                        >
-                                        <Square className="me-2 h-4 w-4" />
-                                        خروج
-                                        </Button>
-                                    </TableCell>
+                {policies?.showActiveSessions && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="ابحث بالطفل أو ولي الأمر..."
+                                    value={activeSearch}
+                                    onChange={(e) => setActiveSearch(e.target.value)}
+                                    className="w-full pl-8"
+                                />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="text-right">الطفل</TableHead>
+                                        <TableHead className="text-right">ولي الأمر</TableHead>
+                                        <TableHead className="text-right">اللعبة</TableHead>
+                                        <TableHead className="text-center">الوقت</TableHead>
+                                        <TableHead className="text-center">إجراء</TableHead>
                                     </TableRow>
-                                ))
-                                ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
-                                    لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
-                                    </TableCell>
-                                </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {searchedActiveChildren.length > 0 ? (
+                                    searchedActiveChildren.map((session) => (
+                                        <TableRow key={session.id}>
+                                        <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
+                                        <TableCell className="text-right">{session.parentName}</TableCell>
+                                        <TableCell className="text-right">{session.game}</TableCell>
+                                        <TableCell className="text-center">
+                                            <TimeCounter startTime={session.checkInTime} />
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => openCheckOutDialog(session)}
+                                            disabled={!hasActiveShift}
+                                            >
+                                            <Square className="me-2 h-4 w-4" />
+                                            خروج
+                                            </Button>
+                                        </TableCell>
+                                        </TableRow>
+                                    ))
+                                    ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-24 text-center">
+                                        لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
+                                        </TableCell>
+                                    </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                )}
+
 
                  {/* Completed Sessions Section */}
                 <Collapsible>
@@ -962,5 +967,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
