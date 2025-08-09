@@ -142,14 +142,16 @@ function DataManagementContent() {
         'shiftRecords',
         'subscriptions',
         'subscriptionPlans',
-        // We keep 'employees', 'branches', 'games', 'gameCategories', 'policies', 'roles', 'receiptSettings'
+        'games',
+        'gameCategories',
+        // We keep 'employees', 'branches', 'policies', 'roles', 'receiptSettings'
       ];
       const promises = dataPathsToDelete.map(path => remove(ref(db, path)));
       await Promise.all(promises);
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف جميع بيانات المعاملات (العملاء, الجلسات, الورديات, الحركات المالية, الاشتراكات) من قاعدة البيانات بنجاح.',
+        description: 'تم حذف جميع بيانات المعاملات والألعاب من قاعدة البيانات بنجاح.',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -254,7 +256,7 @@ function DataManagementContent() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>حذف جميع بيانات المعاملات</AlertTitle>
                     <AlertDescription>
-                        سيؤدي هذا الإجراء إلى حذف جميع بيانات المعاملات في قاعدة البيانات بشكل نهائي. سيتم الاحتفاظ ببيانات الإعداد الأساسية (الموظفين، الفروع، الألعاب، السياسات، إلخ).
+                        سيؤدي هذا الإجراء إلى حذف جميع بيانات المعاملات والألعاب في قاعدة البيانات بشكل نهائي. سيتم الاحتفاظ ببيانات الإعداد الأساسية (الموظفين، الفروع، السياسات، إلخ).
                     </AlertDescription>
                 </Alert>
               <AlertDialog>
@@ -268,7 +270,7 @@ function DataManagementContent() {
                     ) : (
                         <>
                             <Trash2 className="me-2 h-4 w-4" />
-                            حذف جميع بيانات المعاملات
+                            حذف جميع بيانات المعاملات والألعاب
                         </>
                     )}
                   </Button>
@@ -277,13 +279,13 @@ function DataManagementContent() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
                     <AlertDialogDescription>
-                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات المعاملات الخاصة بك بشكل دائم. هل تريد المتابعة؟
+                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات المعاملات والألعاب الخاصة بك بشكل دائم. هل تريد المتابعة؟
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>إلغاء</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteAllData} className="bg-destructive hover:bg-destructive/90">
-                      نعم، أحذف بيانات المعاملات
+                      نعم، أحذف البيانات
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
