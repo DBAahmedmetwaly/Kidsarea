@@ -16,7 +16,7 @@ import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useCustomers } from '@/context/CustomerContext';
 import { useMemo, useState, useEffect } from 'react';
-import { getHours, format, startOfDay, endOfDay, isWithinInterval, parseISO, getMonth, getDate } from 'date-fns';
+import { getHours, format, startOfDay, endOfDay, isWithinInterval, parseISO, getMonth, getDate, addMonths } from 'date-fns';
 import { Subscription, CustomerChild, CompletedSession } from '@/lib/types';
 import { ar } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -74,8 +74,8 @@ const topCustomersChartConfig = {
 
 function BirthdayReport() {
     const { customers } = useCustomers();
-    const [fromDate, setFromDate] = useState<Date | undefined>();
-    const [toDate, setToDate] = useState<Date | undefined>();
+    const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
+    const [toDate, setToDate] = useState<Date | undefined>(addMonths(new Date(), 2));
 
     const upcomingBirthdays = useMemo(() => {
         if (!fromDate || !toDate) return [];
@@ -194,7 +194,7 @@ function BirthdayReport() {
     )
 }
 
-function CashierPerformanceReport({ sessions, subscriptions, selectedBranch } : { sessions: CompletedSession[], subscriptions: Subscription[], selectedBranch: string }) {
+function CashierPerformanceReport({ sessions, subscriptions, selectedBranch, fromDate, toDate } : { sessions: CompletedSession[], subscriptions: Subscription[], selectedBranch: string, fromDate?: Date, toDate?: Date }) {
     const { employees } = useFirebase();
     
     const performanceData = useMemo(() => {
@@ -205,6 +205,8 @@ function CashierPerformanceReport({ sessions, subscriptions, selectedBranch } : 
             const isBranchMatch = selectedBranch === 'all' || emp.branch === selectedBranch || emp.branch === 'كل الفروع';
             return isBranchMatch;
         });
+
+        const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
 
         return cashiers.map(cashier => {
             if (!cashier.username) {
@@ -217,9 +219,17 @@ function CashierPerformanceReport({ sessions, subscriptions, selectedBranch } : 
                     averageSale: 0
                 };
             }
-
-            const cashierSessions = sessions.filter(s => s.cashierUsername === cashier.username);
-            const cashierSubs = subscriptions.filter(s => s.cashierUsername === cashier.username);
+            
+            const cashierSessions = sessions.filter(s => {
+                const usernameMatch = s.cashierUsername === cashier.username;
+                const dateMatch = range ? isWithinInterval(new Date(s.checkOutTime), range) : true;
+                return usernameMatch && dateMatch;
+            });
+            const cashierSubs = subscriptions.filter(s => {
+                const usernameMatch = s.cashierUsername === cashier.username;
+                const dateMatch = range ? isWithinInterval(new Date(s.createdAt), range) : true;
+                return usernameMatch && dateMatch;
+            });
 
             const totalSessionsIncome = cashierSessions.reduce((sum, s) => sum + s.cost, 0);
             const totalSubscriptionsIncome = cashierSubs.reduce((sum, s) => sum + s.price, 0);
@@ -243,7 +253,7 @@ function CashierPerformanceReport({ sessions, subscriptions, selectedBranch } : 
             };
         });
 
-    }, [sessions, employees, subscriptions, selectedBranch]);
+    }, [sessions, employees, subscriptions, selectedBranch, fromDate, toDate]);
     
 
     return (
@@ -568,7 +578,7 @@ function ReportsContent() {
          />
       </div>
 
-      <CashierPerformanceReport sessions={filteredData.sessions} subscriptions={filteredData.subscriptions} selectedBranch={selectedBranch} />
+      <CashierPerformanceReport sessions={filteredData.sessions} subscriptions={filteredData.subscriptions} selectedBranch={selectedBranch} fromDate={fromDate} toDate={toDate} />
       <BirthdayReport />
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -743,5 +753,6 @@ export default function ReportsPage() {
         </SidebarProvider>
     );
 }
+
 
 
