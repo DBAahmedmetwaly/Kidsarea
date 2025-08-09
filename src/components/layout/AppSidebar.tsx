@@ -61,7 +61,7 @@ import {
 
 const mainItems = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
-  { href: '/pos', label: 'نقاط البيع', icon: ShoppingBag },
+  { href: '/pos', label: 'يلا نلعب', icon: ShoppingBag },
   { href: '/sessions', label: 'سجل الجلسات', icon: History },
 ];
 

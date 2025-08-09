@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const ALL_SCREENS = [
   { href: '/dashboard', label: 'لوحة التحكم' },
-  { href: '/pos', label: 'نقاط البيع' },
+  { href: '/pos', label: 'يلا نلعب' },
   { href: '/sessions', label: 'سجل الجلسات' },
   { href: '/shift-closing', label: 'إدارة الورديات' },
   { href: '/reports', label: 'التقارير' },

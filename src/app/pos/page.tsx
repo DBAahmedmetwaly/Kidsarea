@@ -733,7 +733,7 @@ function PosTrackingContent() {
                     <SidebarTrigger />
                 </div>
                 <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold">نقاط البيع</h1>
+                    <h1 className="text-2xl font-bold">يلا نلعب</h1>
                     <span className="text-lg text-muted-foreground font-semibold">({selectedBranchName})</span>
                 </div>
                 <div className="ms-auto w-full sm:w-auto">
