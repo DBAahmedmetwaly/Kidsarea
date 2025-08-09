@@ -112,6 +112,14 @@ function EmployeesContent() {
         setSelectedEmployee(employee);
         setEditDialogOpen(true);
     }
+    
+    const handleFormSubmit = (data: Omit<Employee, 'id'> | Employee) => {
+        if ('id' in data) {
+            handleEditEmployee(data as Employee);
+        } else {
+            handleAddEmployee(data as Omit<Employee, 'id'>);
+        }
+    }
 
   return (
     <div className="flex flex-col gap-4">
@@ -170,8 +178,13 @@ function EmployeesContent() {
                     {employee.branch}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-center">
-                    <Badge variant={employee.status === 'Active' ? 'default' : 'secondary'} className={employee.status === 'Active' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}>
-                      {employee.status === 'Active' ? 'نشط' : 'في إجازة'}
+                    <Badge variant={employee.status === 'Active' ? 'default' : (employee.status === 'On Leave' ? 'secondary' : 'destructive')} 
+                        className={
+                            employee.status === 'Active' ? 'bg-green-500 text-white' : 
+                            (employee.status === 'On Leave' ? 'bg-yellow-500 text-white' : '')
+                        }
+                    >
+                      {employee.status === 'Active' ? 'نشط' : (employee.status === 'On Leave' ? 'في إجازة' : 'معطل')}
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-right">
@@ -208,13 +221,13 @@ function EmployeesContent() {
       {isAddDialogOpen && <EmployeeFormDialog 
         open={isAddDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onSubmit={handleAddEmployee}
+        onSubmit={handleFormSubmit}
         isEditMode={false}
       />}
       {isEditDialogOpen && <EmployeeFormDialog 
         open={isEditDialogOpen}
         onOpenChange={setEditDialogOpen}
-        onSubmit={handleEditEmployee}
+        onSubmit={handleFormSubmit}
         initialData={selectedEmployee}
         isEditMode={true}
       />}

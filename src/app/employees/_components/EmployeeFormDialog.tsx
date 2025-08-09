@@ -42,7 +42,7 @@ export default function EmployeeFormDialog({
     const [branch, setBranch] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [status, setStatus] = useState<'Active' | 'On Leave'>('Active');
+    const [status, setStatus] = useState<'Active' | 'On Leave' | 'Disabled'>('Active');
     
     useEffect(() => {
         if (isEditMode && initialData) {
@@ -164,6 +164,7 @@ export default function EmployeeFormDialog({
                             <SelectContent>
                                 <SelectItem value="Active">نشط</SelectItem>
                                 <SelectItem value="On Leave">في إجازة</SelectItem>
+                                <SelectItem value="Disabled">معطل</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
