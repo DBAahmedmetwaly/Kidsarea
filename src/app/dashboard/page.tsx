@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon, FilterX, Menu } from 'lucide-react';
+import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon, FilterX, Menu, Sparkles, Loader2 } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -29,8 +29,12 @@ import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
-import type { CompletedSession } from '@/lib/types';
+import { useCustomers } from '@/context/CustomerContext';
+import type { CompletedSession, GameCategory, Game, Customer, CustomerChild } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
+import { ref, set, push } from 'firebase/database';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 
 const revenueChartConfig = {
@@ -46,6 +50,115 @@ const visitorsChartConfig = {
     color: 'hsl(var(--chart-2))',
   },
 } satisfies ChartConfig;
+
+function DemoDataGenerator() {
+    const { customers, loading: customersLoading } = useCustomers();
+    const [generating, setGenerating] = useState(false);
+    const { toast } = useToast();
+
+    const handleGenerateData = async () => {
+        setGenerating(true);
+        toast({ title: "بدء إنشاء البيانات التجريبية...", description: "قد تستغرق هذه العملية بضع لحظات." });
+
+        try {
+            // Generate Categories and Games
+            const categories: Omit<GameCategory, 'id'>[] = [];
+            for (let i = 1; i <= 10; i++) {
+                categories.push({
+                    name: `تصنيف تجريبي ${i}`,
+                    color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`
+                });
+            }
+
+            const categoryRefs = categories.map(cat => {
+                const newCatRef = push(ref(db, 'gameCategories'));
+                set(newCatRef, cat);
+                return { id: newCatRef.key, ...cat };
+            });
+            
+            await Promise.all(categoryRefs);
+
+            const games: Omit<Game, 'id'>[] = [];
+            for (const category of categoryRefs) {
+                for (let i = 1; i <= 20; i++) {
+                     games.push({
+                        name: `لعبة ${i} - ${category.name}`,
+                        hourly_rate: Math.floor(Math.random() * 100) + 50,
+                        branch: 'كل الفروع',
+                        status: 'Available',
+                        categoryId: category.id!,
+                        categoryName: category.name,
+                        image: 'https://placehold.co/64x64.png',
+                    });
+                }
+            }
+            
+            const gamePromises = games.map(game => {
+                 const newGameRef = push(ref(db, 'games'));
+                 return set(newGameRef, game);
+            });
+            
+            await Promise.all(gamePromises);
+
+            // Generate Customers
+            const customersToCreate: Omit<Customer, 'id'>[] = [];
+            for (let i = 1; i <= 20; i++) {
+                const children: CustomerChild[] = [];
+                const numChildren = Math.floor(Math.random() * 3) + 1;
+                for (let j = 1; j <= numChildren; j++) {
+                     const birthYear = new Date().getFullYear() - (Math.floor(Math.random() * 10) + 2);
+                     const birthMonth = Math.floor(Math.random() * 12);
+                     const birthDay = Math.floor(Math.random() * 28) + 1;
+                     children.push({
+                        name: `طفل ${j} للعائلة ${i}`,
+                        age: new Date().getFullYear() - birthYear,
+                        birthdate: new Date(birthYear, birthMonth, birthDay).toISOString().split('T')[0]
+                     });
+                }
+                customersToCreate.push({
+                    parentName: `ولي أمر تجريبي ${i}`,
+                    phoneNumber: `010000000${i.toString().padStart(2, '0')}`,
+                    children: children,
+                    createdAt: new Date().toISOString()
+                });
+            }
+            
+            const customerPromises = customersToCreate.map(cust => {
+                const newCustRef = push(ref(db, 'customers'));
+                return set(newCustRef, cust);
+            });
+            await Promise.all(customerPromises);
+
+
+            toast({ title: "اكتمل بنجاح!", description: "تم إنشاء جميع البيانات التجريبية." });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "خطأ", description: "فشل إنشاء البيانات التجريبية.", variant: "destructive" });
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+
+    if(customersLoading || customers.length > 0) {
+        return null;
+    }
+
+    return (
+        <Card className="bg-primary/10 border-primary/20">
+            <CardHeader>
+                <CardTitle>بيانات تجريبية</CardTitle>
+                <CardDescription>قاعدة بياناتك فارغة. هل تود إنشاء بيانات تجريبية لتسهيل اختبار النظام؟</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={handleGenerateData} disabled={generating}>
+                    {generating ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Sparkles className="me-2 h-4 w-4" />}
+                    {generating ? 'جاري الإنشاء...' : 'نعم، قم بإنشاء بيانات تجريبية'}
+                </Button>
+            </CardContent>
+        </Card>
+    )
+}
 
 function DashboardContent() {
     const { completedSessions, activeChildren } = useSession();
@@ -158,6 +271,8 @@ function DashboardContent() {
                     {/* Filters will be in a separate card now */}
                 </div>
             </div>
+
+            <DemoDataGenerator />
 
             <Card>
                 <CardHeader className="flex-row items-center justify-between">
