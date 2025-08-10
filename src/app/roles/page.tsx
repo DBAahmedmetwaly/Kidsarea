@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Wrench } from 'lucide-react';
+import { Shield, UserCog, Wrench } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ALL_SCREENS = [
@@ -21,6 +21,7 @@ const ALL_SCREENS = [
   { href: '/sessions', label: 'سجل الجلسات' },
   { href: '/shift-closing', label: 'إدارة الورديات' },
   { href: '/expenses', label: 'المصروفات والصيانة'},
+  { href: '/payroll', label: 'الرواتب' },
   { href: '/reports', label: 'التقارير' },
   { href: '/employees', label: 'الموظفين' },
   { href: '/games', label: 'الألعاب' },
