@@ -40,29 +40,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // This effect should run only on the client
-    if (typeof window !== 'undefined') {
-        const checkAuth = () => {
-            try {
-                const authStatus = localStorage.getItem('isAuthenticated') === 'true';
-                const userData = localStorage.getItem('user');
-                const parsedUser = userData ? JSON.parse(userData) : null;
-
-                setIsAuthenticated(authStatus);
-                setUser(parsedUser);
-            } catch (error) {
-                console.error("Failed to parse user data from localStorage", error);
-                // Clear corrupted data
-                localStorage.removeItem('isAuthenticated');
-                localStorage.removeItem('user');
-                setIsAuthenticated(false);
-                setUser(null);
-            } finally {
-                setLoading(false);
-            }
-        };
-        checkAuth();
-    }
+    // We start with loading=true to prevent flicker
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -76,15 +55,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, pathname, router, loading, user]);
 
   const login = (userData: AuthContextType['user']) => {
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('user');
     setIsAuthenticated(false);
     setUser(null);
     router.push('/login');
