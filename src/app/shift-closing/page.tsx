@@ -38,7 +38,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useSession } from '@/context/SessionContext';
-import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession, Subscription } from '@/lib/types';
+import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession, Subscription, ProductSale } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 
 const closeShiftSchema = z.object({
@@ -61,7 +61,7 @@ function ShiftClosingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { employees, openShifts, subscriptions } = useFirebase();
+  const { employees, openShifts, subscriptions, productSales } = useFirebase();
   const { completedSessions } = useSession();
   const { user } = useAuth();
   
@@ -80,11 +80,11 @@ function ShiftClosingForm() {
 
   const selectedCashierUsername = form.watch('cashierUsername');
   
-  const {sessionsRevenue, subscriptionsRevenue, expectedRevenue} = useMemo(() => {
-    if (!selectedCashierUsername) return { sessionsRevenue: 0, subscriptionsRevenue: 0, expectedRevenue: 0 };
+  const {sessionsRevenue, subscriptionsRevenue, productRevenue, expectedRevenue} = useMemo(() => {
+    if (!selectedCashierUsername) return { sessionsRevenue: 0, subscriptionsRevenue: 0, productRevenue: 0, expectedRevenue: 0 };
     
     const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
-    if (!openShift) return { sessionsRevenue: 0, subscriptionsRevenue: 0, expectedRevenue: 0 };
+    if (!openShift) return { sessionsRevenue: 0, subscriptionsRevenue: 0, productRevenue: 0, expectedRevenue: 0 };
     
     const shiftStartTime = new Date(openShift.startTime).getTime();
     
@@ -96,8 +96,12 @@ function ShiftClosingForm() {
       .filter(sub => sub.cashierUsername === selectedCashierUsername && new Date(sub.createdAt).getTime() >= shiftStartTime)
       .reduce((total, sub) => total + sub.price, 0);
 
-    return { sessionsRevenue, subscriptionsRevenue, expectedRevenue: sessionsRevenue + subscriptionsRevenue };
-  }, [selectedCashierUsername, openShifts, completedSessions, subscriptions]);
+    const productRevenue = productSales
+      .filter(sale => sale.cashierUsername === selectedCashierUsername && new Date(sale.createdAt).getTime() >= shiftStartTime)
+      .reduce((total, sale) => total + sale.totalAmount, 0);
+
+    return { sessionsRevenue, subscriptionsRevenue, productRevenue, expectedRevenue: sessionsRevenue + subscriptionsRevenue + productRevenue };
+  }, [selectedCashierUsername, openShifts, completedSessions, subscriptions, productSales]);
 
   useEffect(() => {
     const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
@@ -127,6 +131,7 @@ function ShiftClosingForm() {
         ...values,
         cashierName: employee.name,
         expectedRevenue: expectedRevenue,
+        productRevenue: productRevenue,
         date: new Date().toISOString(),
         difference: values.actualRevenue - expectedRevenue,
         safeId: '',
@@ -213,6 +218,10 @@ function ShiftClosingForm() {
                      <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">إيرادات الاشتراكات</span>
                         <span className="font-mono font-semibold">{`ج.م ${subscriptionsRevenue.toFixed(2)}`}</span>
+                    </div>
+                     <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">إيرادات المنتجات</span>
+                        <span className="font-mono font-semibold">{`ج.م ${productRevenue.toFixed(2)}`}</span>
                     </div>
                      <div className="flex justify-between items-center text-md font-bold pt-2 border-t">
                         <span className="text-primary">الإجمالي المتوقع</span>
@@ -412,7 +421,7 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
     
     const currentUser = useMemo(() => {
         if (!user) return null;
-        return employees.find(e => e.username === user.username);
+        return employees.find(e => e.username === user?.username);
     }, [user, employees]);
     
     const filteredSafes = useMemo(() => {
@@ -632,23 +641,8 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
 
 
 function ShiftManagementContent() {
-    const [shiftRecords, setShiftRecords] = useState<ShiftRecord[]>([]);
-
-    useEffect(() => {
-        const recordsRef = ref(db, 'shiftRecords');
-
-        const unsubRecords = onValue(recordsRef, (snapshot) => {
-            const data = snapshot.val();
-            const recordsArray: ShiftRecord[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as any) })).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
-            setShiftRecords(recordsArray);
-        });
-
-        return () => {
-            unsubRecords();
-        }
-    }, [])
-
-  const closedShifts = useMemo(() => shiftRecords.filter(r => r.status === 'Closed'), [shiftRecords]);
+    const { shiftRecords } = useFirebase();
+    const closedShifts = useMemo(() => shiftRecords.filter(r => r.status === 'Closed'), [shiftRecords]);
 
 
   return (

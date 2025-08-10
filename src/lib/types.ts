@@ -85,6 +85,7 @@ export interface ShiftRecord {
   safeId: string;
   status: 'Open' | 'Closed' | 'Settled';
   settlementId?: string;
+  productRevenue?: number;
 }
 
 export interface OpenShift {
@@ -249,4 +250,14 @@ export interface InventoryItem {
     branchName: string;
     quantity: number;
     price: number;
+}
+
+export interface ProductSale {
+    id: string;
+    items: (InventoryItem & { cartQuantity: number })[];
+    totalAmount: number;
+    branchName: string;
+    cashierName: string;
+    cashierUsername: string;
+    createdAt: string; // ISO String
 }
