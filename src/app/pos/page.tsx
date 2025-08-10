@@ -194,7 +194,7 @@ function CheckOutDialog({
             if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
         } else {
              const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-             if(weekdayPolicy) hourlyRate = weekdayPolicy.weekdayRate;
+             if(weekdayPolicy) hourlyRate = weekdayPolicy.weekendRate;
         }
     }
     
@@ -499,7 +499,7 @@ function CheckInDialog({
                                         className="w-full justify-between"
                                         >
                                         {selectedCustomer
-                                            ? `${selectedCustomer.parentName} (${selectedCustomer.phoneNumbers[0]})`
+                                            ? `${selectedCustomer.parentName} (${(selectedCustomer.phoneNumbers || []).join(', ')})`
                                             : "اختر ولي الأمر..."}
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -513,7 +513,7 @@ function CheckInDialog({
                                                     {customers.map((customer) => (
                                                     <CommandItem
                                                         key={customer.id}
-                                                        value={`${customer.parentName} ${customer.phoneNumbers.join(' ')}`}
+                                                        value={`${customer.parentName} ${customer.phoneNumbers?.join(' ')}`}
                                                         onSelect={() => handleCustomerSelect(customer)}
                                                     >
                                                         <Check
@@ -522,7 +522,7 @@ function CheckInDialog({
                                                             selectedCustomer?.id === customer.id ? "opacity-100" : "opacity-0"
                                                         )}
                                                         />
-                                                        {customer.parentName} ({customer.phoneNumbers[0]})
+                                                        {customer.parentName} ({(customer.phoneNumbers || []).join(', ')})
                                                     </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -1071,3 +1071,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
+    

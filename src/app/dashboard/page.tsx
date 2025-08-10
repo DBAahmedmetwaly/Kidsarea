@@ -132,7 +132,7 @@ function DemoDataGenerator() {
                 }
                 customersToCreate.push({
                     parentName: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
-                    phoneNumber: `010000000${i.toString().padStart(2, '0')}`,
+                    phoneNumbers: [`010000000${i.toString().padStart(2, '0')}`],
                     children: children,
                     createdAt: new Date().toISOString()
                 });
@@ -467,3 +467,5 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+    

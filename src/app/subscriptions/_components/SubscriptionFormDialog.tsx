@@ -216,7 +216,7 @@ export default function SubscriptionFormDialog({
                             className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
                             >
                             {selectedCustomer
-                                ? `${selectedCustomer.parentName} (${selectedCustomer.phoneNumber})`
+                                ? `${selectedCustomer.parentName} (${(selectedCustomer.phoneNumbers || []).join(', ')})`
                                 : "ابحث عن عميل..."}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -231,7 +231,7 @@ export default function SubscriptionFormDialog({
                                         {customers.map((customer) => (
                                         <CommandItem
                                             key={customer.id}
-                                            value={`${customer.parentName} ${customer.phoneNumber}`}
+                                            value={`${customer.parentName} ${(customer.phoneNumbers || []).join(' ')}`}
                                             onSelect={() => handleCustomerSelect(customer)}
                                         >
                                             <Check className={cn("mr-2 h-4 w-4", customer.id === field.value ? "opacity-100" : "opacity-0")}/>
@@ -328,3 +328,5 @@ export default function SubscriptionFormDialog({
     </Dialog>
   );
 }
+
+    

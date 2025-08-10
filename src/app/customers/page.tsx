@@ -292,7 +292,7 @@ function CustomersContent() {
     const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
         try {
             const existingCustomer = customers.find(c => 
-                c.phoneNumbers.some(p => newCustomerData.phoneNumbers.includes(p))
+                c.phoneNumbers?.some(p => newCustomerData.phoneNumbers.includes(p))
             );
             if (existingCustomer) {
                  toast({ title: "خطأ", description: "أحد أرقام الهواتف المدخلة مسجل لعميل آخر.", variant: 'destructive' });
@@ -357,7 +357,7 @@ function CustomersContent() {
         if (!filter) return customers;
         return customers.filter(c => 
             c.parentName.toLowerCase().includes(filter.toLowerCase()) || 
-            c.phoneNumbers.some(p => p.includes(filter))
+            c.phoneNumbers?.some(p => p.includes(filter))
         );
     }, [customers, filter]);
 
@@ -417,7 +417,7 @@ function CustomersContent() {
                         {customer.parentName}
                      </Link>
                   </TableCell>
-                  <TableCell className="text-right">{customer.phoneNumbers.join(', ')}</TableCell>
+                  <TableCell className="text-right">{(customer.phoneNumbers || []).join(', ')}</TableCell>
                   <TableCell className="text-right">{customer.children?.map(c => `${c.name} (${c.age})`).join(', ')}</TableCell>
                   <TableCell className="text-center">{new Date(customer.createdAt).toLocaleDateString('ar-EG')}</TableCell>
                   <TableCell className="text-center">
@@ -482,5 +482,7 @@ export default function CustomersPage() {
         </SidebarProvider>
     );
 }
+
+    
 
     
