@@ -38,6 +38,7 @@ export default function RootLayout({
         )}
       >
         <AuthProvider>
+          <FirebaseProvider>
             <CustomerProvider>
               <SessionProvider>
                 <SidebarProvider>
@@ -45,6 +46,7 @@ export default function RootLayout({
                 </SidebarProvider>
               </SessionProvider>
             </CustomerProvider>
+          </FirebaseProvider>
         </AuthProvider>
         <Toaster />
       </body>

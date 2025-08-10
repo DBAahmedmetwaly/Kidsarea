@@ -11,8 +11,6 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import type { Employee } from '@/lib/types';
-import { FirebaseProvider } from '@/context/FirebaseContext';
-import SplashScreen from './layout/SplashScreen';
 
 
 interface AuthContextType {
@@ -76,13 +74,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   // Render children (or login page)
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
-      {isAuthenticated ? (
-        <FirebaseProvider>
-            {children}
-        </FirebaseProvider>
-      ) : (
-        children
-      )}
+      {children}
     </AuthContext.Provider>
   );
 }
