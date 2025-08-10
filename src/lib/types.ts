@@ -228,12 +228,20 @@ export interface ProductCategory {
     name: string;
 }
 
+// Represents a product in the global catalog
 export interface Product {
     id: string;
     name: string;
-    price: number;
     image: string;
     categoryId: string;
     categoryName: string;
-    branchName: string; // 'كل الفروع' or a specific branch
+}
+
+// Represents an item in a specific branch's inventory
+export interface InventoryItem extends Product {
+    inventoryId: string; // The ID of this specific inventory entry
+    branchId: string;
+    branchName: string;
+    quantity: number;
+    price: number;
 }

@@ -74,7 +74,7 @@ const managementItems = [
   { href: '/employees', label: 'الموظفين', icon: Users },
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/game-categories', label: 'تصنيفات الألعاب', icon: Layers },
-  { href: '/products', label: 'المنتجات', icon: ShoppingCart },
+  { href: '/products', label: 'كتالوج المنتجات', icon: ShoppingCart },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
   { href: '/subscriptions', label: 'الاشتراكات', icon: Star },
   { href: '/subscription-plans', label: 'باقات الاشتراكات', icon: Package },

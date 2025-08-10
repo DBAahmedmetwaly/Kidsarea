@@ -32,7 +32,7 @@ import {
 
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Product, ProductCategory } from '@/lib/types';
+import type { Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, push, set, remove, update } from 'firebase/database';
@@ -105,16 +105,16 @@ function ProductsContent() {
       <div className="flex items-center">
          <div className="md:hidden"><SidebarTrigger /></div>
          <ShoppingCart className="h-8 w-8 text-primary" />
-        <h1 className="text-lg font-semibold md:text-2xl me-auto">إدارة المنتجات</h1>
+        <h1 className="text-lg font-semibold md:text-2xl me-auto">كتالوج المنتجات العام</h1>
         <Button size="sm" className="h-8 gap-1" onClick={() => openForm()}>
           <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">إضافة منتج</span>
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">إضافة منتج للكتالوج</span>
         </Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>قائمة المنتجات</CardTitle>
-          <CardDescription>إدارة المنتجات التي تباع في منطقة اللعب (مثل المأكولات والمشروبات).</CardDescription>
+          <CardTitle>قائمة المنتجات العامة</CardTitle>
+          <CardDescription>هنا يمكنك تعريف جميع المنتجات التي يمكن بيعها في فروعك. لإدارة المخزون والأسعار، انتقل إلى صفحة المخزون.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -123,8 +123,6 @@ function ProductsContent() {
                 <TableHead className="hidden w-[100px] sm:table-cell text-right">صورة</TableHead>
                 <TableHead className="text-right">اسم المنتج</TableHead>
                 <TableHead className="text-right">الفئة</TableHead>
-                <TableHead className="text-center">السعر</TableHead>
-                <TableHead className="text-right">الفرع</TableHead>
                 <TableHead className="text-center">إجراءات</TableHead>
               </TableRow>
             </TableHeader>
@@ -143,8 +141,6 @@ function ProductsContent() {
                   </TableCell>
                   <TableCell className="font-medium text-right">{product.name}</TableCell>
                   <TableCell className="text-right">{product.categoryName}</TableCell>
-                  <TableCell className="text-center font-semibold">{`ج.م ${product.price.toFixed(2)}`}</TableCell>
-                  <TableCell className="text-right">{product.branchName}</TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -162,7 +158,7 @@ function ProductsContent() {
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                 <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
-                                <AlertDialogDescription>هذا الإجراء سيؤدي إلى حذف المنتج بشكل دائم.</AlertDialogDescription>
+                                <AlertDialogDescription>هذا الإجراء سيؤدي إلى حذف المنتج بشكل دائم من الكتالوج العام.</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                 <AlertDialogCancel>إلغاء</AlertDialogCancel>

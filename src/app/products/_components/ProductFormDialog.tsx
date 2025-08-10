@@ -15,23 +15,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import type { Product, ProductCategory, Branch } from '@/lib/types';
+import type { Product, ProductCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, push, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import { useAuth } from '@/components/AuthProvider';
 import { cn } from '@/lib/utils';
-import { Textarea } from '@/components/ui/textarea';
 
 export default function ProductFormDialog({ 
     open, 
@@ -47,13 +38,9 @@ export default function ProductFormDialog({
     initialData: Product | null;
 }) {
     const { toast } = useToast();
-    const { branches, employees, productCategories } = useFirebase();
-    const { user } = useAuth();
-    const currentUser = employees.find(e => e.username === user?.username);
+    const { productCategories } = useFirebase();
 
     const [name, setName] = useState('');
-    const [price, setPrice] = useState('');
-    const [branchName, setBranchName] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [openCategoryCombobox, setOpenCategoryCombobox] = useState(false);
     const [isAddCategoryOpen, setAddCategoryOpen] = useState(false);
@@ -63,21 +50,13 @@ export default function ProductFormDialog({
         if (open) {
             if (isEditMode && initialData) {
                 setName(initialData.name);
-                setPrice(String(initialData.price));
-                setBranchName(initialData.branchName);
                 setCategoryId(initialData.categoryId);
             } else {
                 setName('');
-                setPrice('');
-                if (currentUser && currentUser.branch !== 'كل الفروع') {
-                    setBranchName(currentUser.branch);
-                } else {
-                    setBranchName('');
-                }
                 setCategoryId('');
             }
         }
-    }, [initialData, isEditMode, open, currentUser]);
+    }, [initialData, isEditMode, open]);
 
     const handleCategorySelect = (id: string) => {
         setCategoryId(id);
@@ -102,8 +81,8 @@ export default function ProductFormDialog({
     };
 
     const handleSubmit = () => {
-        if (!name || !price || parseFloat(price) <= 0 || !branchName || !categoryId) {
-            toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية بسعر صحيح.", variant: "destructive" });
+        if (!name || !categoryId) {
+            toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية.", variant: "destructive" });
             return;
         }
 
@@ -111,8 +90,6 @@ export default function ProductFormDialog({
         
         const productData = {
             name,
-            price: parseFloat(price),
-            branchName,
             categoryId,
             categoryName: category?.name || '',
             image: initialData?.image || 'https://placehold.co/64x64.png',
@@ -131,28 +108,12 @@ export default function ProductFormDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>{isEditMode ? 'تعديل المنتج' : 'إضافة منتج جديد'}</DialogTitle>
+                    <DialogTitle>{isEditMode ? 'تعديل المنتج' : 'إضافة منتج جديد إلى الكتالوج'}</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-2">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="name" className="text-right">اسم المنتج</Label>
                         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
-                    </div>
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="price" className="text-right">السعر</Label>
-                        <Input id="price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="col-span-3" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="branchName" className="text-right">الفرع</Label>
-                        <Select value={branchName} onValueChange={setBranchName} disabled={currentUser?.branch !== 'كل الفروع'}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="اختر الفرع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="كل الفروع">كل الفروع</SelectItem>
-                                {branches.map((b) => <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
                     </div>
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="category" className="text-right">الفئة</Label>
