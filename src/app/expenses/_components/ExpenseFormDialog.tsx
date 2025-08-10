@@ -50,7 +50,6 @@ const expenseSchema = z.object({
   amount: z.coerce.number().min(0.01, 'المبلغ يجب أن يكون أكبر من صفر'),
   safeId: z.string().min(1, 'يجب اختيار الخزينة'),
   gameId: z.string().optional(),
-  gameName: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -78,7 +77,6 @@ export default function ExpenseFormDialog({
       amount: 0,
       safeId: '',
       gameId: '',
-      gameName: '',
       notes: '',
     },
   });
@@ -90,10 +88,12 @@ export default function ExpenseFormDialog({
 
   const handleFormSubmit = (data: ExpenseFormValues) => {
     const selectedGame = games.find(g => g.id === data.gameId);
+    
     const finalData = {
       ...data,
       date: data.date.toISOString(),
-      gameName: selectedGame?.name || '',
+      gameId: data.gameId === 'no-game' ? '' : data.gameId,
+      gameName: data.gameId === 'no-game' ? '' : (selectedGame?.name || ''),
     };
     onSubmit(finalData);
     onOpenChange(false);
@@ -223,10 +223,10 @@ export default function ExpenseFormDialog({
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>اللعبة (اختياري)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!watchedBranch}>
+                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!watchedBranch}>
                         <FormControl><SelectTrigger><SelectValue placeholder="اختر لعبة لربط المصروف بها..." /></SelectTrigger></FormControl>
                         <SelectContent>
-                            <SelectItem value="">بدون لعبة</SelectItem>
+                            <SelectItem value="no-game">بدون لعبة</SelectItem>
                             {filteredGames.map(game => <SelectItem key={game.id} value={game.id}>{game.name}</SelectItem>)}
                         </SelectContent>
                     </Select>

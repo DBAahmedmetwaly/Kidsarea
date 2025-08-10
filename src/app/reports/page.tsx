@@ -71,6 +71,13 @@ const topCustomersChartConfig = {
     },
 } satisfies ChartConfig;
 
+const expenseByCategoryChartConfig = {
+    amount: {
+        label: 'المبلغ',
+        color: 'hsl(var(--chart-1))',
+    },
+} satisfies ChartConfig;
+
 
 function CashierPerformanceReport({ sessions, subscriptions, shiftRecords, selectedBranch, fromDate, toDate } : { sessions: CompletedSession[], subscriptions: Subscription[], shiftRecords: ShiftRecord[], selectedBranch: string, fromDate?: Date, toDate?: Date }) {
     const { employees } = useFirebase();
@@ -192,7 +199,7 @@ function CashierPerformanceReport({ sessions, subscriptions, shiftRecords, selec
 
 function ReportsContent() {
     const { completedSessions } = useSession();
-    const { games, employees, branches, subscriptions, shiftRecords } = useFirebase();
+    const { games, employees, branches, subscriptions, shiftRecords, expenses, expenseTypes } = useFirebase();
     const { customers } = useCustomers();
     const { user } = useAuth();
     
@@ -221,8 +228,6 @@ function ReportsContent() {
         });
         
         const filteredSubscriptions = subscriptions.filter(sub => {
-            // Note: Subscription branch is not stored, so we can't filter by branch directly.
-            // Assuming subscriptions are global for now.
             const dateMatch = range ? isWithinInterval(new Date(sub.createdAt), range) : true;
             return dateMatch;
         });
@@ -231,11 +236,17 @@ function ReportsContent() {
              const branchMatch = selectedBranch === 'all' || record.branchName === selectedBranch;
              const dateMatch = range ? isWithinInterval(new Date(record.date), range) : true;
              return branchMatch && dateMatch;
-        })
+        });
+        
+        const filteredExpenses = expenses.filter(exp => {
+             const branchMatch = selectedBranch === 'all' || exp.branchName === selectedBranch;
+             const dateMatch = range ? isWithinInterval(new Date(exp.date), range) : true;
+             return branchMatch && dateMatch;
+        });
 
-        return { sessions: filteredSessions, subscriptions: filteredSubscriptions, shiftRecords: filteredShiftRecords };
+        return { sessions: filteredSessions, subscriptions: filteredSubscriptions, shiftRecords: filteredShiftRecords, expenses: filteredExpenses };
 
-    }, [completedSessions, subscriptions, shiftRecords, selectedBranch, fromDate, toDate]);
+    }, [completedSessions, subscriptions, shiftRecords, expenses, selectedBranch, fromDate, toDate]);
 
 
     const gameProfitData = useMemo(() => {
@@ -349,6 +360,20 @@ function ReportsContent() {
             .slice(0, 10); // Top 10 customers
 
     }, [filteredData.sessions]);
+
+     const expenseByCategoryData = useMemo(() => {
+        const expenseMap: { [key: string]: number } = {};
+        
+        filteredData.expenses.forEach(expense => {
+            const typeName = expenseTypes.find(t => t.id === expense.typeId)?.name || 'غير محدد';
+            expenseMap[typeName] = (expenseMap[typeName] || 0) + expense.amount;
+        });
+        
+        return Object.entries(expenseMap).map(([name, amount]) => ({
+            name,
+            amount,
+        }));
+    }, [filteredData.expenses, expenseTypes]);
     
     const stats = useMemo(() => {
         const totalDiscounts = filteredData.sessions.reduce((sum, s) => sum + (s.discount || 0), 0);
@@ -524,6 +549,37 @@ function ReportsContent() {
               </BarChart>
             </ChartContainer>
           </CardContent>
+        </Card>
+
+         <Card>
+            <CardHeader>
+                <CardTitle>تقرير المصروفات حسب النوع</CardTitle>
+                <CardDescription>تحليل إجمالي المصروفات لكل نوع في الفترة المحددة.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ChartContainer config={expenseByCategoryChartConfig} className="h-72 w-full">
+                    <BarChart accessibilityLayer data={expenseByCategoryData} dir="ltr" margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                            dataKey="name"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                        />
+                        <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={10}
+                            tickFormatter={(value) => `ج.م${value / 1000}k`}
+                        />
+                        <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent indicator="dot" formatter={(value) => `ج.م ${Number(value).toFixed(2)}`} />}
+                        />
+                        <Bar dataKey="amount" fill="var(--color-amount)" radius={4} />
+                    </BarChart>
+                </ChartContainer>
+            </CardContent>
         </Card>
 
         <Card>
