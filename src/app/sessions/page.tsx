@@ -105,7 +105,7 @@ function SessionsContent() {
     }
 
     if(phoneFilter) {
-        sessions = sessions.filter(s => s.phoneNumber && s.phoneNumber.includes(phoneFilter));
+        sessions = sessions.filter(s => s.phoneNumbers && s.phoneNumbers.some(p => p.includes(phoneFilter)));
     }
 
     if (fromDate && toDate) {
@@ -202,7 +202,7 @@ function SessionsContent() {
                 {session.children?.map(c => c.name).join(', ') ?? 'N/A'}
                 </TableCell>
                 <TableCell className="text-right">{session.parentName}</TableCell>
-                <TableCell className="text-center">{session.phoneNumber}</TableCell>
+                <TableCell className="text-center">{session.phoneNumbers?.[0]}</TableCell>
                 <TableCell className="text-right">{session.branchName}</TableCell>
                 <TableCell className="text-right">{session.game}</TableCell>
                 <TableCell className="text-center">

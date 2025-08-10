@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -69,6 +70,9 @@ type ChildFormField = {
     age: number;
     birthdate?: Date | undefined;
 }
+type PhoneFormField = {
+    value: string;
+}
 
 export function CustomerFormDialog({
     open,
@@ -85,19 +89,23 @@ export function CustomerFormDialog({
 }) {
     const { toast } = useToast();
     
-    const form = useForm<{ parentName: string, phoneNumber: string, children: ChildFormField[]}>({
+    const form = useForm<{ parentName: string, phoneNumbers: PhoneFormField[], children: ChildFormField[]}>({
         defaultValues: {
             parentName: '',
-            phoneNumber: '',
+            phoneNumbers: [{ value: '' }],
             children: [{ id: Date.now().toString(), name: '', age: 1, birthdate: undefined }],
         }
     });
 
     const { register, control, handleSubmit, reset, formState: { errors } } = form;
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields: childrenFields, append: appendChild, remove: removeChild } = useFieldArray({
         control,
         name: "children"
+    });
+     const { fields: phoneFields, append: appendPhone, remove: removePhone } = useFieldArray({
+        control,
+        name: "phoneNumbers"
     });
 
     useEffect(() => {
@@ -105,7 +113,7 @@ export function CustomerFormDialog({
             if (isEditMode && initialData) {
                 reset({
                     parentName: initialData.parentName,
-                    phoneNumber: initialData.phoneNumber,
+                    phoneNumbers: initialData.phoneNumbers ? initialData.phoneNumbers.map(p => ({ value: p })) : [{value: ''}],
                     children: initialData.children && initialData.children.length > 0 
                         ? initialData.children.map(c => ({...c, birthdate: c.birthdate ? new Date(c.birthdate) : undefined }))
                         : [{ id: Date.now().toString(), name: '', age: 1, birthdate: undefined }],
@@ -113,7 +121,7 @@ export function CustomerFormDialog({
             } else {
                 reset({
                     parentName: '',
-                    phoneNumber: '',
+                    phoneNumbers: [{ value: '' }],
                     children: [{ id: Date.now().toString(), name: '', age: 1, birthdate: undefined }],
                 });
             }
@@ -121,7 +129,7 @@ export function CustomerFormDialog({
     }, [initialData, isEditMode, open, reset]);
 
 
-    const handleFormSubmit = (data: { parentName: string, phoneNumber: string, children: ChildFormField[]}) => {
+    const handleFormSubmit = (data: { parentName: string, phoneNumbers: PhoneFormField[], children: ChildFormField[]}) => {
         const validChildren = (data.children || [])
             .filter(c => c.name.trim() !== '') // Filter out children with no name
             .map(c => ({
@@ -138,11 +146,21 @@ export function CustomerFormDialog({
             });
             return;
         }
+        
+        const phoneNumbers = data.phoneNumbers.map(p => p.value).filter(p => p.trim() !== '');
+        if (phoneNumbers.length === 0) {
+             toast({
+                title: "خطأ في الإدخال",
+                description: "يجب إدخال رقم هاتف واحد على الأقل.",
+                variant: "destructive",
+            });
+            return;
+        }
 
         const customerData: Omit<Customer, 'id' | 'createdAt'> | Customer = {
             ...(isEditMode && initialData ? { id: initialData.id, createdAt: initialData.createdAt } : {}),
             parentName: data.parentName,
-            phoneNumber: data.phoneNumber,
+            phoneNumbers: phoneNumbers,
             children: validChildren,
         };
         onSubmit(customerData);
@@ -161,13 +179,36 @@ export function CustomerFormDialog({
                         <Label htmlFor="parentName" className="text-right">اسم ولي الأمر</Label>
                         <Input id="parentName" {...register("parentName", { required: true })} className="col-span-3" />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="phoneNumber" className="text-right">رقم الهاتف</Label>
-                        <Input id="phoneNumber" {...register("phoneNumber", { required: true })} className="col-span-3" />
-                    </div>
+                    
+                    <h3 className="text-md font-medium mt-4 col-span-4">أرقام الهواتف</h3>
+                    {phoneFields.map((item, index) => (
+                        <div key={item.id} className="grid grid-cols-12 items-center gap-2 col-span-4">
+                            <div className="col-span-11">
+                                <Label htmlFor={`phoneNumbers.${index}.value`} className="sr-only">رقم الهاتف</Label>
+                                <Input {...register(`phoneNumbers.${index}.value`)} placeholder={`رقم الهاتف ${index + 1}`}/>
+                            </div>
+                            <div className="col-span-1 flex justify-end">
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removePhone(index)} disabled={phoneFields.length <= 1}>
+                                    <Trash className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                     <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 col-span-4"
+                        onClick={() => appendPhone({ value: '' })}
+                    >
+                        <PlusCircle className="me-2 h-4 w-4" />
+                        إضافة رقم هاتف آخر
+                    </Button>
+
+
                     
                     <h3 className="text-md font-medium mt-4 col-span-4">الأطفال (اختياري)</h3>
-                     {fields.map((item, index) => (
+                     {childrenFields.map((item, index) => (
                         <div key={item.id} className="grid grid-cols-12 items-center gap-2 col-span-4 border p-2 rounded-md">
                             <div className="col-span-4">
                                 <Label>اسم الطفل</Label>
@@ -210,7 +251,7 @@ export function CustomerFormDialog({
                                 />
                             </div>
                             <div className="col-span-1 flex justify-end items-end h-full">
-                                <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removeChild(index)}>
                                     <Trash className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -221,7 +262,7 @@ export function CustomerFormDialog({
                         variant="outline"
                         size="sm"
                         className="mt-2 col-span-4"
-                        onClick={() => append({ id: Date.now().toString(), name: '', age: 1, birthdate: undefined })}
+                        onClick={() => appendChild({ id: Date.now().toString(), name: '', age: 1, birthdate: undefined })}
                     >
                         <PlusCircle className="me-2 h-4 w-4" />
                         إضافة طفل آخر
@@ -250,11 +291,11 @@ function CustomersContent() {
 
     const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
         try {
-            // Using phone number as ID is not ideal if it can change. Let's stick to push IDs.
-            // But we need to check for existing phone numbers to avoid duplicates.
-            const existingCustomer = customers.find(c => c.phoneNumber === newCustomerData.phoneNumber);
+            const existingCustomer = customers.find(c => 
+                c.phoneNumbers.some(p => newCustomerData.phoneNumbers.includes(p))
+            );
             if (existingCustomer) {
-                 toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
+                 toast({ title: "خطأ", description: "أحد أرقام الهواتف المدخلة مسجل لعميل آخر.", variant: 'destructive' });
                  return;
             }
             const customersRef = ref(db, 'customers');
@@ -316,7 +357,7 @@ function CustomersContent() {
         if (!filter) return customers;
         return customers.filter(c => 
             c.parentName.toLowerCase().includes(filter.toLowerCase()) || 
-            c.phoneNumber.includes(filter)
+            c.phoneNumbers.some(p => p.includes(filter))
         );
     }, [customers, filter]);
 
@@ -356,7 +397,7 @@ function CustomersContent() {
             <TableHeader>
               <TableRow>
                 <TableHead className="text-right">اسم ولي الأمر</TableHead>
-                <TableHead className="text-right">رقم الهاتف</TableHead>
+                <TableHead className="text-right">أرقام الهواتف</TableHead>
                 <TableHead className="text-right">الأطفال</TableHead>
                 <TableHead className="text-center">تاريخ التسجيل</TableHead>
                 <TableHead className="text-center"><span>الإجراءات</span></TableHead>
@@ -376,7 +417,7 @@ function CustomersContent() {
                         {customer.parentName}
                      </Link>
                   </TableCell>
-                  <TableCell className="text-right">{customer.phoneNumber}</TableCell>
+                  <TableCell className="text-right">{customer.phoneNumbers.join(', ')}</TableCell>
                   <TableCell className="text-right">{customer.children?.map(c => `${c.name} (${c.age})`).join(', ')}</TableCell>
                   <TableCell className="text-center">{new Date(customer.createdAt).toLocaleDateString('ar-EG')}</TableCell>
                   <TableCell className="text-center">

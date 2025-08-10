@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -439,13 +440,12 @@ function CheckInDialog({
         if (!selectedCustomer || selectedChildren.length === 0 || !selectedGame) return;
         
         const childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> = {
-            customer: selectedCustomer,
             children: selectedChildren,
-            game: selectedGame,
-            branch: selectedGame.branch,
+            game: selectedGame.name,
+            branchName: selectedGame.branch,
             parentName: selectedCustomer.parentName,
-            phoneNumber: selectedCustomer.phoneNumber,
-        }
+            phoneNumbers: selectedCustomer.phoneNumbers,
+        };
 
         if (selectedGame.gameType === 'package') {
             if (!selectedPackage) {
@@ -462,7 +462,7 @@ function CheckInDialog({
     
     const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
       try {
-          const existingCustomer = customers.find(c => c.phoneNumber === newCustomerData.phoneNumber);
+          const existingCustomer = customers.find(c => c.phoneNumbers.some(p => newCustomerData.phoneNumbers.includes(p)));
           if (existingCustomer) {
                 // toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
                 return;
@@ -499,7 +499,7 @@ function CheckInDialog({
                                         className="w-full justify-between"
                                         >
                                         {selectedCustomer
-                                            ? `${selectedCustomer.parentName} (${selectedCustomer.phoneNumber})`
+                                            ? `${selectedCustomer.parentName} (${selectedCustomer.phoneNumbers[0]})`
                                             : "اختر ولي الأمر..."}
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -513,7 +513,7 @@ function CheckInDialog({
                                                     {customers.map((customer) => (
                                                     <CommandItem
                                                         key={customer.id}
-                                                        value={`${customer.parentName} ${customer.phoneNumber}`}
+                                                        value={`${customer.parentName} ${customer.phoneNumbers.join(' ')}`}
                                                         onSelect={() => handleCustomerSelect(customer)}
                                                     >
                                                         <Check
@@ -522,7 +522,7 @@ function CheckInDialog({
                                                             selectedCustomer?.id === customer.id ? "opacity-100" : "opacity-0"
                                                         )}
                                                         />
-                                                        {customer.parentName} ({customer.phoneNumber})
+                                                        {customer.parentName} ({customer.phoneNumbers[0]})
                                                     </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -590,6 +590,7 @@ function CheckInDialog({
                 onOpenChange={setCustomerFormOpen} 
                 onSubmit={handleAddCustomer}
                 isEditMode={false}
+                initialData={null}
             />
         </>
     )
@@ -778,15 +779,10 @@ function PosTrackingContent() {
     const newSession: Child = {
       ...data,
       id: childId,
-      branchName: data.game.branch === 'كل الفروع' ? currentUser!.branch : data.game.branch,
-      game: data.game.name, // Ensure game name is a string
+      branchName: data.branchName === 'كل الفروع' ? currentUser!.branch : data.branchName,
       checkInTime: Date.now(),
       cashierUsername: user.username,
     };
-    // remove game object from session
-    delete (newSession as any).customer;
-    delete (newSession as any).game;
-
 
     try {
         await set(ref(db, `sessions/active/${childId}`), newSession);

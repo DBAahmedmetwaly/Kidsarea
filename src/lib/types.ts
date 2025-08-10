@@ -11,7 +11,7 @@ export interface Child {
   id: number;
   children: CustomerChild[];
   parentName: string;
-  phoneNumber: string;
+  phoneNumbers: string[];
   game: string;
   branchName: string;
   checkInTime: number;
@@ -61,6 +61,7 @@ export interface Employee {
     avatarUrl: string;
     username?: string;
     password?: string;
+    baseSalary?: number;
 }
 
 export interface Branch {
@@ -138,7 +139,7 @@ export interface Policies {
 export interface Customer {
     id: string;
     parentName: string;
-    phoneNumber: string;
+    phoneNumbers: string[];
     children: CustomerChild[];
     createdAt: string;
 }
@@ -208,5 +209,16 @@ export interface Expense {
     safeId: string;
     gameId?: string;
     gameName?: string;
+    notes?: string;
+}
+
+export interface PayrollTransaction {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    type: 'advance' | 'bonus' | 'penalty';
+    amount: number;
+    date: string; // ISO string
+    recordedBy: string; // username or name of admin/manager
     notes?: string;
 }
