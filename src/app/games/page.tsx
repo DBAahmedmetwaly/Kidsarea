@@ -171,7 +171,7 @@ function GamesContent() {
                 <TableHead className="text-right">التصنيف</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
                 <TableHead className="hidden md:table-cell text-center">
-                  التسعير
+                  السعر/ساعة
                 </TableHead>
                 <TableHead className="hidden md:table-cell text-right">
                   الفروع المتاحة
@@ -206,12 +206,7 @@ function GamesContent() {
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-center">
-                    {game.pricingModel === 'hourly' 
-                        ? `ج.م${game.hourly_rate}/ساعة`
-                        : (
-                            <Badge variant="secondary">باقات</Badge>
-                        )
-                    }
+                    {`ج.م${game.hourly_rate}/ساعة`}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-right">
                     {game.branch}

@@ -44,9 +44,7 @@ export interface Game {
     status: 'Available' | 'Maintenance';
     categoryId: string;
     categoryName: string;
-    pricingModel: 'hourly' | 'package';
-    hourly_rate?: number; // Optional now
-    packages?: GamePackage[]; // For package-based games
+    hourly_rate: number;
 }
 
 export interface Employee {
