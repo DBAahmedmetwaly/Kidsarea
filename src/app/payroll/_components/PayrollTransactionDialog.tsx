@@ -99,9 +99,7 @@ export default function PayrollTransactionDialog({
   };
 
   useEffect(() => {
-    if (!open) {
-        form.reset();
-    } else {
+    if (open) {
         form.reset({
             amount: 0,
             notes: '',
