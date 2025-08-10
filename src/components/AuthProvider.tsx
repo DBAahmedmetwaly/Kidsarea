@@ -60,7 +60,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    setIsAuthenticated(false);
+    setIsAuthenticated(false)
     setUser(null);
     router.push('/login');
   };
@@ -76,7 +76,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   // Render children (or login page)
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
-      {children}
+      {isAuthenticated ? (
+        <FirebaseProvider>
+            {children}
+        </FirebaseProvider>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,16 +17,47 @@ import { Label } from '@/components/ui/label';
 import { Gamepad2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/AuthProvider';
-import { useFirebase } from '@/context/FirebaseContext';
+import { db } from '@/lib/firebase';
+import { ref, get } from 'firebase/database';
+import type { Employee, Policies } from '@/lib/types';
+
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [policies, setPolicies] = useState<Policies | null>(null);
+
   const router = useRouter();
   const { toast } = useToast();
   const { login } = useAuth();
-  const { employees, loading: firebaseLoading, policies } = useFirebase();
+  
+  useEffect(() => {
+    async function fetchData() {
+        try {
+            const employeesSnapshot = await get(ref(db, 'employees'));
+            const policiesSnapshot = await get(ref(db, 'policies'));
+            
+            const employeesData = employeesSnapshot.val();
+            const policiesData = policiesSnapshot.val();
+            
+            setEmployees(employeesData ? Object.values(employeesData) : []);
+            setPolicies(policiesData || null);
+        } catch (error) {
+            toast({
+                title: "خطأ في تحميل البيانات",
+                description: "لم نتمكن من تحميل بيانات الموظفين.",
+                variant: 'destructive',
+            });
+        } finally {
+            setInitialLoading(false);
+        }
+    }
+    fetchData();
+  }, [toast]);
+
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,8 +144,8 @@ export default function LoginPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={loading || firebaseLoading}>
-                  {loading || firebaseLoading ? (
+                <Button type="submit" className="w-full" disabled={loading || initialLoading}>
+                  {loading || initialLoading ? (
                     <>
                       <Loader2 className="me-2 h-4 w-4 animate-spin" />
                       جاري تسجيل الدخول...
