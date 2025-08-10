@@ -482,7 +482,3 @@ export default function CustomersPage() {
         </SidebarProvider>
     );
 }
-
-    
-
-    

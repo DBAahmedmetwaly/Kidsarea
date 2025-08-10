@@ -255,7 +255,7 @@ export default function SubscriptionFormDialog({
                         <FormItem>
                             <FormLabel>اختر الأطفال</FormLabel>
                              <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
-                                {selectedCustomer.children.map((child) => (
+                                {(selectedCustomer.children || []).map((child) => (
                                     <FormField
                                     key={child.name}
                                     control={form.control}
@@ -328,5 +328,3 @@ export default function SubscriptionFormDialog({
     </Dialog>
   );
 }
-
-    

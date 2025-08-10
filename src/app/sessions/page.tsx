@@ -202,7 +202,7 @@ function SessionsContent() {
                 {session.children?.map(c => c.name).join(', ') ?? 'N/A'}
                 </TableCell>
                 <TableCell className="text-right">{session.parentName}</TableCell>
-                <TableCell className="text-center">{session.phoneNumbers?.[0]}</TableCell>
+                <TableCell className="text-center">{(session.phoneNumbers || []).join(', ')}</TableCell>
                 <TableCell className="text-right">{session.branchName}</TableCell>
                 <TableCell className="text-right">{session.game}</TableCell>
                 <TableCell className="text-center">

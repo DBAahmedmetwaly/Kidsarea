@@ -513,7 +513,7 @@ function CheckInDialog({
                                                     {customers.map((customer) => (
                                                     <CommandItem
                                                         key={customer.id}
-                                                        value={`${customer.parentName} ${customer.phoneNumbers?.join(' ')}`}
+                                                        value={`${customer.parentName} ${(customer.phoneNumbers || []).join(' ')}`}
                                                         onSelect={() => handleCustomerSelect(customer)}
                                                     >
                                                         <Check
@@ -539,7 +539,7 @@ function CheckInDialog({
                              <div className="space-y-2">
                                 <Label>اختر الأطفال</Label>
                                 <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
-                                    {selectedCustomer.children?.map((child, index) => (
+                                    {(selectedCustomer.children || []).map((child, index) => (
                                         <div key={child.id || index} className="flex items-center space-x-2">
                                             <Checkbox
                                                 id={`child-${child.id || index}`}
@@ -755,7 +755,7 @@ function PosTrackingContent() {
 
     // Check if any of the selected children are already in an active session
     const activeChildIds = firebaseActiveChildren.flatMap(ac => ac.children.map(c => c.id));
-    const alreadyActiveChildren = children.filter(c => activeChildIds.includes(c.id));
+    const alreadyActiveChildren = children.filter(c => c.id && activeChildIds.includes(c.id));
 
     if (alreadyActiveChildren.length > 0) {
         toast({

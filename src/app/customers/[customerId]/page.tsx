@@ -55,7 +55,7 @@ function CustomerDetailsContent() {
 
     if (foundCustomer) {
         const sessions = completedSessions
-            .filter(s => s.phoneNumbers.some(p => foundCustomer.phoneNumbers.includes(p)))
+            .filter(s => s.phoneNumbers?.some(p => foundCustomer.phoneNumbers.includes(p)))
             .sort((a,b) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime());
         setCustomerSessions(sessions);
     }
@@ -97,7 +97,7 @@ function CustomerDetailsContent() {
             <h1 className="text-2xl font-bold">{customer.parentName}</h1>
             <p className="text-muted-foreground flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                {customer.phoneNumbers.join(' / ')}
+                {(customer.phoneNumbers || []).join(' / ')}
             </p>
         </div>
       </div>
