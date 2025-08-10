@@ -256,12 +256,14 @@ export default function GameFormDialog({
                         </Select>
                     </div>
 
-                    {pricingModel === 'hourly' ? (
+                    {pricingModel === 'hourly' && (
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="hourly_rate" className="text-right">السعر/ساعة</Label>
                             <Input id="hourly_rate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
                         </div>
-                    ) : (
+                    )}
+                    
+                    {pricingModel === 'package' && (
                         <div className="col-span-4 space-y-2 border p-3 rounded-md">
                             <Label>باقات الوقت</Label>
                              {packages.map((pkg, index) => (
