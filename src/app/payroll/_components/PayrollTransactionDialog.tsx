@@ -75,7 +75,7 @@ export default function PayrollTransactionDialog({
     defaultValues: {
       amount: 0,
       notes: '',
-      safeId: branchSafes.length > 0 ? branchSafes[0].id : '',
+      safeId: '',
     },
   });
 
@@ -95,7 +95,6 @@ export default function PayrollTransactionDialog({
         recordedBy: currentUser?.name || user?.username || 'Admin',
     };
     onSubmit(finalData, data.safeId || '');
-    onOpenChange(false);
   };
 
   useEffect(() => {
@@ -106,7 +105,7 @@ export default function PayrollTransactionDialog({
             safeId: branchSafes.length > 0 ? branchSafes[0].id : '',
         })
     }
-  }, [open, form, branchSafes]);
+  }, [open, employee, form, branchSafes]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
