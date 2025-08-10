@@ -81,7 +81,6 @@ const managementItems = [
 const financialItems = [
   { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
   { href: '/expenses', label: 'المصروفات والصيانة', icon: Wrench },
-  { href: '/payroll', label: 'الرواتب', icon: UserCog },
   { href: '/transactions', label: 'سجل الحركات المالية', icon: List },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
 ];

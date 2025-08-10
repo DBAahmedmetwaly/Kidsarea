@@ -21,7 +21,6 @@ const ALL_SCREENS = [
   { href: '/sessions', label: 'سجل الجلسات' },
   { href: '/shift-closing', label: 'إدارة الورديات' },
   { href: '/expenses', label: 'المصروفات والصيانة'},
-  { href: '/payroll', label: 'الرواتب' },
   { href: '/reports', label: 'التقارير' },
   { href: '/employees', label: 'الموظفين' },
   { href: '/games', label: 'الألعاب' },

@@ -61,7 +61,6 @@ export interface Employee {
     avatarUrl: string;
     username?: string;
     password?: string;
-    baseSalary?: number;
 }
 
 export interface Branch {
@@ -210,15 +209,4 @@ export interface Expense {
     gameId?: string;
     gameName?: string;
     notes?: string;
-}
-
-export interface PayrollTransaction {
-    id: string;
-    employeeId: string;
-    employeeName: string;
-    type: 'advance' | 'bonus' | 'penalty';
-    amount: number;
-    date: string;
-    notes?: string;
-    recordedBy: string; // Cashier/Admin name
 }

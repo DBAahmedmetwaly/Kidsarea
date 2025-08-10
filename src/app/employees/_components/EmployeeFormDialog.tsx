@@ -43,7 +43,6 @@ export default function EmployeeFormDialog({
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [status, setStatus] = useState<'Active' | 'On Leave' | 'Disabled'>('Active');
-    const [baseSalary, setBaseSalary] = useState('');
     
     useEffect(() => {
         if (isEditMode && initialData) {
@@ -53,7 +52,6 @@ export default function EmployeeFormDialog({
             setUsername(initialData.username || '');
             setPassword(initialData.password || '');
             setStatus(initialData.status);
-            setBaseSalary(String(initialData.baseSalary || ''));
         } else {
             setName('');
             setRole('');
@@ -65,7 +63,6 @@ export default function EmployeeFormDialog({
             setUsername('');
             setPassword('');
             setStatus('Active');
-            setBaseSalary('');
         }
     }, [initialData, isEditMode, open, currentUser]);
 
@@ -100,7 +97,6 @@ export default function EmployeeFormDialog({
             avatarUrl: initialData?.avatarUrl || 'https://placehold.co/40x40.png',
             username: requiresCredentials ? username : '',
             password: requiresCredentials ? password : '',
-            baseSalary: parseFloat(baseSalary) || 0,
         };
         onSubmit(employeeData);
         onOpenChange(false);
@@ -171,10 +167,6 @@ export default function EmployeeFormDialog({
                                 <SelectItem value="Disabled">معطل</SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="baseSalary" className="text-right">الراتب الأساسي</Label>
-                        <Input id="baseSalary" type="number" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} className="col-span-3" placeholder="e.g. 3000" />
                     </div>
                 </div>
                 <DialogFooter>
