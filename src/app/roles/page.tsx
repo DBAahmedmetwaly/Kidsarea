@@ -25,6 +25,7 @@ const ALL_SCREENS = [
   { href: '/employees', label: 'الموظفين' },
   { href: '/games', label: 'الألعاب' },
   { href: '/game-categories', label: 'تصنيفات الألعاب' },
+  { href: '/products', label: 'المنتجات' },
   { href: '/safes', label: 'الخزائن' },
   { href: '/policies', label: 'السياسات' },
   { href: '/receipt-designer', label: 'تصميم الإيصال' },

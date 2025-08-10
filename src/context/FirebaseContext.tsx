@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings, Child, CompletedSession, ShiftRecord, Expense, ExpenseType } from '@/lib/types';
+import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings, Child, CompletedSession, ShiftRecord, Expense, ExpenseType, Product, ProductCategory } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -29,6 +29,8 @@ interface FirebaseContextType {
   subscriptions: Subscription[];
   subscriptionPlans: SubscriptionPlan[];
   gameCategories: GameCategory[];
+  products: Product[];
+  productCategories: ProductCategory[];
   activeChildren: Child[];
   completedSessions: CompletedSession[];
   shiftRecords: ShiftRecord[];
@@ -61,6 +63,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [gameCategories, setGameCategories] = useState<GameCategory[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productCategories, setProductCategories] = useState<ProductCategory[]>([]);
   const [activeChildren, setActiveChildren] = useState<Child[]>([]);
   const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
   const [shiftRecords, setShiftRecords] = useState<ShiftRecord[]>([]);
@@ -84,6 +88,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       { key: 'subscriptions', setter: setSubscriptions, isArray: true },
       { key: 'subscriptionPlans', setter: setSubscriptionPlans, isArray: true },
       { key: 'gameCategories', setter: setGameCategories, isArray: true },
+      { key: 'products', setter: setProducts, isArray: true },
+      { key: 'productCategories', setter: setProductCategories, isArray: true },
       { key: 'sessions/active', setter: setActiveChildren, isArray: true },
       { key: 'sessions/completed', setter: setCompletedSessions, isArray: true, sort: (a: any, b: any) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime() },
       { key: 'shiftRecords', setter: setShiftRecords, isArray: true, sort: (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime() },
@@ -143,7 +149,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }, [isInitialLoad]);
 
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, receiptSettings, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, activeChildren, completedSessions, shiftRecords, expenses, expenseTypes, loading, isInitialLoad, error }}>
+    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, receiptSettings, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, products, productCategories, activeChildren, completedSessions, shiftRecords, expenses, expenseTypes, loading, isInitialLoad, error }}>
       {children}
     </FirebaseContext.Provider>
   );

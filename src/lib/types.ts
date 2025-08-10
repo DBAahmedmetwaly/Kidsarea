@@ -222,3 +222,18 @@ export interface PayrollTransaction {
     recordedBy: string; // username or name of admin/manager
     notes?: string;
 }
+
+export interface ProductCategory {
+    id: string;
+    name: string;
+}
+
+export interface Product {
+    id: string;
+    name: string;
+    price: number;
+    image: string;
+    categoryId: string;
+    categoryName: string;
+    branchName: string; // 'كل الفروع' or a specific branch
+}
