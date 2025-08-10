@@ -238,8 +238,13 @@ export interface Product {
 }
 
 // Represents an item in a specific branch's inventory
-export interface InventoryItem extends Product {
-    inventoryId: string; // The ID of this specific inventory entry
+export interface InventoryItem {
+    id: string; // The ID of this specific inventory entry
+    productId: string;
+    productName: string;
+    productImage: string;
+    categoryId: string;
+    categoryName: string;
     branchId: string;
     branchName: string;
     quantity: number;

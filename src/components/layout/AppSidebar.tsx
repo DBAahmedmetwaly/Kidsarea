@@ -47,6 +47,7 @@ import {
   UserCog,
   ShoppingCart,
   type LucideIcon,
+  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -75,6 +76,7 @@ const managementItems = [
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/game-categories', label: 'تصنيفات الألعاب', icon: Layers },
   { href: '/products', label: 'كتالوج المنتجات', icon: ShoppingCart },
+  { href: '/inventory', label: 'المخزون', icon: Archive },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
   { href: '/subscriptions', label: 'الاشتراكات', icon: Star },
   { href: '/subscription-plans', label: 'باقات الاشتراكات', icon: Package },
