@@ -25,46 +25,35 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Safe, SafeTransaction } from '@/lib/types';
 import { Landmark, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useFirebase } from '@/context/FirebaseContext';
 
 function SafeDetailsContent() {
   const params = useParams();
   const router = useRouter();
   const safeId = params.safeId as string;
+  const { safes, transactions, loading: firebaseLoading } = useFirebase();
   const [safe, setSafe] = useState<Safe | null>(null);
-  const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
+  const [safeTransactions, setSafeTransactions] = useState<SafeTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!safeId) return;
+    if (firebaseLoading) return;
 
-    const safeRef = ref(db, `safes/${safeId}`);
-    const transactionsRef = ref(db, 'safeTransactions');
-
-    const unsubscribeSafe = onValue(safeRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setSafe({ id: snapshot.key, ...snapshot.val() });
-      } else {
-        setSafe(null);
-      }
-      setLoading(false);
-    });
-
-    const unsubscribeTransactions = onValue(transactionsRef, (snapshot) => {
-        const data = snapshot.val();
-        const allTransactions: SafeTransaction[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as any) })) : [];
-        const filteredTransactions = allTransactions
+    const foundSafe = safes.find(s => s.id === safeId);
+    setSafe(foundSafe || null);
+    
+    if (foundSafe) {
+        const filtered = transactions
             .filter(t => t.safeId === safeId)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setTransactions(filteredTransactions);
-    });
+        setSafeTransactions(filtered);
+    }
+    
+    setLoading(false);
 
-    return () => {
-      unsubscribeSafe();
-      unsubscribeTransactions();
-    };
-  }, [safeId]);
+  }, [safeId, safes, transactions, firebaseLoading]);
 
-  if (loading) {
+  if (loading || firebaseLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -115,26 +104,26 @@ function SafeDetailsContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>التاريخ والوقت</TableHead>
-                <TableHead>النوع</TableHead>
-                <TableHead>المبلغ</TableHead>
-                <TableHead>الموظف المسؤول</TableHead>
-                <TableHead>ملاحظات</TableHead>
+                <TableHead className="text-right">التاريخ والوقت</TableHead>
+                <TableHead className="text-center">النوع</TableHead>
+                <TableHead className="text-center">المبلغ</TableHead>
+                <TableHead className="text-right">الموظف المسؤول</TableHead>
+                <TableHead className="text-right">ملاحظات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.length > 0 ? (
-                transactions.map((tx) => (
+              {safeTransactions.length > 0 ? (
+                safeTransactions.map((tx) => (
                   <TableRow key={tx.id}>
-                    <TableCell>{new Date(tx.date).toLocaleString('ar-EG')}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">{new Date(tx.date).toLocaleString('ar-EG')}</TableCell>
+                    <TableCell className="text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${tx.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                             {tx.type === 'deposit' ? 'إيداع' : 'سحب'}
                         </span>
                     </TableCell>
-                    <TableCell className="font-medium">{`ج.م ${tx.amount.toFixed(2)}`}</TableCell>
-                    <TableCell>{tx.cashierName}</TableCell>
-                    <TableCell>{tx.notes || '-'}</TableCell>
+                    <TableCell className="font-medium text-center">{`ج.م ${tx.amount.toFixed(2)}`}</TableCell>
+                    <TableCell className="text-right">{tx.cashierName}</TableCell>
+                    <TableCell className="text-right">{tx.notes || '-'}</TableCell>
                   </TableRow>
                 ))
               ) : (

@@ -182,3 +182,20 @@ export interface ReceiptSettings {
     showTimestamp: boolean;
     customFooter?: string;
 }
+
+export interface ExpenseType {
+    id: string;
+    name: string;
+}
+
+export interface Expense {
+    id: string;
+    date: string;
+    typeId: string;
+    branchName: string;
+    amount: number;
+    safeId: string;
+    gameId?: string;
+    gameName?: string;
+    notes?: string;
+}

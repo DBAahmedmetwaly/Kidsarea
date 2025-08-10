@@ -42,9 +42,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/components/AuthProvider';
 
 function TransactionsContent() {
-  const { branches, safes, employees } = useFirebase();
-  const [allTransactions, setAllTransactions] = useState<SafeTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { branches, safes, employees, transactions: allTransactions, loading } = useFirebase();
   const { user } = useAuth();
   
   const currentUser = useMemo(() => {
@@ -66,21 +64,6 @@ function TransactionsContent() {
     }
   }, [currentUser]);
   
-  useEffect(() => {
-    const transactionsRef = ref(db, 'safeTransactions');
-    const unsubscribe = onValue(transactionsRef, (snapshot) => {
-        const data = snapshot.val();
-        const transactionsArray: SafeTransaction[] = data 
-            ? Object.entries(data)
-                .map(([id, value]) => ({ id, ...(value as any) }))
-                .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            : [];
-        setAllTransactions(transactionsArray);
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const filteredSafes = useMemo(() => {
     if (selectedBranch === 'all') return safes;
@@ -332,3 +315,4 @@ export default function TransactionsPage() {
         </SidebarProvider>
     );
 }
+      
