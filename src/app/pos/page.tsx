@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage } from '@/lib/types';
@@ -462,7 +462,7 @@ function CheckInDialog({
     
     const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
       try {
-          const existingCustomer = customers.find(c => c.phoneNumbers.some(p => newCustomerData.phoneNumbers.includes(p)));
+          const existingCustomer = customers.find(c => (c.phoneNumbers || []).some(p => newCustomerData.phoneNumbers.includes(p)));
           if (existingCustomer) {
                 // toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
                 return;
@@ -934,6 +934,7 @@ function PosTrackingContent() {
                                 <TableRow>
                                     <TableHead className="text-right">الطفل</TableHead>
                                     <TableHead className="text-right">ولي الأمر</TableHead>
+                                    <TableHead className="text-right">رقم الهاتف</TableHead>
                                     <TableHead className="text-right">اللعبة</TableHead>
                                     <TableHead className="text-right">الفرع</TableHead>
                                     <TableHead className="text-center">الوقت</TableHead>
@@ -946,6 +947,7 @@ function PosTrackingContent() {
                                     <TableRow key={session.id}>
                                     <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
+                                    <TableCell className="text-right">{(session.phoneNumbers || []).join(', ')}</TableCell>
                                     <TableCell className="text-right">{session.game}</TableCell>
                                     <TableCell className="text-right">{session.branchName}</TableCell>
                                     <TableCell className="text-center">
@@ -966,7 +968,7 @@ function PosTrackingContent() {
                                 ))
                                 ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-24 text-center">
+                                    <TableCell colSpan={7} className="h-24 text-center">
                                     لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
                                     </TableCell>
                                 </TableRow>
@@ -1071,5 +1073,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
