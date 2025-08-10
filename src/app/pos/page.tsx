@@ -20,10 +20,10 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -49,37 +49,60 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatCard } from '@/components/StatCard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const TimeCounter = ({ startTime }: { startTime: number }) => {
+const TimeCounter = ({ startTime, packageDuration }: { startTime: number, packageDuration?: number }) => {
+  const [remaining, setRemaining] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
 
   useEffect(() => {
-    const calculateElapsed = () => Date.now() - startTime;
-    setElapsed(calculateElapsed());
-
     const timer = setInterval(() => {
-      setElapsed(calculateElapsed());
+        const now = Date.now();
+        const elapsedMs = now - startTime;
+        setElapsed(elapsedMs);
+
+        if (packageDuration) {
+            const totalDurationMs = packageDuration * 60 * 1000;
+            setRemaining(Math.max(0, totalDurationMs - elapsedMs));
+        }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [startTime]);
+  }, [startTime, packageDuration]);
+  
+  const formatTime = (ms: number) => {
+    if (ms < 0) ms = 0;
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
 
-  if (elapsed === null) {
-    return <span>...</span>;
+    return `${hours.toString().padStart(2, '0')}:${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  if (packageDuration) {
+      if (remaining === null) return <span>...</span>;
+      const isEndingSoon = remaining <= 5 * 60 * 1000; // 5 minutes
+      const isEnded = remaining === 0;
+      
+      return (
+        <span 
+          className={cn(
+            "font-mono font-bold",
+            isEnded ? "text-red-500 animate-pulse" :
+            isEndingSoon ? "text-orange-500" : ""
+          )}
+          dir="ltr"
+        >
+          {formatTime(remaining)}
+        </span>
+      );
   }
 
-  const totalSeconds = Math.floor(elapsed / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return (
-    <span className="font-mono" dir="ltr">
-      {`${hours.toString().padStart(2, '0')}:${minutes
-        .toString()
-        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`}
-    </span>
-  );
+  if (elapsed === null) return <span>...</span>;
+  return <span className="font-mono" dir="ltr">{formatTime(elapsed)}</span>;
 };
+
 
 function formatDuration(durationMs: number) {
     const totalSeconds = Math.floor(durationMs / 1000);
@@ -141,9 +164,22 @@ function CheckOutDialog({
   const { printReceipt } = usePosPrint();
   const amountReceivedInputRef = useRef<HTMLInputElement>(null);
   
+  const isPackageGame = child?.packageDuration && child.packageDuration > 0;
 
   const checkoutData = useMemo(() => {
     if (!child) return null;
+    
+    // For package games, the cost is already paid.
+    if (isPackageGame) {
+        return {
+            duration: formatDuration(Date.now() - child.checkInTime),
+            totalCost: 0,
+            costBeforeDiscount: child.packagePrice || 0,
+            durationCost: child.packagePrice || 0,
+            entryFee: 0,
+            discount: 0,
+        }
+    }
 
     const durationMs = Date.now() - child.checkInTime;
 
@@ -179,7 +215,7 @@ function CheckOutDialog({
         discount: discountAmount,
     }
 
-  }, [child, games, policies, discount, activeSubscriptions]);
+  }, [child, games, policies, discount, activeSubscriptions, isPackageGame]);
 
   // Check for subscription when dialog opens
   useEffect(() => {
@@ -200,15 +236,15 @@ function CheckOutDialog({
 
   useEffect(() => {
     if (open) {
-        // Reset amounts and set focus when dialog opens
         setAmountReceived('');
         setDiscount('');
-        // Timeout to allow dialog to render before focusing
-        setTimeout(() => {
-            amountReceivedInputRef.current?.focus();
-        }, 100);
+        if (!isPackageGame) {
+            setTimeout(() => {
+                amountReceivedInputRef.current?.focus();
+            }, 100);
+        }
     }
-  }, [open]);
+  }, [open, isPackageGame]);
 
   const handleConfirm = async () => {
     if(!child || !checkoutData) return;
@@ -253,6 +289,7 @@ function CheckOutDialog({
         discount: checkoutData.discount,
         cashierName: cashierName,
         isSubscription: isFullySubscribed,
+        packagePrice: child.packagePrice,
     };
     
     if (receiptSettings) {
@@ -276,6 +313,16 @@ function CheckOutDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+            {isPackageGame && (
+                <Alert className="bg-blue-50 border-blue-200">
+                    <PackageCheck className="h-4 w-4 text-blue-600" />
+                    <AlertTitle className="text-blue-800">لعبة باقة وقت</AlertTitle>
+                    <AlertDescription className="text-blue-700">
+                      هذه الجلسة مدفوعة مسبقًا. لا توجد تكلفة إضافية عند الخروج.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {activeSubscriptions.length > 0 && (
                 <Alert className="bg-green-50 border-green-200">
                     <Star className="h-4 w-4 text-green-600" />
@@ -290,34 +337,39 @@ function CheckOutDialog({
                 <span className="font-medium">التكلفة الإجمالية:</span>
                 <span className="font-bold text-primary">{`ج.م ${checkoutData.totalCost.toFixed(2)}`}</span>
             </div>
-                <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="discount">الخصم (ج.م)</Label>
-                    <Input
-                    id="discount"
-                    type="number"
-                    value={discount}
-                    onChange={(e) => setDiscount(e.target.value)}
-                    placeholder="أدخل الخصم"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="amount-received">المبلغ المستلم</Label>
-                    <Input
-                    id="amount-received"
-                    ref={amountReceivedInputRef}
-                    type="number"
-                    value={amountReceived}
-                    onChange={(e) => setAmountReceived(e.target.value)}
-                    placeholder="أدخل المبلغ المستلم"
-                    />
-                </div>
-            </div>
-            {amountReceived && (
-                <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    <span className="font-medium">الباقي:</span>
-                    <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
-                </div>
+            
+            {!isPackageGame && (
+                <>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="discount">الخصم (ج.م)</Label>
+                            <Input
+                            id="discount"
+                            type="number"
+                            value={discount}
+                            onChange={(e) => setDiscount(e.target.value)}
+                            placeholder="أدخل الخصم"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="amount-received">المبلغ المستلم</Label>
+                            <Input
+                            id="amount-received"
+                            ref={amountReceivedInputRef}
+                            type="number"
+                            value={amountReceived}
+                            onChange={(e) => setAmountReceived(e.target.value)}
+                            placeholder="أدخل المبلغ المستلم"
+                            />
+                        </div>
+                    </div>
+                    {amountReceived && (
+                        <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            <span className="font-medium">الباقي:</span>
+                            <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
+                        </div>
+                    )}
+                </>
             )}
         </div>
         <DialogFooter>
@@ -326,7 +378,7 @@ function CheckOutDialog({
           </DialogClose>
             <Button 
               onClick={handleConfirm} 
-              disabled={checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost || !amountReceived)}
+              disabled={!isPackageGame && checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost || !amountReceived)}
             >
                 حفظ و طباعة
             </Button>
@@ -346,13 +398,14 @@ function CheckInDialog({
     open: boolean,
     onOpenChange: (open: boolean) => void,
     selectedGame: Game | null,
-    onConfirm: (childData: { customer: Customer, children: CustomerChild[], game: Game, branch: string }) => void
+    onConfirm: (childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => void
 }) {
     const { customers } = useCustomers();
     const { subscriptions } = useFirebase();
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
+    const [selectedPackage, setSelectedPackage] = useState<GamePackage | null>(null);
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
     
@@ -360,9 +413,15 @@ function CheckInDialog({
         if (!open) {
             setSelectedCustomer(null);
             setSelectedChildren([]);
+            setSelectedPackage(null);
             setOpenCombobox(false);
+        } else {
+            // If it's a package game with only one package, pre-select it
+            if(selectedGame?.gameType === 'package' && selectedGame.packages?.length === 1) {
+                setSelectedPackage(selectedGame.packages[0]);
+            }
         }
-    }, [open]);
+    }, [open, selectedGame]);
 
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
@@ -378,7 +437,26 @@ function CheckInDialog({
 
     const handleConfirm = () => {
         if (!selectedCustomer || selectedChildren.length === 0 || !selectedGame) return;
-        onConfirm({ customer: selectedCustomer, children: selectedChildren, game: selectedGame, branch: selectedGame.branch });
+        
+        const childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> = {
+            customer: selectedCustomer,
+            children: selectedChildren,
+            game: selectedGame,
+            branch: selectedGame.branch,
+            parentName: selectedCustomer.parentName,
+            phoneNumber: selectedCustomer.phoneNumber,
+        }
+
+        if (selectedGame.gameType === 'package') {
+            if (!selectedPackage) {
+                // toast({ title: "يرجى اختيار باقة وقت", variant: "destructive" });
+                return;
+            }
+            childData.packageDuration = selectedPackage.duration;
+            childData.packagePrice = selectedPackage.price;
+        }
+
+        onConfirm(childData);
         onOpenChange(false);
     }
     
@@ -397,7 +475,6 @@ function CheckInDialog({
           console.error(e);
       }
     };
-
 
     return (
         <>
@@ -477,12 +554,32 @@ function CheckInDialog({
                                 </div>
                             </div>
                         )}
+                        {selectedGame?.gameType === 'package' && (
+                             <div className="space-y-2">
+                                <Label>اختر باقة الوقت</Label>
+                                <Select onValueChange={(value) => {
+                                    const pkg = selectedGame.packages?.find(p => p.id === value);
+                                    setSelectedPackage(pkg || null);
+                                }} defaultValue={selectedPackage?.id}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="اختر باقة..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {selectedGame.packages?.map(pkg => (
+                                            <SelectItem key={pkg.id} value={pkg.id}>
+                                                {pkg.duration} دقيقة / {pkg.price} ج.م
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button variant="outline">إلغاء</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer}>
+                        <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer || (selectedGame?.gameType === 'package' && !selectedPackage)}>
                             بدء اللعب
                         </Button>
                     </DialogFooter>
@@ -643,8 +740,8 @@ function PosTrackingContent() {
   };
 
 
-  const handleCheckIn = async (data: { customer: Customer, children: CustomerChild[], game: Game, branch: string }) => {
-    const { customer, children, game, branch } = data;
+  const handleCheckIn = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => {
+    const { children } = data;
     
     if (policies && policies.maxCapacity && (firebaseActiveChildren.length + children.length) > policies.maxCapacity) {
         toast({
@@ -679,15 +776,17 @@ function PosTrackingContent() {
     
     const childId = Date.now();
     const newSession: Child = {
+      ...data,
       id: childId,
-      children: children,
-      parentName: customer.parentName,
-      phoneNumber: customer.phoneNumber,
-      game: game.name,
-      branchName: game.branch === 'كل الفروع' ? currentUser!.branch : game.branch,
+      branchName: data.game.branch === 'كل الفروع' ? currentUser!.branch : data.game.branch,
+      game: data.game.name, // Ensure game name is a string
       checkInTime: Date.now(),
       cashierUsername: user.username,
     };
+    // remove game object from session
+    delete (newSession as any).customer;
+    delete (newSession as any).game;
+
 
     try {
         await set(ref(db, `sessions/active/${childId}`), newSession);
@@ -804,7 +903,7 @@ function PosTrackingContent() {
                                     style={{ backgroundColor: `${categoryColor}33` }} // 33 for ~20% opacity
                                 >
                                     <p className="font-semibold text-sm">{game.name}</p>
-                                    <p className="text-xs text-muted-foreground">{`ج.م ${game.hourly_rate}/ساعة`}</p>
+                                    <p className="text-xs text-muted-foreground">{game.gameType === 'hourly' ? `ج.م ${game.hourly_rate}/ساعة` : 'باقات وقت'}</p>
                                 </button>
                             ))}
                             {gamesForSelectedCategory.length === 0 && (
@@ -819,7 +918,10 @@ function PosTrackingContent() {
                 {/* Active Children Section */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+                        <div className='flex justify-between items-center'>
+                            <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+                            <span className='text-sm text-muted-foreground'>الفرع</span>
+                        </div>
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input 
@@ -837,6 +939,7 @@ function PosTrackingContent() {
                                     <TableHead className="text-right">الطفل</TableHead>
                                     <TableHead className="text-right">ولي الأمر</TableHead>
                                     <TableHead className="text-right">اللعبة</TableHead>
+                                    <TableHead className="text-right">الفرع</TableHead>
                                     <TableHead className="text-center">الوقت</TableHead>
                                     <TableHead className="text-center">إجراء</TableHead>
                                 </TableRow>
@@ -848,8 +951,9 @@ function PosTrackingContent() {
                                     <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
                                     <TableCell className="text-right">{session.game}</TableCell>
+                                    <TableCell className="text-right">{session.branchName}</TableCell>
                                     <TableCell className="text-center">
-                                        <TimeCounter startTime={session.checkInTime} />
+                                        <TimeCounter startTime={session.checkInTime} packageDuration={session.packageDuration} />
                                     </TableCell>
                                     <TableCell className="text-center">
                                         <Button
@@ -866,7 +970,7 @@ function PosTrackingContent() {
                                 ))
                                 ) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
+                                    <TableCell colSpan={6} className="h-24 text-center">
                                     لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
                                     </TableCell>
                                 </TableRow>
@@ -919,6 +1023,8 @@ function PosTrackingContent() {
                                                         <TableCell className="font-bold text-center">
                                                             {session.subscriptionId ? (
                                                                 <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
+                                                            ) : session.packagePrice ? (
+                                                                <span className="flex items-center justify-center gap-1 text-blue-600"><PackageCheck className="h-4 w-4"/> باقة</span>
                                                             ) : `ج.م ${session.cost.toFixed(2)}`}
                                                         </TableCell>
                                                     </TableRow>

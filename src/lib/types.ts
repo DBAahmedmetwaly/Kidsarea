@@ -16,6 +16,9 @@ export interface Child {
   branchName: string;
   checkInTime: number;
   cashierUsername: string; // Added to track who checked the child in
+  // For package based games
+  packageDuration?: number; // in minutes
+  packagePrice?: number;
 }
 
 export interface CompletedSession extends Child {
@@ -31,7 +34,7 @@ export interface CompletedSession extends Child {
 }
 
 export interface GamePackage {
-    id: string; // e.g., '15-min'
+    id: string;
     duration: number; // in minutes
     price: number;
 }
@@ -44,7 +47,9 @@ export interface Game {
     status: 'Available' | 'Maintenance';
     categoryId: string;
     categoryName: string;
-    hourly_rate: number;
+    gameType: 'hourly' | 'package';
+    hourly_rate?: number; // Optional now
+    packages?: GamePackage[]; // For package-based games
 }
 
 export interface Employee {

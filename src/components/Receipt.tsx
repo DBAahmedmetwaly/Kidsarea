@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle, Star, MinusCircle } from 'lucide-react';
+import { Gamepad2, Smile, Clock, User, Calendar, Hash, Tag, PlusCircle, Star, MinusCircle, PackageCheck } from 'lucide-react';
 import React from 'react';
 import type { ReceiptSettings, CustomerChild } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,7 @@ export interface PosReceiptProps {
   discount?: number;
   cashierName: string;
   isSubscription?: boolean;
+  packagePrice?: number;
 }
 
 const ReceiptRow = ({ label, value, valueClass = '', show }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string, show?: boolean }) => {
@@ -53,9 +54,41 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   discount,
   cashierName,
   isSubscription,
+  packagePrice,
 }, ref) => {
   
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
+
+  const renderPaymentDetails = () => {
+    if (isSubscription) {
+      return (
+        <div className="flex justify-center items-center text-md font-bold p-2 mt-1 bg-green-100 text-green-800 rounded-md">
+            <span className="flex items-center gap-2"><Star size={16} /> مدفوع بالاشتراك</span>
+        </div>
+      );
+    }
+    if (packagePrice) {
+         return (
+        <div className="flex justify-center items-center text-md font-bold p-2 mt-1 bg-blue-100 text-blue-800 rounded-md">
+            <span className="flex items-center gap-2"><PackageCheck size={16} /> مدفوع بالباقة</span>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-0.5">
+          <ReceiptRow show={show('showDurationCost')} label={<><Tag size={12}/> تكلفة اللعب</>} value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
+          <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0} label={<><PlusCircle size={12}/> رسوم دخول</>} value={`ج.م ${entryFee.toFixed(2)}`} />
+          <ReceiptRow show={show('showDiscount') && !!discount && discount > 0} label={<><MinusCircle size={12}/> الخصم</>} value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
+          
+          {show('showTotalCost') && (
+              <div className="flex justify-between items-center text-lg font-bold p-2 mt-2 bg-gray-200 rounded-md">
+                  <span>الإجمالي</span>
+                  <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
+              </div>
+          )}
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className="bg-white p-2 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
@@ -74,26 +107,8 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         <ReceiptRow show={show('showDuration')} label={<><Calendar size={12}/> المدة</>} value={duration} />
       </div>
 
-        {isSubscription ? (
-             <div className="flex justify-center items-center text-md font-bold p-2 mt-1 bg-green-100 text-green-800 rounded-md">
-                <span className="flex items-center gap-2"><Star size={16} /> مدفوع بالاشتراك</span>
-            </div>
-        ) : (
-            <div className="space-y-0.5">
-                <ReceiptRow show={show('showDurationCost')} label={<><Tag size={12}/> تكلفة اللعب</>} value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
-                <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0} label={<><PlusCircle size={12}/> رسوم دخول</>} value={`ج.م ${entryFee.toFixed(2)}`} />
-                <ReceiptRow show={show('showDiscount') && !!discount && discount > 0} label={<><MinusCircle size={12}/> الخصم</>} value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
-                
-                {show('showTotalCost') && (
-                    <div className="flex justify-between items-center text-lg font-bold p-2 mt-2 bg-gray-200 rounded-md">
-                        <span>الإجمالي</span>
-                        <span>{`ج.م ${totalCost.toFixed(2)}`}</span>
-                    </div>
-                )}
-            </div>
-        )}
+       {renderPaymentDetails()}
       
-
        <div className="mt-4 text-center text-xs text-gray-600 space-y-1">
             {show('showThankYouMessage') && <p className="font-bold text-sm">{settings?.thankYouMessage}</p>}
             {show('showCashierName') && <p>الكاشير: {cashierName}</p>}

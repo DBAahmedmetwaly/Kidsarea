@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import type { Game, GameCategory } from '@/lib/types';
+import type { Game, GameCategory, GamePackage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, push, set } from 'firebase/database';
@@ -33,6 +33,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const CategoryFormDialog = dynamic(() => import('../../game-categories/_components/CategoryFormDialog'), {
     loading: () => <Skeleton className="w-full h-96" />,
@@ -63,7 +64,10 @@ export default function GameFormDialog({
     const [branch, setBranch] = useState('');
     const [status, setStatus] = useState<'Available' | 'Maintenance'>('Available');
     const [categoryId, setCategoryId] = useState('');
+    const [gameType, setGameType] = useState<'hourly' | 'package'>('hourly');
     const [hourlyRate, setHourlyRate] = useState('');
+    const [packages, setPackages] = useState<Omit<GamePackage, 'id'>[]>([]);
+
 
     // UI State
     const [openCategoryCombobox, setOpenCategoryCombobox] = useState(false);
@@ -76,7 +80,9 @@ export default function GameFormDialog({
                 setBranch(initialData.branch);
                 setStatus(initialData.status);
                 setCategoryId(initialData.categoryId || '');
+                setGameType(initialData.gameType || 'hourly');
                 setHourlyRate(String(initialData.hourly_rate || ''));
+                setPackages(initialData.packages?.map(({id, ...rest}) => rest) || []);
             } else {
                 setName('');
                 setHourlyRate('');
@@ -87,6 +93,8 @@ export default function GameFormDialog({
                 }
                 setStatus('Available');
                 setCategoryId('');
+                setGameType('hourly');
+                setPackages([]);
             }
         }
     }, [initialData, isEditMode, open, currentUser]);
@@ -110,24 +118,63 @@ export default function GameFormDialog({
             toast({ title: 'خطأ', description: 'فشلت عملية إضافة التصنيف.', variant: 'destructive' });
         }
     };
+    
+    const handleAddPackage = () => {
+        setPackages([...packages, { duration: 30, price: 50 }]);
+    };
+
+    const handlePackageChange = (index: number, field: 'duration' | 'price', value: string) => {
+        const newPackages = [...packages];
+        newPackages[index] = { ...newPackages[index], [field]: Number(value) };
+        setPackages(newPackages);
+    };
+
+    const handleRemovePackage = (index: number) => {
+        const newPackages = packages.filter((_, i) => i !== index);
+        setPackages(newPackages);
+    };
 
     const handleSubmit = () => {
-        if (!name || !branch || !status || !categoryId || !hourlyRate || parseFloat(hourlyRate) <= 0) {
-            toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية بشكل صحيح.", variant: "destructive" });
+        if (!name || !branch || !status || !categoryId) {
+            toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية.", variant: "destructive" });
             return;
         }
 
         const category = gameCategories.find(c => c.id === categoryId);
+        let gameData: Omit<Game, 'id'>;
+
+        if (gameType === 'hourly') {
+            if (!hourlyRate || parseFloat(hourlyRate) <= 0) {
+                 toast({ title: "خطأ في الإدخال", description: "يرجى إدخال سعر ساعة صالح.", variant: "destructive" });
+                 return;
+            }
+            gameData = {
+                name,
+                branch,
+                status,
+                categoryId,
+                categoryName: category?.name || '',
+                image: initialData?.image || 'https://placehold.co/64x64.png',
+                gameType: 'hourly',
+                hourly_rate: parseFloat(hourlyRate)
+            }
+        } else {
+            if (packages.length === 0 || packages.some(p => p.duration <= 0 || p.price <= 0)) {
+                 toast({ title: "خطأ في الإدخال", description: "يرجى إضافة باقة واحدة على الأقل بمدة وسعر صالحين.", variant: "destructive" });
+                 return;
+            }
+            gameData = {
+                name,
+                branch,
+                status,
+                categoryId,
+                categoryName: category?.name || '',
+                image: initialData?.image || 'https://placehold.co/64x64.png',
+                gameType: 'package',
+                packages: packages.map((p, i) => ({ ...p, id: `pkg-${i}` })),
+            }
+        }
         
-        const gameData: Omit<Game, 'id'> = {
-            name,
-            branch,
-            status,
-            categoryId,
-            categoryName: category?.name || '',
-            image: initialData?.image || 'https://placehold.co/64x64.png',
-            hourly_rate: parseFloat(hourlyRate),
-        };
 
         const finalData = isEditMode && initialData ? { ...gameData, id: initialData.id } : gameData;
 
@@ -210,11 +257,6 @@ export default function GameFormDialog({
                             </PopoverContent>
                         </Popover>
                     </div>
-
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="hourly_rate" className="text-right">السعر/ساعة</Label>
-                        <Input id="hourly_rate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
-                    </div>
                     
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="status" className="text-right">الحالة</Label>
@@ -226,6 +268,69 @@ export default function GameFormDialog({
                             </SelectContent>
                         </Select>
                     </div>
+
+                    <div className="grid grid-cols-1 items-center gap-4 border-t pt-4 mt-2">
+                        <Label>نموذج التسعير</Label>
+                        <RadioGroup
+                            value={gameType}
+                            onValueChange={(value: 'hourly' | 'package') => setGameType(value)}
+                            className="flex gap-4"
+                        >
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="hourly" id="hourly" />
+                                <Label htmlFor="hourly">بالساعة (عداد تصاعدي)</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="package" id="package" />
+                                <Label htmlFor="package">باقة وقت (عداد تنازلي)</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    
+                    {gameType === 'hourly' && (
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="hourly_rate" className="text-right">السعر/ساعة</Label>
+                            <Input id="hourly_rate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
+                        </div>
+                    )}
+
+                    {gameType === 'package' && (
+                        <div className="col-span-4 space-y-4 pt-4 border-t">
+                            <Label>باقات الوقت المتاحة</Label>
+                             {packages.map((pkg, index) => (
+                                <div key={index} className="grid grid-cols-12 items-end gap-2">
+                                    <div className="col-span-5">
+                                        <Label className="text-xs">المدة (دقائق)</Label>
+                                        <Input
+                                            type="number"
+                                            value={pkg.duration}
+                                            onChange={(e) => handlePackageChange(index, 'duration', e.target.value)}
+                                            placeholder="e.g. 30"
+                                        />
+                                    </div>
+                                    <div className="col-span-5">
+                                        <Label className="text-xs">السعر (ج.م)</Label>
+                                        <Input
+                                            type="number"
+                                            value={pkg.price}
+                                            onChange={(e) => handlePackageChange(index, 'price', e.target.value)}
+                                            placeholder="e.g. 50"
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Button type="button" variant="destructive" size="icon" onClick={() => handleRemovePackage(index)}>
+                                            <Trash className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                            <Button type="button" variant="outline" onClick={handleAddPackage}>
+                                <PlusCircle className="me-2 h-4 w-4" />
+                                إضافة باقة جديدة
+                            </Button>
+                        </div>
+                    )}
+
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button type="button" variant="secondary">إلغاء</Button></DialogClose>
