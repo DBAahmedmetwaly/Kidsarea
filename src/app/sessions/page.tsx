@@ -163,6 +163,7 @@ function SessionsContent() {
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
               <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -194,6 +195,7 @@ function SessionsContent() {
                 {session.children?.map(c => c.name).join(', ') ?? 'N/A'}
                 </TableCell>
                 <TableCell className="text-right">{session.parentName}</TableCell>
+                <TableCell className="text-center">{session.phoneNumber}</TableCell>
                 <TableCell className="text-right">{session.branchName}</TableCell>
                 <TableCell className="text-right">{session.game}</TableCell>
                 <TableCell className="text-center">
@@ -330,6 +332,7 @@ function SessionsContent() {
                     <TableRow>
                         <TableHead className="text-right">اسم الطفل</TableHead>
                         <TableHead className="text-right">ولي الأمر</TableHead>
+                        <TableHead className="text-center">رقم الهاتف</TableHead>
                         <TableHead className="text-right">الفرع</TableHead>
                         <TableHead className="text-right">اللعبة</TableHead>
                         <TableHead className="text-center">مدة اللعب</TableHead>
@@ -361,3 +364,5 @@ export default function SessionsPage() {
         </SidebarProvider>
     );
 }
+
+    
