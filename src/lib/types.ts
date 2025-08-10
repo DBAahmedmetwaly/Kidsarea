@@ -30,15 +30,23 @@ export interface CompletedSession extends Child {
     subscriptionId?: string; // To link to a subscription if applicable
 }
 
+export interface GamePackage {
+    id: string; // e.g., '15-min'
+    duration: number; // in minutes
+    price: number;
+}
+
 export interface Game {
     id: string;
     name: string;
-    hourly_rate: number;
     branch: string;
     image: string;
     status: 'Available' | 'Maintenance';
     categoryId: string;
     categoryName: string;
+    pricingModel: 'hourly' | 'package';
+    hourly_rate?: number; // Optional now
+    packages?: GamePackage[]; // For package-based games
 }
 
 export interface Employee {
