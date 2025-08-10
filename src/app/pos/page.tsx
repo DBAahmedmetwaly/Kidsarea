@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2 } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage, InventoryItem, ProductSale, Product } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage, InventoryItem, ProductSale, Product, ProductCategory } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -606,7 +606,7 @@ function PosTrackingContent() {
   const { toast } = useToast();
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
-  const [selectedTab, setSelectedTab] = useState<string>('');
+  const [selectedGameCategory, setSelectedGameCategory] = useState<string>('');
   
   const [isCheckInDialogOpen, setCheckInDialogOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -631,10 +631,10 @@ function PosTrackingContent() {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
             setSelectedBranchFilter(currentUser.branch);
         }
-        if (gameCategories.length > 0 && !selectedTab) {
-            setSelectedTab(gameCategories[0].id);
+        if (gameCategories.length > 0 && !selectedGameCategory) {
+            setSelectedGameCategory(gameCategories[0].id);
         }
-    }, [currentUser, gameCategories, selectedTab]);
+    }, [currentUser, gameCategories, selectedGameCategory]);
 
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
@@ -656,13 +656,13 @@ function PosTrackingContent() {
 
 
   const gamesForSelectedCategory = useMemo(() => {
-    if (!selectedTab) return [];
+    if (!selectedGameCategory) return [];
     return games.filter(g => 
-        g.categoryId === selectedTab && 
+        g.categoryId === selectedGameCategory && 
         g.status === 'Available' &&
         (selectedBranchFilter === 'all' || g.branch === selectedBranchFilter || g.branch === 'كل الفروع')
     );
-  }, [games, selectedTab, selectedBranchFilter]);
+  }, [games, selectedGameCategory, selectedBranchFilter]);
   
   const branchInventory = useMemo(() => {
       if (selectedBranchFilter === 'all') return [];
@@ -671,14 +671,17 @@ function PosTrackingContent() {
       return inventory.filter(item => item.branchId === branchDetails.id);
   }, [inventory, selectedBranchFilter, branches]);
 
-  const productsForSelectedCategory = useMemo(() => {
-    if (!selectedTab) return [];
-    return branchInventory.filter(p => p.categoryId === selectedTab);
-  }, [branchInventory, selectedTab]);
+  const allProductCategories = useMemo(() => [{id: 'all', name: 'الكل'}, ...productCategories], [productCategories]);
+  const [selectedProductCategory, setSelectedProductCategory] = useState('all');
+
+  const filteredProductsForDisplay = useMemo(() => {
+    if (selectedProductCategory === 'all') return branchInventory;
+    return branchInventory.filter(p => p.categoryId === selectedProductCategory);
+  }, [branchInventory, selectedProductCategory]);
 
   const categoryColor = useMemo(() => {
-      return gameCategories.find(c => c.id === selectedTab)?.color || '#ffffff';
-  }, [gameCategories, selectedTab])
+      return gameCategories.find(c => c.id === selectedGameCategory)?.color || '#ffffff';
+  }, [gameCategories, selectedGameCategory])
 
     const todaysCompletedSessions = useMemo(() => {
         if (!user || !user.username) return [];
@@ -899,14 +902,22 @@ function PosTrackingContent() {
 
 
   const selectedBranchName = selectedBranchFilter === 'all' ? 'كل الفروع' : selectedBranchFilter;
+  const [currentTab, setCurrentTab] = useState(gameCategories[0]?.id || 'products-tab');
 
-  const allProductCategories = useMemo(() => [{id: 'all', name: 'الكل'}, ...productCategories], [productCategories]);
-  const [selectedProductCategory, setSelectedProductCategory] = useState('all');
+  useEffect(() => {
+    if (gameCategories.length > 0 && !selectedGameCategory) {
+      setCurrentTab(gameCategories[0].id);
+      setSelectedGameCategory(gameCategories[0].id);
+    }
+  }, [gameCategories, selectedGameCategory]);
 
-  const filteredProductsForDisplay = useMemo(() => {
-    if (selectedProductCategory === 'all') return productsForSelectedCategory;
-    return productsForSelectedCategory.filter(p => p.categoryId === selectedProductCategory);
-  }, [productsForSelectedCategory, selectedProductCategory]);
+  const handleTabChange = (value: string) => {
+    setCurrentTab(value);
+    if(value !== 'products-tab') {
+        setSelectedGameCategory(value);
+    }
+  }
+
 
   return (
     <div className="relative h-full grid lg:grid-cols-3 gap-4">
@@ -983,7 +994,7 @@ function PosTrackingContent() {
             
                 <div className="space-y-4 z-10">
                     {/* Games Section */}
-                    <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+                    <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
                         <TabsList className="flex flex-wrap h-auto">
                         {gameCategories.map(category => (
                             <TabsTrigger 
@@ -991,8 +1002,8 @@ function PosTrackingContent() {
                                 value={category.id} 
                                 className="transition-all"
                                 style={{
-                                    backgroundColor: selectedTab === category.id ? category.color : '',
-                                    color: selectedTab === category.id ? 'white' : '',
+                                    backgroundColor: selectedGameCategory === category.id ? category.color : '',
+                                    color: selectedGameCategory === category.id ? 'white' : '',
                                     borderColor: category.color
                                 }}
                             >
