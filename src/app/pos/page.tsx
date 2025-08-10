@@ -1060,16 +1060,15 @@ function PosTrackingContent() {
                                         </Select>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
+                                <CardContent className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 xl:grid-cols-10 gap-2 pt-6">
                                     {filteredProductsForDisplay.map(item => (
                                         <button 
                                             key={item.id} 
                                             onClick={() => handleAddToCart(item)}
                                             disabled={!hasActiveShift || item.quantity <= 0}
-                                            className="aspect-square border rounded-lg flex flex-col items-center justify-center p-2 gap-1 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none relative"
+                                            className="aspect-w-1 aspect-h-1 border rounded-lg flex flex-col items-center justify-center p-2 gap-1 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none relative"
                                         >
                                             {item.quantity <= 0 && <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center text-white font-bold">نفدت</div>}
-                                            <Image src={item.productImage} alt={item.productName} width={48} height={48} className="rounded-md" data-ai-hint="product image" />
                                             <p className="font-semibold text-sm">{item.productName}</p>
                                             <p className="text-xs text-primary font-bold">{`ج.م ${item.price.toFixed(2)}`}</p>
                                         </button>
@@ -1291,3 +1290,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
