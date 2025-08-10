@@ -6,7 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirebase } from '@/context/FirebaseContext';
-import { useAuth } from '@/context/AuthProvider';
+import { useAuth } from '@/components/AuthProvider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

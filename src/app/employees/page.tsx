@@ -205,7 +205,6 @@ function EmployeesContent() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => openEditDialog(employee)}>تعديل</DropdownMenuItem>
-                        <DropdownMenuItem>عرض الملف الشخصي</DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteEmployee(employee.id)}>
                           حذف
                         </DropdownMenuItem>
