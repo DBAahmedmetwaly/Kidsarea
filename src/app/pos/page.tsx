@@ -21,10 +21,10 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage, Product } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -598,12 +598,12 @@ function CheckInDialog({
 
 
 function PosTrackingContent() {
-  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies, openShifts, employees, branches, gameCategories, loading: firebaseLoading } = useFirebase();
+  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies, openShifts, employees, branches, gameCategories, products, productCategories, loading: firebaseLoading } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedTab, setSelectedTab] = useState<string>('');
   
   const [isCheckInDialogOpen, setCheckInDialogOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -623,10 +623,10 @@ function PosTrackingContent() {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
             setSelectedBranchFilter(currentUser.branch);
         }
-        if (gameCategories.length > 0 && !selectedCategory) {
-            setSelectedCategory(gameCategories[0].id);
+        if (gameCategories.length > 0 && !selectedTab) {
+            setSelectedTab(gameCategories[0].id);
         }
-    }, [currentUser, gameCategories, selectedCategory]);
+    }, [currentUser, gameCategories, selectedTab]);
 
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
@@ -648,17 +648,22 @@ function PosTrackingContent() {
 
 
   const gamesForSelectedCategory = useMemo(() => {
-    if (!selectedCategory) return [];
+    if (!selectedTab) return [];
     return games.filter(g => 
-        g.categoryId === selectedCategory && 
+        g.categoryId === selectedTab && 
         g.status === 'Available' &&
         (selectedBranchFilter === 'all' || g.branch === selectedBranchFilter || g.branch === 'كل الفروع')
     );
-  }, [games, selectedCategory, selectedBranchFilter]);
+  }, [games, selectedTab, selectedBranchFilter]);
+  
+  const productsForSelectedCategory = useMemo(() => {
+    if (!selectedTab) return [];
+    return products.filter(p => p.categoryId === selectedTab);
+  }, [products, selectedTab]);
 
   const categoryColor = useMemo(() => {
-      return gameCategories.find(c => c.id === selectedCategory)?.color || '#ffffff';
-  }, [gameCategories, selectedCategory])
+      return gameCategories.find(c => c.id === selectedTab)?.color || '#ffffff';
+  }, [gameCategories, selectedTab])
 
     const todaysCompletedSessions = useMemo(() => {
         if (!user || !user.username) return [];
@@ -798,6 +803,14 @@ function PosTrackingContent() {
   
   const selectedBranchName = selectedBranchFilter === 'all' ? 'كل الفروع' : selectedBranchFilter;
 
+  const allProductCategories = useMemo(() => [{id: 'all', name: 'الكل'}, ...productCategories], [productCategories]);
+  const [selectedProductCategory, setSelectedProductCategory] = useState('all');
+
+  const filteredProducts = useMemo(() => {
+    if (selectedProductCategory === 'all') return products;
+    return products.filter(p => p.categoryId === selectedProductCategory);
+  }, [products, selectedProductCategory]);
+
   return (
     <div className="relative h-full">
         {/* Overlay for no active shift */}
@@ -871,7 +884,7 @@ function PosTrackingContent() {
           
             <div className="space-y-4 z-10">
                 {/* Games Section */}
-                <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+                <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
                     <TabsList className="flex flex-wrap h-auto">
                     {gameCategories.map(category => (
                         <TabsTrigger 
@@ -879,36 +892,85 @@ function PosTrackingContent() {
                             value={category.id} 
                             className="transition-all"
                             style={{
-                                backgroundColor: selectedCategory === category.id ? category.color : '',
-                                color: selectedCategory === category.id ? 'white' : '',
+                                backgroundColor: selectedTab === category.id ? category.color : '',
+                                color: selectedTab === category.id ? 'white' : '',
                                 borderColor: category.color
                             }}
                         >
                             {category.name}
                         </TabsTrigger>
                     ))}
+                    <TabsTrigger value="products-tab" className="transition-all">
+                        <ShoppingCart className="me-2 h-4 w-4" />
+                        المنتجات
+                    </TabsTrigger>
                     </TabsList>
-                     <Card className="min-h-[150px] mt-4">
-                        <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
-                            {gamesForSelectedCategory.map(game => (
-                                <button 
-                                    key={game.id} 
-                                    onClick={() => openCheckInDialog(game)} 
-                                    disabled={!hasActiveShift}
-                                    className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                                    style={{ backgroundColor: `${categoryColor}33` }} // 33 for ~20% opacity
-                                >
-                                    <p className="font-semibold text-sm">{game.name}</p>
-                                    <p className="text-xs text-muted-foreground">{game.gameType === 'hourly' ? `ج.م ${game.hourly_rate}/ساعة` : 'باقات وقت'}</p>
-                                </button>
-                            ))}
-                            {gamesForSelectedCategory.length === 0 && (
-                                <div className="col-span-full text-center text-muted-foreground py-16">
-                                    لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                    
+                    {/* Game Categories Content */}
+                    {gameCategories.map(category => (
+                         <TabsContent key={category.id} value={category.id}>
+                            <Card className="min-h-[150px] mt-4">
+                                <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
+                                    {gamesForSelectedCategory.map(game => (
+                                        <button 
+                                            key={game.id} 
+                                            onClick={() => openCheckInDialog(game)} 
+                                            disabled={!hasActiveShift}
+                                            className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                            style={{ backgroundColor: `${categoryColor}33` }} // 33 for ~20% opacity
+                                        >
+                                            <p className="font-semibold text-sm">{game.name}</p>
+                                            <p className="text-xs text-muted-foreground">{game.gameType === 'hourly' ? `ج.م ${game.hourly_rate}/ساعة` : 'باقات وقت'}</p>
+                                        </button>
+                                    ))}
+                                    {gamesForSelectedCategory.length === 0 && (
+                                        <div className="col-span-full text-center text-muted-foreground py-16">
+                                            لا توجد ألعاب متاحة في هذا التصنيف لهذا الفرع.
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                         </TabsContent>
+                    ))}
+
+                    {/* Products Content */}
+                    <TabsContent value="products-tab">
+                        <Card className="min-h-[150px] mt-4">
+                             <CardHeader>
+                                 <div className="w-full md:w-1/3">
+                                      <Select value={selectedProductCategory} onValueChange={setSelectedProductCategory}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="اختر فئة المنتج" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {allProductCategories.map(cat => (
+                                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                 </div>
+                             </CardHeader>
+                            <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
+                                {filteredProducts.map(product => (
+                                    <button 
+                                        key={product.id} 
+                                        onClick={() => { /* TODO: Implement product selling logic */ }} 
+                                        disabled={!hasActiveShift}
+                                        className="aspect-square border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                    >
+                                        <Image src={product.image} alt={product.name} width={48} height={48} className="rounded-md" data-ai-hint="product image" />
+                                        <p className="font-semibold text-sm">{product.name}</p>
+                                        {/* TODO: Add price from inventory */}
+                                    </button>
+                                ))}
+                                {filteredProducts.length === 0 && (
+                                     <div className="col-span-full text-center text-muted-foreground py-16">
+                                        لا توجد منتجات في هذه الفئة.
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
                 </Tabs>
 
                 {/* Active Children Section */}
