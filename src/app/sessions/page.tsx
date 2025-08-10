@@ -31,9 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { History, Calendar as CalendarIcon, FilterX, Printer, Star } from 'lucide-react';
+import { History, Calendar as CalendarIcon, FilterX, Printer, Star, Loader2 } from 'lucide-react';
 import { useFirebase } from '@/context/FirebaseContext';
 import type { CompletedSession } from '@/lib/types';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -57,7 +58,7 @@ function formatDuration(durationMs: number) {
 
 function SessionsContent() {
   const { branches, employees, policies, receiptSettings } = useFirebase();
-  const { completedSessions, setCompletedSessions } = useSession();
+  const { completedSessions: allCompletedSessions, setCompletedSessions } = useSession();
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { printReceipt } = usePosPrint();
@@ -70,9 +71,10 @@ function SessionsContent() {
 
   // Filters
   const [selectedBranch, setSelectedBranch] = useState('all');
+  const [phoneFilter, setPhoneFilter] = useState('');
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
-
+  const [visibleCount, setVisibleCount] = useState(20);
 
   useEffect(() => {
     if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -96,11 +98,16 @@ function SessionsContent() {
 
 
   const filteredSessions = useMemo(() => {
-    let sessions = [...completedSessions];
+    let sessions = [...allCompletedSessions];
     
     if (selectedBranch !== 'all') {
       sessions = sessions.filter(s => s.branchName === selectedBranch);
     }
+
+    if(phoneFilter) {
+        sessions = sessions.filter(s => s.phoneNumber && s.phoneNumber.includes(phoneFilter));
+    }
+
     if (fromDate && toDate) {
         const range = { start: startOfDay(fromDate), end: endOfDay(toDate) };
         sessions = sessions.filter(s => {
@@ -110,7 +117,15 @@ function SessionsContent() {
     }
 
     return sessions;
-  }, [completedSessions, selectedBranch, fromDate, toDate]);
+  }, [allCompletedSessions, selectedBranch, phoneFilter, fromDate, toDate]);
+  
+  const visibleSessions = useMemo(() => {
+    return filteredSessions.slice(0, visibleCount);
+  }, [filteredSessions, visibleCount]);
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 20);
+  }
   
   const clearFilters = () => {
     if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -118,6 +133,7 @@ function SessionsContent() {
     } else {
         setSelectedBranch('all');
     }
+    setPhoneFilter('');
     setFromDate(undefined);
     setToDate(undefined);
   }
@@ -152,29 +168,20 @@ function SessionsContent() {
     if (loading) {
       return (
         <TableBody>
-          {[...Array(8)].map((_, i) => (
-            <TableRow key={i}>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-              <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-            </TableRow>
-          ))}
+          <TableRow>
+            <TableCell colSpan={11} className="h-24 text-center">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+            </TableCell>
+          </TableRow>
         </TableBody>
       );
     }
 
-    if (filteredSessions.length === 0) {
+    if (visibleSessions.length === 0) {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={10} className="h-24 text-center">
+            <TableCell colSpan={11} className="h-24 text-center">
               لا توجد جلسات مطابقة للبحث.
             </TableCell>
           </TableRow>
@@ -184,7 +191,7 @@ function SessionsContent() {
 
     return (
       <TableBody>
-        {filteredSessions.map((session) => {
+        {visibleSessions.map((session) => {
             const costBeforeDiscount = session.costBeforeDiscount > 0
                 ? session.costBeforeDiscount
                 : session.cost + (session.discount || 0);
@@ -253,7 +260,7 @@ function SessionsContent() {
                 </Button>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
                         <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
@@ -267,6 +274,15 @@ function SessionsContent() {
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                         <label className="text-sm font-medium">رقم الهاتف</label>
+                         <Input 
+                            placeholder="ابحث برقم الهاتف..."
+                            value={phoneFilter}
+                            onChange={(e) => setPhoneFilter(e.target.value)}
+                         />
                     </div>
 
                     <div className="space-y-2">
@@ -345,6 +361,13 @@ function SessionsContent() {
                     </TableHeader>
                     {renderContent()}
                 </Table>
+                {filteredSessions.length > visibleCount && (
+                    <div className="mt-4 text-center">
+                        <Button onClick={handleLoadMore}>
+                            تحميل المزيد
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     </div>

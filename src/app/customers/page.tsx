@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { MoreHorizontal, PlusCircle, Trash, Edit, Calendar as CalendarIcon } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash, Edit, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { ref, set, remove, update, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCustomers } from '@/context/CustomerContext';
@@ -240,12 +240,13 @@ export function CustomerFormDialog({
 }
 
 function CustomersContent() {
-    const { customers } = useCustomers();
+    const { customers, loading: customersLoading } = useCustomers();
     const { toast } = useToast();
     const [isFormOpen, setFormOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [filter, setFilter] = useState('');
+    const [visibleCount, setVisibleCount] = useState(20);
 
     const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
         try {
@@ -319,6 +320,14 @@ function CustomersContent() {
         );
     }, [customers, filter]);
 
+    const visibleCustomers = useMemo(() => {
+        return filteredCustomers.slice(0, visibleCount);
+    }, [filteredCustomers, visibleCount]);
+
+    const handleLoadMore = () => {
+        setVisibleCount(prev => prev + 20);
+    }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
@@ -354,7 +363,13 @@ function CustomersContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCustomers.map((customer) => (
+              {customersLoading ? (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                    </TableCell>
+                </TableRow>
+              ) : visibleCustomers.map((customer) => (
                 <TableRow key={customer.id}>
                   <TableCell className="font-medium text-right">
                      <Link href={`/customers/${customer.id}`} className="hover:underline text-primary">
@@ -394,6 +409,13 @@ function CustomersContent() {
               ))}
             </TableBody>
           </Table>
+           {filteredCustomers.length > visibleCount && (
+            <div className="mt-4 text-center">
+                <Button onClick={handleLoadMore}>
+                    تحميل المزيد
+                </Button>
+            </div>
+           )}
         </CardContent>
       </Card>
       <CustomerFormDialog 
