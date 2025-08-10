@@ -175,9 +175,9 @@ export function CustomerFormDialog({
                 </DialogHeader>
                 <form onSubmit={handleSubmit(handleFormSubmit)}>
                 <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-2">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="parentName" className="text-right">اسم ولي الأمر</Label>
-                        <Input id="parentName" {...register("parentName", { required: true })} className="col-span-3" />
+                    <div className="col-span-4">
+                        <Label htmlFor="parentName">اسم ولي الأمر</Label>
+                        <Input id="parentName" {...register("parentName", { required: true })} className="w-full text-base" />
                     </div>
                     
                     <h3 className="text-md font-medium mt-4 col-span-4">أرقام الهواتف</h3>
