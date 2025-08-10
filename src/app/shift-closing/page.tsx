@@ -403,12 +403,24 @@ function ActiveShiftsTable() {
 }
 
 function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
-    const { safes } = useFirebase();
-    const { toast } = useToast();
+    const { safes, employees } = useFirebase();
     const { user } = useAuth();
+    const { toast } = useToast();
     const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
     const [selectedSafeId, setSelectedSafeId] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    
+    const currentUser = useMemo(() => {
+        if (!user) return null;
+        return employees.find(e => e.username === user.username);
+    }, [user, employees]);
+    
+    const filteredSafes = useMemo(() => {
+        if (!currentUser || currentUser.branch === 'كل الفروع') {
+            return safes;
+        }
+        return safes.filter(s => s.branchName === currentUser.branch);
+    }, [safes, currentUser]);
 
     const shiftsToSettle = useMemo(() => {
         return closedShifts.filter(s => selectedShiftIds.includes(s.id));
@@ -541,7 +553,7 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
                                     <SelectValue placeholder="اختر خزينة للإيداع..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {safes.map(safe => (
+                                    {filteredSafes.map(safe => (
                                         <SelectItem key={safe.id} value={safe.id}>{safe.name} ({safe.branchName})</SelectItem>
                                     ))}
                                 </SelectContent>

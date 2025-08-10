@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { MoreHorizontal, PlusCircle, Landmark } from 'lucide-react';
 import { ref, push, set, onValue, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
@@ -40,15 +40,30 @@ import type { Safe } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/components/AuthProvider';
 
 const AddSafeDialog = dynamic(() => import('./_components/AddSafeDialog'), {
     loading: () => <Skeleton className="w-full h-96" />,
 });
 
 function SafesContent() {
-    const { safes } = useFirebase();
+    const { safes, employees } = useFirebase();
+    const { user } = useAuth();
     const { toast } = useToast();
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+    
+    const currentUser = useMemo(() => {
+        if (!user) return null;
+        return employees.find(e => e.username === user.username);
+    }, [user, employees]);
+
+    const filteredSafes = useMemo(() => {
+        if (!currentUser || currentUser.branch === 'كل الفروع') {
+            return safes;
+        }
+        return safes.filter(s => s.branchName === currentUser.branch);
+    }, [safes, currentUser]);
+
 
     const handleAddSafe = async (newSafe: Omit<Safe, 'id'>) => {
         try {
@@ -118,7 +133,7 @@ function SafesContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {safes.map((safe) => (
+              {filteredSafes.map((safe) => (
                 <TableRow key={safe.id}>
                   <TableCell className="font-medium text-right">
                      <Link href={`/safes/${safe.id}`} className="hover:underline text-primary">
