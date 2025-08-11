@@ -606,7 +606,6 @@ function PosTrackingContent() {
   const { toast } = useToast();
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
-  const [selectedGameCategory, setSelectedGameCategory] = useState<string>('');
   
   const [isCheckInDialogOpen, setCheckInDialogOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -631,10 +630,7 @@ function PosTrackingContent() {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
             setSelectedBranchFilter(currentUser.branch);
         }
-        if (gameCategories.length > 0 && !selectedGameCategory) {
-            setSelectedGameCategory(gameCategories[0].id);
-        }
-    }, [currentUser, gameCategories, selectedGameCategory]);
+    }, [currentUser]);
 
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
@@ -655,16 +651,6 @@ function PosTrackingContent() {
     );
   }, [activeChildren, activeSearch]);
 
-
-  const gamesForSelectedCategory = useMemo(() => {
-    if (!selectedGameCategory) return [];
-    return games.filter(g => 
-        g.categoryId === selectedGameCategory && 
-        g.status === 'Available' &&
-        (selectedBranchFilter === 'all' || g.branch === selectedBranchFilter || g.branch === 'كل الفروع')
-    );
-  }, [games, selectedGameCategory, selectedBranchFilter]);
-  
   const branchInventory = useMemo(() => {
       if (selectedBranchFilter === 'all') return [];
       const branchDetails = branches.find(b => b.name === selectedBranchFilter);
@@ -683,10 +669,6 @@ function PosTrackingContent() {
         return categoryMatch && searchMatch;
     });
   }, [branchInventory, selectedProductCategory, productSearch]);
-
-  const categoryColor = useMemo(() => {
-      return gameCategories.find(c => c.id === selectedGameCategory)?.color || '#ffffff';
-  }, [gameCategories, selectedGameCategory])
 
     const todaysCompletedSessions = useMemo(() => {
         if (!user || !user.username) return [];
@@ -872,9 +854,11 @@ function PosTrackingContent() {
   const handleConfirmSale = async () => {
     if (!user?.username || !currentUser) return;
 
+    const itemsToSave = cart.map(({ quantity, ...item}) => item);
+
     const saleRecord: ProductSale = {
         id: push(ref(db, 'productSales')).key!,
-        items: cart,
+        items: itemsToSave,
         totalAmount: cartTotal,
         branchName: currentUser.branch,
         cashierUsername: user.username,
@@ -907,21 +891,42 @@ function PosTrackingContent() {
 
 
   const selectedBranchName = selectedBranchFilter === 'all' ? 'كل الفروع' : selectedBranchFilter;
-  const [currentTab, setCurrentTab] = useState(gameCategories[0]?.id || 'products-tab');
+  const [currentTab, setCurrentTab] = useState('products-tab');
 
-  useEffect(() => {
-    if (gameCategories.length > 0 && !selectedGameCategory) {
-      setCurrentTab(gameCategories[0].id);
-      setSelectedGameCategory(gameCategories[0].id);
-    }
-  }, [gameCategories, selectedGameCategory]);
+  const gameCategoriesForBranch = useMemo(() => {
+      if (selectedBranchFilter === 'all') {
+          return gameCategories;
+      }
+      const branchGameNames = new Set(games.filter(g => g.branch === selectedBranchFilter || g.branch === 'كل الفروع').map(g => g.name));
+      const branchCategoryIds = new Set(games.filter(g => branchGameNames.has(g.name)).map(g => g.categoryId));
+      return gameCategories.filter(c => branchCategoryIds.has(c.id));
+  }, [gameCategories, games, selectedBranchFilter]);
 
-  const handleTabChange = (value: string) => {
-    setCurrentTab(value);
-    if(value !== 'products-tab') {
-        setSelectedGameCategory(value);
-    }
-  }
+    useEffect(() => {
+        if(currentTab === 'products-tab') return;
+
+        const isCurrentTabVisible = gameCategoriesForBranch.some(c => c.id === currentTab);
+        if(!isCurrentTabVisible && gameCategoriesForBranch.length > 0) {
+            setCurrentTab(gameCategoriesForBranch[0].id);
+        } else if (gameCategoriesForBranch.length === 0) {
+            setCurrentTab('products-tab');
+        }
+  }, [gameCategoriesForBranch, currentTab]);
+
+
+  const gamesForSelectedCategory = useMemo(() => {
+    if (currentTab === 'products-tab') return [];
+    return games.filter(g => 
+        g.categoryId === currentTab && 
+        g.status === 'Available' &&
+        (selectedBranchFilter === 'all' || g.branch === selectedBranchFilter || g.branch === 'كل الفروع')
+    );
+  }, [games, currentTab, selectedBranchFilter]);
+
+
+  const categoryColor = useMemo(() => {
+      return gameCategories.find(c => c.id === currentTab)?.color || '#ffffff';
+  }, [gameCategories, currentTab])
 
 
   return (
@@ -999,16 +1004,16 @@ function PosTrackingContent() {
             
                 <div className="space-y-4 z-10">
                     {/* Games Section */}
-                    <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+                    <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
                         <TabsList className="flex flex-wrap h-auto">
-                        {gameCategories.map(category => (
+                        {gameCategoriesForBranch.map(category => (
                             <TabsTrigger 
                                 key={category.id} 
                                 value={category.id} 
                                 className="transition-all"
                                 style={{
-                                    backgroundColor: selectedGameCategory === category.id ? category.color : '',
-                                    color: selectedGameCategory === category.id ? 'white' : '',
+                                    backgroundColor: currentTab === category.id ? category.color : '',
+                                    color: currentTab === category.id ? 'white' : '',
                                     borderColor: category.color
                                 }}
                             >
@@ -1022,7 +1027,7 @@ function PosTrackingContent() {
                         </TabsList>
                         
                         {/* Game Categories Content */}
-                        {gameCategories.map(category => (
+                         {gameCategoriesForBranch.map(category => (
                             <TabsContent key={category.id} value={category.id}>
                                 <Card className="min-h-[150px] mt-4">
                                     <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-6">
@@ -1047,6 +1052,7 @@ function PosTrackingContent() {
                                 </Card>
                             </TabsContent>
                         ))}
+
 
                         {/* Products Content */}
                         <TabsContent value="products-tab">
@@ -1074,7 +1080,7 @@ function PosTrackingContent() {
                                          </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 xl:grid-cols-10 gap-2 pt-6">
+                                <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 pt-6">
                                     {filteredProductsForDisplay.map(item => (
                                         <button 
                                             key={item.id} 
@@ -1083,7 +1089,7 @@ function PosTrackingContent() {
                                             className="aspect-square border rounded-lg flex flex-col items-center justify-center p-2 gap-1 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none relative"
                                         >
                                             {item.quantity <= 0 && <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center text-white font-bold">نفدت</div>}
-                                            <p className="font-semibold text-sm text-center">{item.productName}</p>
+                                            <p className="font-semibold text-xs text-center">{item.productName}</p>
                                             <p className="text-xs text-primary font-bold">{`ج.م ${item.price.toFixed(2)}`}</p>
                                         </button>
                                     ))}
@@ -1256,7 +1262,6 @@ function PosTrackingContent() {
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                             {cart.map(item => (
                                 <div key={item.id} className="flex items-center gap-2">
-                                    <Image src={item.productImage} alt={item.productName} width={40} height={40} className="rounded-md" />
                                     <div className="flex-grow">
                                         <p className="text-sm font-medium">{item.productName}</p>
                                         <p className="text-xs text-muted-foreground">{`ج.م ${item.price.toFixed(2)}`}</p>
@@ -1304,5 +1309,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-

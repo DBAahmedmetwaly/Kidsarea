@@ -48,6 +48,7 @@ import {
   ShoppingCart,
   type LucideIcon,
   Archive,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -87,6 +88,7 @@ const financialItems = [
   { href: '/expenses', label: 'المصروفات والصيانة', icon: Wrench },
   { href: '/transactions', label: 'سجل الحركات المالية', icon: List },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
+  { href: '/product-sales', label: 'تقرير مبيعات المنتجات', icon: Receipt },
 ];
 
 const customerItems = [
