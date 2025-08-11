@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -131,7 +130,7 @@ function ProductSalesContent() {
                     </div>
                      <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
-                        <Select value={branchFilter} onValueChange={setBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
+                        <Select value={branchFilter} onValueChange={setBranchFilter}>
                             <SelectTrigger>
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>
@@ -249,4 +248,3 @@ export default function ProductSalesPage() {
         </SidebarProvider>
     );
 }
-
