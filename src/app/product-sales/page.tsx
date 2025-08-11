@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useAuth } from '@/components/AuthProvider';
-import { format, startOfDay, endOfDay, isSameDay } from 'date-fns';
+import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
 import AppSidebar from '@/components/layout/AppSidebar';
@@ -50,7 +50,8 @@ function ProductSalesContent() {
 
     const [productFilter, setProductFilter] = useState('');
     const [branchFilter, setBranchFilter] = useState('all');
-    const [dateFilter, setDateFilter] = useState<Date | undefined>(new Date());
+    const [fromDate, setFromDate] = useState<Date | undefined>();
+    const [toDate, setToDate] = useState<Date | undefined>();
 
     const currentUser = useMemo(() => {
         if (!user) return null;
@@ -75,10 +76,12 @@ function ProductSalesContent() {
         return flattenedSales.filter(item => {
             const productMatch = productFilter === '' || item.productName.toLowerCase().includes(productFilter.toLowerCase());
             const branchMatch = branchFilter === 'all' || item.branchName === branchFilter;
-            const dateMatch = !dateFilter || isSameDay(new Date(item.createdAt), dateFilter);
+            const dateMatch = fromDate && toDate 
+                ? isWithinInterval(new Date(item.createdAt), { start: startOfDay(fromDate), end: endOfDay(toDate) })
+                : true;
             return productMatch && branchMatch && dateMatch;
         });
-    }, [flattenedSales, productFilter, branchFilter, dateFilter]);
+    }, [flattenedSales, productFilter, branchFilter, fromDate, toDate]);
     
     const summaryStats = useMemo(() => {
         const totalRevenue = filteredSales.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
@@ -88,13 +91,10 @@ function ProductSalesContent() {
     }, [filteredSales]);
     
      const clearFilters = () => {
-        if (currentUser && currentUser.branch !== 'كل الفروع') {
-            // Don't clear branch if it's locked
-        } else {
-            setBranchFilter('all');
-        }
+        setBranchFilter('all');
         setProductFilter('');
-        setDateFilter(new Date());
+        setFromDate(undefined);
+        setToDate(undefined);
     }
 
   return (
@@ -119,7 +119,7 @@ function ProductSalesContent() {
                 </Button>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">بحث بالصنف</label>
                          <Input 
@@ -143,22 +143,47 @@ function ProductSalesContent() {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">التاريخ</label>
+                        <label className="text-sm font-medium">من تاريخ</label>
                         <Popover>
                             <PopoverTrigger asChild>
                             <Button
                                 variant={"outline"}
-                                className={cn("w-full justify-start text-left font-normal", !dateFilter && "text-muted-foreground")}
+                                className={cn("w-full justify-start text-left font-normal", !fromDate && "text-muted-foreground")}
                             >
                                 <CalendarIcon className="me-2 h-4 w-4" />
-                                {dateFilter ? format(dateFilter, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
+                                {fromDate ? format(fromDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
                             </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                                 mode="single"
-                                selected={dateFilter}
-                                onSelect={setDateFilter}
+                                selected={fromDate}
+                                onSelect={setFromDate}
+                                disabled={(date) => toDate ? date > toDate : false}
+                                initialFocus
+                                locale={ar}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">إلى تاريخ</label>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal", !toDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {toDate ? format(toDate, "PPP", { locale: ar }) : <span>اختر تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={toDate}
+                                onSelect={setToDate}
+                                disabled={(date) => fromDate ? date < fromDate : false}
                                 initialFocus
                                 locale={ar}
                             />
