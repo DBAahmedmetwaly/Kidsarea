@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase, Banknote, ChevronsRight, ChevronsUpDown, Check } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase, Banknote, ChevronsRight, ChevronsUpDown, Check, FilterX, Calendar as CalendarIcon } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +43,9 @@ import { useAuth } from '@/components/AuthProvider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 
 const closeShiftSchema = z.object({
@@ -67,7 +70,6 @@ function ShiftClosingForm() {
   const { toast } = useToast();
   const { employees, openShifts, subscriptions, productSales } = useFirebase();
   const { completedSessions } = useSession();
-  const { user } = useAuth();
   
   const employeesWithShifts = employees.filter(emp => emp.role === 'كاشير' || emp.role === 'مشرف' || emp.role === 'مدير فرع');
   const [openCombobox, setOpenCombobox] = useState(false);
@@ -478,25 +480,46 @@ function ActiveShiftsTable() {
     );
 }
 
-function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
-    const { safes, employees } = useFirebase();
+function DayEndClosing() {
+    const { safes, employees, shiftRecords: allShiftRecords } = useFirebase();
     const { user } = useAuth();
     const { toast } = useToast();
     const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
     const [selectedSafeId, setSelectedSafeId] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    const [branchFilter, setBranchFilter] = useState('all');
     
     const currentUser = useMemo(() => {
         if (!user) return null;
-        return employees.find(e => e.username === user?.username);
+        return employees.find(e => e.username === user.username);
     }, [user, employees]);
+
+    useEffect(() => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            setBranchFilter(currentUser.branch);
+        }
+    }, [currentUser]);
     
     const filteredSafes = useMemo(() => {
-        if (!currentUser || currentUser.branch === 'كل الفروع') {
-            return safes;
+        if (branchFilter === 'all') {
+            if (currentUser?.branch === 'كل الفروع') {
+                return safes;
+            }
+            return safes.filter(s => s.branchName === currentUser?.branch);
         }
-        return safes.filter(s => s.branchName === currentUser.branch);
-    }, [safes, currentUser]);
+        return safes.filter(s => s.branchName === branchFilter);
+    }, [safes, currentUser, branchFilter]);
+
+    const closedShifts = useMemo(() => {
+        const branchFilteredShifts = allShiftRecords.filter(r => r.status === 'Closed');
+        if (branchFilter === 'all') {
+             if (currentUser?.branch === 'كل الفروع') {
+                return branchFilteredShifts;
+            }
+            return branchFilteredShifts.filter(r => r.branchName === currentUser?.branch);
+        }
+        return branchFilteredShifts.filter(r => r.branchName === branchFilter);
+    }, [allShiftRecords, branchFilter, currentUser]);
 
     const shiftsToSettle = useMemo(() => {
         return closedShifts.filter(s => selectedShiftIds.includes(s.id));
@@ -579,6 +602,19 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
+                    <div className='w-full sm:w-1/3'>
+                        <Select value={branchFilter} onValueChange={setBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر الفرع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الفروع</SelectItem>
+                                {currentUser?.branches?.map((b: any) => (
+                                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div className="max-h-60 overflow-y-auto border rounded-md">
                         <Table>
                             <TableHeader>
@@ -615,7 +651,7 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">لا توجد ورديات مغلقة بانتظار الترحيل.</TableCell>
+                                        <TableCell colSpan={4} className="h-24 text-center">لا توجد ورديات مغلقة بانتظار الترحيل لهذا الفرع.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -652,12 +688,101 @@ function DayEndClosing({ closedShifts }: { closedShifts: ShiftRecord[] }) {
 }
 
 
-function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
+function ShiftHistoryTable() {
+    const { shiftRecords: allShiftRecords, branches, employees } = useFirebase();
+    const { user } = useAuth();
+    
+    const [branchFilter, setBranchFilter] = useState('all');
+    const [fromDate, setFromDate] = useState<Date | undefined>();
+    const [toDate, setToDate] = useState<Date | undefined>();
+    
+    const currentUser = useMemo(() => {
+        if (!user) return null;
+        return employees.find(e => e.username === user.username);
+    }, [user, employees]);
+
+    useEffect(() => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            setBranchFilter(currentUser.branch);
+        }
+    }, [currentUser]);
+
+    const filteredRecords = useMemo(() => {
+        return allShiftRecords.filter(record => {
+            const branchMatch = branchFilter === 'all' || record.branchName === branchFilter;
+            const dateMatch = fromDate && toDate 
+                ? isWithinInterval(new Date(record.date), { start: startOfDay(fromDate), end: endOfDay(toDate) })
+                : true;
+            return branchMatch && dateMatch;
+        });
+    }, [allShiftRecords, branchFilter, fromDate, toDate]);
+
+    const clearFilters = () => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            // Don't clear branch filter
+        } else {
+            setBranchFilter('all');
+        }
+        setFromDate(undefined);
+        setToDate(undefined);
+    }
+    
     return (
         <Card>
             <CardHeader>
                 <CardTitle>سجل حركات استلام النقدية</CardTitle>
                 <CardDescription>عرض لجميع ورديات الموظفين التي تم إغلاقها أو ترحيلها.</CardDescription>
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <div className="w-full sm:w-1/4">
+                        <Select value={branchFilter} onValueChange={setBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر الفرع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الفروع</SelectItem>
+                                {branches.map((b: any) => (
+                                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="w-full sm:w-1/4">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal", !fromDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {fromDate ? format(fromDate, "PPP", { locale: ar }) : <span>من تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={fromDate} onSelect={setFromDate} disabled={(date) => toDate ? date > toDate : false} initialFocus locale={ar}/>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                     <div className="w-full sm:w-1/4">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal", !toDate && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="me-2 h-4 w-4" />
+                                {toDate ? format(toDate, "PPP", { locale: ar }) : <span>إلى تاريخ</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={toDate} onSelect={setToDate} disabled={(date) => fromDate ? date < fromDate : false} initialFocus locale={ar}/>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <Button variant="ghost" onClick={clearFilters}>
+                        <FilterX className="me-2 h-4 w-4" />
+                        مسح الفلاتر
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -672,8 +797,8 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {records.length > 0 ? (
-                            records.map((record) => (
+                        {filteredRecords.length > 0 ? (
+                            filteredRecords.map((record) => (
                                 <TableRow key={record.id}>
                                     <TableCell className="text-right">{new Date(record.date).toLocaleString('ar-EG')}</TableCell>
                                     <TableCell className="text-right">{record.cashierName}</TableCell>
@@ -694,8 +819,8 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center">
-                                    لا توجد سجلات لعرضها.
+                                <TableCell colSpan={6} className="text-center h-24">
+                                    لا توجد سجلات لعرضها حسب الفلاتر المحددة.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -708,9 +833,6 @@ function ShiftHistoryTable({ records }: { records: ShiftRecord[] }) {
 
 
 function ShiftManagementContent() {
-    const { shiftRecords } = useFirebase();
-    const closedShifts = useMemo(() => shiftRecords.filter(r => r.status === 'Closed'), [shiftRecords]);
-
 
   return (
     <div className="flex flex-col gap-8">
@@ -731,10 +853,10 @@ function ShiftManagementContent() {
                 <ShiftClosingForm />
             </TabsContent>
             <TabsContent value="settle" className='pt-4'>
-                <DayEndClosing closedShifts={closedShifts} />
+                <DayEndClosing />
             </TabsContent>
         </Tabs>
-        <ShiftHistoryTable records={shiftRecords} />
+        <ShiftHistoryTable />
     </div>
   );
 }
@@ -752,7 +874,3 @@ export default function ShiftManagementPage() {
         </SidebarProvider>
     );
 }
-
-
-
-    
