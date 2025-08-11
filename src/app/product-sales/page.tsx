@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useAuth } from '@/components/AuthProvider';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -58,6 +58,13 @@ function ProductSalesContent() {
         return employees.find(e => e.username === user.username);
     }, [user, employees]);
 
+    useEffect(() => {
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            setBranchFilter(currentUser.branch);
+        }
+    }, [currentUser]);
+
+
     const flattenedSales = useMemo(() => {
         return productSales.flatMap(sale => 
             sale.items.map(item => ({
@@ -91,7 +98,11 @@ function ProductSalesContent() {
     }, [filteredSales]);
     
      const clearFilters = () => {
-        setBranchFilter('all');
+        if (currentUser && currentUser.branch !== 'كل الفروع') {
+            // Don't clear branch filter if user is assigned to a specific branch
+        } else {
+            setBranchFilter('all');
+        }
         setProductFilter('');
         setFromDate(undefined);
         setToDate(undefined);
@@ -130,7 +141,7 @@ function ProductSalesContent() {
                     </div>
                      <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
-                        <Select value={branchFilter} onValueChange={setBranchFilter}>
+                        <Select value={branchFilter} onValueChange={setBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
                             <SelectTrigger>
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>
