@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase, Banknote, ChevronsRight } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase, Banknote, ChevronsRight, ChevronsUpDown, Check } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +40,10 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { useSession } from '@/context/SessionContext';
 import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession, Subscription, ProductSale } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+
 
 const closeShiftSchema = z.object({
   cashierUsername: z.string().min(1, 'يجب اختيار الموظف'),
@@ -290,6 +294,7 @@ function ShiftClosingForm() {
 function OpenShiftForm() {
     const { toast } = useToast();
     const { employees, openShifts } = useFirebase();
+    const [openCombobox, setOpenCombobox] = useState(false);
     const employeesWithShifts = employees.filter(e => e.role === 'كاشير' || e.role === 'مشرف' || e.role === 'مدير فرع');
 
     const form = useForm<OpenShiftFormValues>({
@@ -340,30 +345,67 @@ function OpenShiftForm() {
             <CardContent>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                         <FormField
+                        <FormField
                             control={form.control}
                             name="cashierUsername"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                 <FormLabel>اختر الموظف</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                                    <PopoverTrigger asChild>
                                     <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="اختر موظف لبدء ورديته..." />
-                                    </SelectTrigger>
+                                        <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn(
+                                            "w-full justify-between",
+                                            !field.value && "text-muted-foreground"
+                                        )}
+                                        >
+                                        {field.value
+                                            ? availableEmployees.find(
+                                                (employee) => employee.username === field.value
+                                            )?.name
+                                            : "اختر موظف لبدء ورديته..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
                                     </FormControl>
-                                    <SelectContent>
-                                    {availableEmployees.map(employee => (
-                                        <SelectItem key={employee.id} value={employee.username!}>
-                                            {employee.name} ({employee.role})
-                                        </SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="ابحث عن موظف..." />
+                                        <CommandList>
+                                        <CommandEmpty>لا يوجد موظفين متاحين.</CommandEmpty>
+                                        <CommandGroup>
+                                            {availableEmployees.map((employee) => (
+                                            <CommandItem
+                                                value={employee.name}
+                                                key={employee.id}
+                                                onSelect={() => {
+                                                form.setValue("cashierUsername", employee.username!);
+                                                setOpenCombobox(false);
+                                                }}
+                                            >
+                                                <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    employee.username === field.value
+                                                    ? "opacity-100"
+                                                    : "opacity-0"
+                                                )}
+                                                />
+                                                {employee.name}
+                                            </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                    </PopoverContent>
+                                </Popover>
                                 <FormMessage />
                                 </FormItem>
                             )}
-                            />
+                        />
                         <Button type="submit" className="w-full" disabled={availableEmployees.length === 0}>
                            <PlayCircle className="me-2 h-4 w-4" />
                            بدء الوردية
