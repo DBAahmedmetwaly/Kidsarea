@@ -70,7 +70,7 @@ function ShiftClosingForm() {
   const { user } = useAuth();
   
   const employeesWithShifts = employees.filter(emp => emp.role === 'كاشير' || emp.role === 'مشرف' || emp.role === 'مدير فرع');
-
+  const [openCombobox, setOpenCombobox] = useState(false);
 
   const form = useForm<CloseShiftFormValues>({
     resolver: zodResolver(closeShiftSchema),
@@ -178,22 +178,47 @@ function ShiftClosingForm() {
                         control={form.control}
                         name="cashierUsername"
                         render={({ field }) => (
-                            <FormItem>
+                            <FormItem className="flex flex-col">
                             <FormLabel>اختر الموظف</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="اختر من الموظفين المتاحين..." />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {openShifts.map(shift => (
-                                    <SelectItem key={shift.id} value={shift.cashierUsername}>
-                                        {shift.cashierName}
-                                    </SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
+                             <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
+                                    >
+                                        {field.value
+                                        ? openShifts.find((shift) => shift.cashierUsername === field.value)?.cashierName
+                                        : "اختر موظف لإغلاق ورديته..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                    <CommandInput placeholder="ابحث عن موظف..." />
+                                    <CommandList>
+                                        <CommandEmpty>لا يوجد موظفين لديهم ورديات مفتوحة.</CommandEmpty>
+                                        <CommandGroup>
+                                        {openShifts.map((shift) => (
+                                            <CommandItem
+                                            value={shift.cashierName}
+                                            key={shift.id}
+                                            onSelect={() => {
+                                                form.setValue("cashierUsername", shift.cashierUsername);
+                                                setOpenCombobox(false);
+                                            }}
+                                            >
+                                            <Check className={cn("mr-2 h-4 w-4", shift.cashierUsername === field.value ? "opacity-100" : "opacity-0")}/>
+                                            {shift.cashierName}
+                                            </CommandItem>
+                                        ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                             <FormMessage />
                             </FormItem>
                         )}
