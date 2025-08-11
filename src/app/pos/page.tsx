@@ -650,7 +650,8 @@ function PosTrackingContent() {
     if (!activeSearch) return activeChildren;
     return activeChildren.filter(child => 
         child.parentName.toLowerCase().includes(activeSearch.toLowerCase()) ||
-        child.children.some(c => c.name.toLowerCase().includes(activeSearch.toLowerCase()))
+        child.children.some(c => c.name.toLowerCase().includes(activeSearch.toLowerCase())) ||
+        (child.phoneNumbers || []).some(p => p.includes(activeSearch))
     );
   }, [activeChildren, activeSearch]);
 
@@ -673,11 +674,15 @@ function PosTrackingContent() {
 
   const allProductCategories = useMemo(() => [{id: 'all', name: 'الكل'}, ...productCategories], [productCategories]);
   const [selectedProductCategory, setSelectedProductCategory] = useState('all');
+  const [productSearch, setProductSearch] = useState('');
 
   const filteredProductsForDisplay = useMemo(() => {
-    if (selectedProductCategory === 'all') return branchInventory;
-    return branchInventory.filter(p => p.categoryId === selectedProductCategory);
-  }, [branchInventory, selectedProductCategory]);
+    return branchInventory.filter(item => {
+        const categoryMatch = selectedProductCategory === 'all' || item.categoryId === selectedProductCategory;
+        const searchMatch = productSearch === '' || item.productName.toLowerCase().includes(productSearch.toLowerCase());
+        return categoryMatch && searchMatch;
+    });
+  }, [branchInventory, selectedProductCategory, productSearch]);
 
   const categoryColor = useMemo(() => {
       return gameCategories.find(c => c.id === selectedGameCategory)?.color || '#ffffff';
@@ -1047,17 +1052,26 @@ function PosTrackingContent() {
                         <TabsContent value="products-tab">
                             <Card className="min-h-[150px] mt-4">
                                 <CardHeader>
-                                    <div className="w-full md:w-1/3">
-                                        <Select value={selectedProductCategory} onValueChange={setSelectedProductCategory}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="اختر فئة المنتج" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {allProductCategories.map(cat => (
-                                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                    <div className="flex flex-col md:flex-row gap-4">
+                                        <div className="w-full md:w-1/3">
+                                            <Select value={selectedProductCategory} onValueChange={setSelectedProductCategory}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="اختر فئة المنتج" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {allProductCategories.map(cat => (
+                                                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="w-full md:w-1/3">
+                                            <Input 
+                                                placeholder="ابحث عن منتج بالاسم..."
+                                                value={productSearch}
+                                                onChange={(e) => setProductSearch(e.target.value)}
+                                            />
+                                         </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 xl:grid-cols-10 gap-2 pt-6">
@@ -1066,16 +1080,16 @@ function PosTrackingContent() {
                                             key={item.id} 
                                             onClick={() => handleAddToCart(item)}
                                             disabled={!hasActiveShift || item.quantity <= 0}
-                                            className="aspect-w-1 aspect-h-1 border rounded-lg flex flex-col items-center justify-center p-2 gap-1 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none relative"
+                                            className="aspect-square border rounded-lg flex flex-col items-center justify-center p-2 gap-1 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none relative"
                                         >
                                             {item.quantity <= 0 && <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center text-white font-bold">نفدت</div>}
-                                            <p className="font-semibold text-sm">{item.productName}</p>
+                                            <p className="font-semibold text-sm text-center">{item.productName}</p>
                                             <p className="text-xs text-primary font-bold">{`ج.م ${item.price.toFixed(2)}`}</p>
                                         </button>
                                     ))}
                                     {filteredProductsForDisplay.length === 0 && (
                                         <div className="col-span-full text-center text-muted-foreground py-16">
-                                            لا توجد منتجات في هذه الفئة.
+                                            لا توجد منتجات تطابق بحثك.
                                         </div>
                                     )}
                                 </CardContent>
@@ -1093,7 +1107,7 @@ function PosTrackingContent() {
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input 
-                                    placeholder="ابحث بالطفل أو ولي الأمر..."
+                                    placeholder="ابحث بالطفل أو ولي الأمر أو الرقم..."
                                     value={activeSearch}
                                     onChange={(e) => setActiveSearch(e.target.value)}
                                     className="w-full pl-8"
@@ -1290,4 +1304,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
