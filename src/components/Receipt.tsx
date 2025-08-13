@@ -29,8 +29,8 @@ export interface PosReceiptProps {
 const ReceiptRow = ({ label, value, valueClass = '', show }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string, show?: boolean }) => {
     if (show === false) return null;
     return (
-        <div className="flex justify-between items-start text-xs py-1">
-            <span className="font-semibold flex items-center gap-1">{label}</span>
+        <div className="grid grid-cols-2 items-start text-xs py-1">
+            <span className="font-semibold flex items-center gap-1 justify-start">{label}</span>
             <span className={cn("font-bold text-left break-all", valueClass)}>{value}</span>
         </div>
     );
