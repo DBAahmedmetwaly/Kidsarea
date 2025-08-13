@@ -179,15 +179,45 @@ function CheckOutDialog({
   const checkoutData = useMemo(() => {
     if (!child) return null;
     
-    const durationMs = Date.now() - child.checkInTime;
     let finalTotalCost: number;
     let finalDurationCost: number = 0;
     let finalEntryFee: number = 0;
     let costBeforeDiscount: number;
+    let overtimeCost = 0;
+
+    const durationMs = Date.now() - child.checkInTime;
 
     if (isPackageGame) {
-        finalTotalCost = child.packagePrice || 0;
-        costBeforeDiscount = child.packagePrice || 0;
+        let packageBasePrice = child.packagePrice || 0;
+        
+        // Calculate overtime if applicable
+        if (policies?.enablePackageOvertime && child.packageDuration) {
+            const packageDurationMs = child.packageDuration * 60 * 1000;
+            if (durationMs > packageDurationMs) {
+                const overtimeMs = durationMs - packageDurationMs;
+                let overtimeMinutes = overtimeMs / (1000 * 60);
+
+                // Apply rounding
+                 if (policies.packageOvertimeRounding && policies.packageOvertimeRounding !== 'none') {
+                    switch(policies.packageOvertimeRounding) {
+                        case 'quarter-hour':
+                            overtimeMinutes = Math.ceil(overtimeMinutes / 15) * 15;
+                            break;
+                        case 'half-hour':
+                            overtimeMinutes = Math.ceil(overtimeMinutes / 30) * 30;
+                            break;
+                        case 'hour':
+                            overtimeMinutes = Math.ceil(overtimeMinutes / 60) * 60;
+                            break;
+                    }
+                }
+                overtimeCost = overtimeMinutes * (policies.packageOvertimeRatePerMinute || 0);
+            }
+        }
+        
+        finalTotalCost = packageBasePrice + overtimeCost;
+        costBeforeDiscount = finalTotalCost;
+
     } else {
         const gameDetails = games.find((g) => g.name === child.game);
         let hourlyRate = gameDetails?.hourly_rate || 0;
@@ -224,6 +254,7 @@ function CheckOutDialog({
         durationCost: finalDurationCost,
         entryFee: finalEntryFee,
         discount: discountAmount,
+        overtimeCost,
     }
 
   }, [child, games, policies, discount, activeSubscriptions, isPackageGame]);
@@ -299,6 +330,7 @@ function CheckOutDialog({
         cashierName: cashierName,
         isSubscription: isFullySubscribed,
         packagePrice: child.packagePrice,
+        overtimeCost: checkoutData.overtimeCost,
     };
     
     if (receiptSettings) {
@@ -327,7 +359,8 @@ function CheckOutDialog({
                     <PackageCheck className="h-4 w-4 text-blue-600" />
                     <AlertTitle className="text-blue-800">لعبة باقة وقت</AlertTitle>
                     <AlertDescription className="text-blue-700">
-                      هذه الجلسة بوقت محدد. سيتم تحصيل المبلغ عند الخروج.
+                      تكلفة الباقة الأساسية: {`ج.م ${child.packagePrice?.toFixed(2)}`}.
+                      {checkoutData.overtimeCost > 0 && ` + تكلفة الوقت الإضافي: ج.م ${checkoutData.overtimeCost.toFixed(2)}`}
                     </AlertDescription>
                 </Alert>
             )}
@@ -733,6 +766,7 @@ function PosTrackingContent() {
         durationCost: receiptDetails.durationCost,
         entryFee: receiptDetails.entryFee,
         discount: receiptDetails.discount,
+        overtimeCost: receiptDetails.overtimeCost,
         receiptNumber: Number(receiptDetails.receiptId?.split('-')[1]) || 0,
     };
     

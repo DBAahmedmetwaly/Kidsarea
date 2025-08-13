@@ -24,6 +24,7 @@ export interface PosReceiptProps {
   cashierName: string;
   isSubscription?: boolean;
   packagePrice?: number;
+  overtimeCost?: number;
 }
 
 const ReceiptRow = ({ label, value, valueClass = '', show }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string, show?: boolean }) => {
@@ -55,6 +56,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   cashierName,
   isSubscription,
   packagePrice,
+  overtimeCost,
 }, ref) => {
   
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
@@ -73,6 +75,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
           <ReceiptRow show={show('showDurationCost') && !packagePrice} label="تكلفة اللعب" value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
           <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0 && !packagePrice} label="رسوم دخول" value={`ج.م ${entryFee.toFixed(2)}`} />
           <ReceiptRow show={!!packagePrice} label="تكلفة الباقة" value={`ج.م ${(packagePrice ?? 0).toFixed(2)}`} />
+          <ReceiptRow show={!!overtimeCost && overtimeCost > 0} label="وقت إضافي" value={`ج.م ${(overtimeCost ?? 0).toFixed(2)}`} />
           <ReceiptRow show={show('showDiscount') && !!discount && discount > 0} label="الخصم" value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
           
           {show('showTotalCost') && (

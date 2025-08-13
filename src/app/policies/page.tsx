@@ -42,6 +42,7 @@ import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { DayOfWeek } from '@/lib/types';
+import { Separator } from '@/components/ui/separator';
 
 const pricingPolicySchema = z.object({
   gameId: z.string().min(1, 'يجب اختيار اللعبة'),
@@ -72,6 +73,9 @@ const policiesSchema = z.object({
       childColumnTitle: z.string().optional(),
       parentColumnTitle: z.string().optional(),
   }).optional(),
+  enablePackageOvertime: z.boolean(),
+  packageOvertimeRatePerMinute: z.coerce.number().min(0, 'السعر يجب أن يكون رقمًا موجبًا'),
+  packageOvertimeRounding: z.enum(['none', 'quarter-hour', 'half-hour', 'hour']),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -115,7 +119,10 @@ function PoliciesContent() {
           activeSessionsTitle: 'الأطفال النشطون حاليًا',
           childColumnTitle: 'الطفل',
           parentColumnTitle: 'ولي الأمر',
-      }
+      },
+      enablePackageOvertime: false,
+      packageOvertimeRatePerMinute: 1,
+      packageOvertimeRounding: 'quarter-hour',
     },
   });
 
@@ -151,7 +158,10 @@ function PoliciesContent() {
                 activeSessionsTitle: data.posLabels?.activeSessionsTitle || 'الأطفال النشطون حاليًا',
                 childColumnTitle: data.posLabels?.childColumnTitle || 'الطفل',
                 parentColumnTitle: data.posLabels?.parentColumnTitle || 'ولي الأمر',
-            }
+            },
+            enablePackageOvertime: data.enablePackageOvertime || false,
+            packageOvertimeRatePerMinute: data.packageOvertimeRatePerMinute || 1,
+            packageOvertimeRounding: data.packageOvertimeRounding || 'quarter-hour',
         });
       }
       setLoading(false);
@@ -369,7 +379,7 @@ function PoliciesContent() {
                     name="roundingPolicy"
                     render={({ field }) => (
                     <FormItem className="max-w-sm">
-                        <FormLabel>سياسة تقريب الوقت</FormLabel>
+                        <FormLabel>سياسة تقريب الوقت (للألعاب بالساعة)</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                                 <SelectTrigger>
@@ -391,6 +401,74 @@ function PoliciesContent() {
                     )}
                 />
 
+                <Separator />
+                
+                 <FormField
+                control={form.control}
+                name="enablePackageOvertime"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        تفعيل احتساب الوقت الإضافي للباقات
+                      </FormLabel>
+                      <CardDescription>
+                        هل تريد احتساب تكلفة إضافية للوقت الذي يقضيه الطفل بعد انتهاء وقت الباقة؟
+                      </CardDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('enablePackageOvertime') && (
+                <div className="grid md:grid-cols-2 gap-6 pl-4 border-s-2">
+                     <FormField
+                        control={form.control}
+                        name="packageOvertimeRatePerMinute"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>سعر الدقيقة الإضافية (ج.م)</FormLabel>
+                            <FormControl>
+                            <Input type="number" placeholder="1" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="packageOvertimeRounding"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>تقريب الوقت الإضافي للباقات</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="اختر سياسة..." />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="none">بدون تقريب (حساب دقيق)</SelectItem>
+                                    <SelectItem value="quarter-hour">تقريب لأقرب ربع ساعة</SelectItem>
+                                    <SelectItem value="half-hour">تقريب لأقرب نصف ساعة</SelectItem>
+                                    <SelectItem value="hour">تقريب لأقرب ساعة</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+              )}
+                
+                <Separator />
+                
                 <div className="space-y-4">
                   <h3 className="text-md font-medium">تحديد أيام نهاية الأسبوع</h3>
                   <div className="flex flex-wrap gap-4">
@@ -424,7 +502,7 @@ function PoliciesContent() {
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">
-                        تفعيل تسعيرة نهاية الأسبوع
+                        تفعيل تسعيرة نهاية الأسبوع (للألعاب بالساعة)
                       </FormLabel>
                       <CardDescription>
                         هل تريد تطبيق أسعار مختلفة في الأيام التي حددتها كعطلة نهاية أسبوع؟

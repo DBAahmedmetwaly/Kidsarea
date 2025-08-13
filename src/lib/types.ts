@@ -31,6 +31,7 @@ export interface CompletedSession extends Child {
     entryFee?: number;
     discount?: number;
     subscriptionId?: string; // To link to a subscription if applicable
+    overtimeCost?: number;
 }
 
 export interface GamePackage {
@@ -139,7 +140,10 @@ export interface Policies {
         activeSessionsTitle?: string;
         childColumnTitle?: string;
         parentColumnTitle?: string;
-    }
+    };
+    enablePackageOvertime: boolean;
+    packageOvertimeRatePerMinute: number;
+    packageOvertimeRounding: 'hour' | 'half-hour' | 'quarter-hour' | 'none';
 }
 
 export interface Customer {
