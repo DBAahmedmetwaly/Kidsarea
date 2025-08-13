@@ -70,7 +70,10 @@ function ShiftClosingForm() {
   const { toast } = useToast();
   const { employees, openShifts, subscriptions, productSales } = useFirebase();
   const { completedSessions } = useSession();
+  const { user } = useAuth();
   
+  const currentUser = employees.find(e => e.username === user?.username);
+
   const employeesWithShifts = employees.filter(emp => emp.role === 'كاشير' || emp.role === 'مشرف' || emp.role === 'مدير فرع');
   const [openCombobox, setOpenCombobox] = useState(false);
 
@@ -117,6 +120,11 @@ function ShiftClosingForm() {
         form.setValue('branchName', '');
     }
   }, [selectedCashierUsername, openShifts, form]);
+  
+  const availableShiftsToClose = useMemo(() => {
+    if (!currentUser || currentUser.branch === 'كل الفروع') return openShifts;
+    return openShifts.filter(shift => shift.branchName === currentUser.branch);
+  }, [openShifts, currentUser]);
 
 
   async function onSubmit(values: CloseShiftFormValues) {
@@ -191,7 +199,7 @@ function ShiftClosingForm() {
                                         className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
                                     >
                                         {field.value
-                                        ? openShifts.find((shift) => shift.cashierUsername === field.value)?.cashierName
+                                        ? availableShiftsToClose.find((shift) => shift.cashierUsername === field.value)?.cashierName
                                         : "اختر موظف لإغلاق ورديته..."}
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
@@ -203,7 +211,7 @@ function ShiftClosingForm() {
                                     <CommandList>
                                         <CommandEmpty>لا يوجد موظفين لديهم ورديات مفتوحة.</CommandEmpty>
                                         <CommandGroup>
-                                        {openShifts.map((shift) => (
+                                        {availableShiftsToClose.map((shift) => (
                                             <CommandItem
                                             value={shift.cashierName}
                                             key={shift.id}
@@ -290,7 +298,7 @@ function ShiftClosingForm() {
                     </FormItem>
                     )}
                 />
-                <Button type="submit" disabled={loading || openShifts.length === 0} className="w-full">
+                <Button type="submit" disabled={loading || availableShiftsToClose.length === 0} className="w-full">
                     {loading ? (
                     <>
                         <Loader2 className="me-2 h-4 w-4 animate-spin" />
@@ -321,7 +329,10 @@ function ShiftClosingForm() {
 function OpenShiftForm() {
     const { toast } = useToast();
     const { employees, openShifts } = useFirebase();
+    const { user } = useAuth();
     const [openCombobox, setOpenCombobox] = useState(false);
+    
+    const currentUser = employees.find(e => e.username === user?.username);
     const employeesWithShifts = employees.filter(e => e.role === 'كاشير' || e.role === 'مشرف' || e.role === 'مدير فرع');
 
     const form = useForm<OpenShiftFormValues>({
@@ -331,7 +342,14 @@ function OpenShiftForm() {
         },
     });
 
-    const availableEmployees = employeesWithShifts.filter(c => c.username && !openShifts.some(s => s.cashierUsername === c.username));
+    const availableEmployees = useMemo(() => {
+        const employeesForBranch = currentUser?.branch === 'كل الفروع' 
+            ? employeesWithShifts 
+            : employeesWithShifts.filter(e => e.branch === currentUser?.branch);
+
+        return employeesForBranch.filter(c => c.username && !openShifts.some(s => s.cashierUsername === c.username));
+    }, [employeesWithShifts, openShifts, currentUser]);
+
 
     async function onSubmit(values: OpenShiftFormValues) {
         const employee = employeesWithShifts.find(c => c.username === values.cashierUsername);
@@ -446,9 +464,16 @@ function OpenShiftForm() {
 }
 
 function ActiveShiftsTable() {
-    const { openShifts } = useFirebase();
+    const { openShifts, employees } = useFirebase();
+    const { user } = useAuth();
+    const currentUser = employees.find(e => e.username === user?.username);
+    
+    const filteredOpenShifts = useMemo(() => {
+        if (!currentUser || currentUser.branch === 'كل الفروع') return openShifts;
+        return openShifts.filter(shift => shift.branchName === currentUser.branch);
+    }, [openShifts, currentUser]);
 
-    if (openShifts.length === 0) {
+    if (filteredOpenShifts.length === 0) {
         return (
             <div className="mt-6 text-center text-muted-foreground">
                 لا توجد ورديات مفتوحة حالياً.
@@ -467,7 +492,7 @@ function ActiveShiftsTable() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {openShifts.map((record) => (
+                    {filteredOpenShifts.map((record) => (
                         <TableRow key={record.id}>
                             <TableCell className="text-right">{record.cashierName}</TableCell>
                             <TableCell className="text-right">{record.branchName}</TableCell>
@@ -491,7 +516,7 @@ function DayEndClosing() {
     
     const currentUser = useMemo(() => {
         if (!user) return null;
-        return employees.find(e => e.username === user.username);
+        return employees.find(e => e.username === user?.username);
     }, [user, employees]);
 
     useEffect(() => {
@@ -502,7 +527,7 @@ function DayEndClosing() {
     
     const filteredSafes = useMemo(() => {
         if (branchFilter === 'all') {
-            if (currentUser?.branch === 'كل الفروع') {
+            if (!currentUser || currentUser.branch === 'كل الفروع') {
                 return safes;
             }
             return safes.filter(s => s.branchName === currentUser?.branch);
@@ -511,14 +536,15 @@ function DayEndClosing() {
     }, [safes, currentUser, branchFilter]);
 
     const closedShifts = useMemo(() => {
-        const branchFilteredShifts = allShiftRecords.filter(r => r.status === 'Closed');
-        if (branchFilter === 'all') {
-             if (currentUser?.branch === 'كل الفروع') {
-                return branchFilteredShifts;
+        let branchFilteredShifts = allShiftRecords.filter(r => r.status === 'Closed');
+        if (!currentUser || currentUser.branch === 'كل الفروع') {
+            if (branchFilter !== 'all') {
+                branchFilteredShifts = branchFilteredShifts.filter(r => r.branchName === branchFilter);
             }
-            return branchFilteredShifts.filter(r => r.branchName === currentUser?.branch);
+        } else {
+             branchFilteredShifts = branchFilteredShifts.filter(r => r.branchName === currentUser.branch);
         }
-        return branchFilteredShifts.filter(r => r.branchName === branchFilter);
+        return branchFilteredShifts;
     }, [allShiftRecords, branchFilter, currentUser]);
 
     const shiftsToSettle = useMemo(() => {
@@ -602,19 +628,21 @@ function DayEndClosing() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    <div className='w-full sm:w-1/3'>
-                        <Select value={branchFilter} onValueChange={setBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="اختر الفرع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">كل الفروع</SelectItem>
-                                {currentUser?.branches?.map((b: any) => (
-                                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {currentUser?.branch === 'كل الفروع' && (
+                        <div className='w-full sm:w-1/3'>
+                            <Select value={branchFilter} onValueChange={setBranchFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="اختر الفرع" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">كل الفروع</SelectItem>
+                                    {employees.map((b: any) => (
+                                        <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <div className="max-h-60 overflow-y-auto border rounded-md">
                         <Table>
                             <TableHeader>
@@ -708,14 +736,22 @@ function ShiftHistoryTable() {
     }, [currentUser]);
 
     const filteredRecords = useMemo(() => {
-        return allShiftRecords.filter(record => {
-            const branchMatch = branchFilter === 'all' || record.branchName === branchFilter;
+        let records = allShiftRecords;
+        if(currentUser?.branch !== 'كل الفروع') {
+            records = records.filter(record => record.branchName === currentUser?.branch);
+        } else if (branchFilter !== 'all') {
+            records = records.filter(record => record.branchName === branchFilter);
+        }
+
+        const dateFiltered = records.filter(record => {
             const dateMatch = fromDate && toDate 
                 ? isWithinInterval(new Date(record.date), { start: startOfDay(fromDate), end: endOfDay(toDate) })
                 : true;
-            return branchMatch && dateMatch;
+            return dateMatch;
         });
-    }, [allShiftRecords, branchFilter, fromDate, toDate]);
+
+        return dateFiltered;
+    }, [allShiftRecords, branchFilter, fromDate, toDate, currentUser]);
 
     const clearFilters = () => {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -733,19 +769,21 @@ function ShiftHistoryTable() {
                 <CardTitle>سجل حركات استلام النقدية</CardTitle>
                 <CardDescription>عرض لجميع ورديات الموظفين التي تم إغلاقها أو ترحيلها.</CardDescription>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                    <div className="w-full sm:w-1/4">
-                        <Select value={branchFilter} onValueChange={setBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="اختر الفرع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">كل الفروع</SelectItem>
-                                {branches.map((b: any) => (
-                                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {currentUser?.branch === 'كل الفروع' && (
+                        <div className="w-full sm:w-1/4">
+                            <Select value={branchFilter} onValueChange={setBranchFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="اختر الفرع" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">كل الفروع</SelectItem>
+                                    {branches.map((b) => (
+                                        <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                      <div className="w-full sm:w-1/4">
                         <Popover>
                             <PopoverTrigger asChild>
