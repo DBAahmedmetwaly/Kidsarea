@@ -33,13 +33,24 @@ export function useAuth() {
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthContextType['user']>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Start with loading=true
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // We start with loading=true to prevent flicker
-    setLoading(false);
+    try {
+      const storedUser = sessionStorage.getItem('funtrack_user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error("Failed to parse user from sessionStorage", error);
+      sessionStorage.removeItem('funtrack_user');
+    } finally {
+      setLoading(false); // Finished checking storage, stop loading
+    }
   }, []);
 
   useEffect(() => {
@@ -50,14 +61,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
              router.push('/');
         }
     }
-  }, [isAuthenticated, pathname, router, loading, user]);
+  }, [isAuthenticated, pathname, router, loading]);
 
   const login = (userData: AuthContextType['user']) => {
+    sessionStorage.setItem('funtrack_user', JSON.stringify(userData));
     setIsAuthenticated(true);
     setUser(userData);
   };
 
   const logout = () => {
+    sessionStorage.removeItem('funtrack_user');
     setIsAuthenticated(false)
     setUser(null);
     router.push('/login');
@@ -71,7 +84,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
   
-  // Render children (or login page)
+  if (!isAuthenticated && pathname !== '/login') {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-background w-full">
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        </div>
+    );
+  }
+  
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
