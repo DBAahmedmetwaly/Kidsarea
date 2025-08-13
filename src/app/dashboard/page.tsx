@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -191,11 +192,11 @@ function DashboardContent() {
     const [toDate, setToDate] = useState<Date | undefined>(new Date());
     
     const policies = useMemo(() => {
+        const branch = branches.find(b => b.name === selectedBranch);
         if (!allPolicies) return null;
-        const branchId = currentUser?.branch === 'كل الفروع' ? selectedBranch : currentUser?.branch;
-        if (!branchId || branchId === 'all') return allPolicies.find(p => p.id === 'default') || null;
-        return allPolicies.find(p => p.id === branchId) || allPolicies.find(p => p.id === 'default') || null;
-    }, [currentUser, selectedBranch, allPolicies]);
+        if (!branch || branch.name === 'all') return allPolicies.find(p => p.id === 'default') || null;
+        return allPolicies.find(p => p.id === branch.id) || allPolicies.find(p => p.id === 'default') || null;
+    }, [selectedBranch, allPolicies, branches]);
 
 
     useEffect(() => {

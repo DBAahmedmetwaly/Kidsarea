@@ -175,9 +175,10 @@ function CheckOutDialog({
   const amountReceivedInputRef = useRef<HTMLInputElement>(null);
   
   const policies = useMemo(() => {
-      if (!child || !allPolicies) return null;
-      return allPolicies.find(p => p.id === child.branchName) || allPolicies.find(p => p.id === 'default') || null;
-  }, [child, allPolicies]);
+    if (!child || !allPolicies) return null;
+    const branch = branches.find(b => b.name === child.branchName);
+    return allPolicies.find(p => p.id === branch?.id) || allPolicies.find(p => p.id === 'default') || null;
+  }, [child, allPolicies, branches]);
   
   const isPackageGame = child?.packageDuration && child.packageDuration > 0;
 
@@ -669,10 +670,10 @@ function PosTrackingContent() {
   }, [user, employees]);
 
   const policies = useMemo(() => {
-      const branchId = currentUser?.branch === 'كل الفروع' ? selectedBranchFilter : currentUser?.branch;
-      if (!branchId || !allPolicies) return allPolicies.find(p => p.id === 'default') || null;
-      return allPolicies.find(p => p.id === branchId) || allPolicies.find(p => p.id === 'default') || null;
-  }, [currentUser, selectedBranchFilter, allPolicies]);
+    const branchName = currentUser?.branch === 'كل الفروع' ? selectedBranchFilter : currentUser?.branch;
+    const branch = branches.find(b => b.name === branchName);
+    return allPolicies.find(p => p.id === branch?.id) || allPolicies.find(p => p.id === 'default') || null;
+}, [currentUser, selectedBranchFilter, allPolicies, branches]);
 
 
     useEffect(() => {
