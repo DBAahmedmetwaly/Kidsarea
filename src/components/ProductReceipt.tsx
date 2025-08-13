@@ -1,7 +1,6 @@
 
 'use client';
 
-import { Gamepad2, ShoppingCart } from 'lucide-react';
 import React from 'react';
 import type { ReceiptSettings } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -22,17 +21,6 @@ export interface ProductReceiptProps {
   cashierName: string;
 }
 
-const ReceiptRow = ({ label, value, valueClass = '', show }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string, show?: boolean }) => {
-    if (show === false) return null;
-    return (
-        <div className="flex justify-between items-start text-xs py-0.5">
-            <span className="font-semibold flex items-center gap-1">{label}</span>
-            <span className={cn("font-bold text-left break-all", valueClass)}>{value}</span>
-        </div>
-    );
-};
-
-
 export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptProps>(({
   receiptId,
   settings,
@@ -48,7 +36,6 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
   return (
     <div ref={ref} className="bg-white p-1 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
       <div className="text-center mb-1">
-        {show('showLogo') && <Gamepad2 className="w-8 h-8 mx-auto text-primary" />}
         {show('showAppName') && <h1 className="text-xl font-bold">{appName}</h1>}
         <p className="text-xs">{branchName}</p>
         <p className="text-xs font-semibold">فاتورة مشتريات</p>
@@ -56,14 +43,14 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
 
       <div className="space-y-0.5 border-t border-b border-dashed border-gray-400 py-1 my-1">
         <div className="grid grid-cols-12 text-xs font-bold">
-            <span className="col-span-5">الصنف</span>
+            <span className="col-span-5 text-right">الصنف</span>
             <span className="col-span-2 text-center">الكمية</span>
             <span className="col-span-2 text-center">السعر</span>
             <span className="col-span-3 text-left">الإجمالي</span>
         </div>
          {items.map((item, index) => (
             <div key={index} className="grid grid-cols-12 text-xs">
-                <span className="col-span-5">{item.name}</span>
+                <span className="col-span-5 text-right">{item.name}</span>
                 <span className="col-span-2 text-center">{item.quantity}</span>
                 <span className="col-span-2 text-center font-mono">{item.price.toFixed(2)}</span>
                 <span className="col-span-3 text-left font-mono">{`ج.م ${(item.price * item.quantity).toFixed(2)}`}</span>
