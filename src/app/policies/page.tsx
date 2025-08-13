@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { ref, update, onValue, set } from 'firebase/database';
+import { ref, update, onValue, set, get } from 'firebase/database';
 import { useFirebase } from '@/context/FirebaseContext';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, Trash, PlusCircle } from 'lucide-react';
+import { Settings, Trash, PlusCircle, AlertTriangle } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -37,6 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -123,6 +133,7 @@ function PoliciesContent() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [selectedBranchId, setSelectedBranchId] = useState('default');
+  const [isForceApplyDialogOpen, setForceApplyDialogOpen] = useState(false);
   
   const form = useForm<PoliciesFormValues>({
     resolver: zodResolver(policiesSchema),
@@ -170,6 +181,35 @@ function PoliciesContent() {
     }
   }
 
+  const handleForceApply = async () => {
+    setForceApplyDialogOpen(false);
+    try {
+        const defaultPoliciesRef = ref(db, 'policies/default');
+        const snapshot = await get(defaultPoliciesRef);
+        if (!snapshot.exists()) {
+            toast({ title: 'خطأ', description: 'لا توجد سياسات افتراضية لحفظها.', variant: 'destructive'});
+            return;
+        }
+        const defaultPoliciesData = snapshot.val();
+        
+        const updates: { [key: string]: any } = {};
+        branches.forEach(branch => {
+            updates[`/policies/${branch.id}`] = defaultPoliciesData;
+        });
+
+        await update(ref(db), updates);
+
+        toast({
+            title: 'تم التطبيق بنجاح',
+            description: 'تم فرض السياسات الافتراضية على جميع الفروع.',
+        });
+
+    } catch (error) {
+        toast({ title: 'فشل تطبيق السياسات', variant: 'destructive'});
+        console.error(error);
+    }
+  };
+
   if (loading) {
       return (
           <div className="space-y-6">
@@ -202,19 +242,27 @@ function PoliciesContent() {
             <CardDescription>يمكنك تحديد سياسات افتراضية للجميع، أو تخصيص سياسات لكل فرع على حدة.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
-                <SelectTrigger className="w-full md:w-1/3">
-                    <SelectValue placeholder="اختر مجموعة سياسات..." />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="default">السياسات الافتراضية (للجميع)</SelectItem>
-                    {branches.map(branch => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                            سياسات فرع: {branch.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                    <SelectTrigger className="w-full sm:w-1/3">
+                        <SelectValue placeholder="اختر مجموعة سياسات..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="default">السياسات الافتراضية (للجميع)</SelectItem>
+                        {branches.map(branch => (
+                            <SelectItem key={branch.id} value={branch.id}>
+                                سياسات فرع: {branch.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                 {selectedBranchId === 'default' && (
+                    <Button variant="outline" onClick={() => setForceApplyDialogOpen(true)}>
+                        <AlertTriangle className="me-2 h-4 w-4 text-orange-500" />
+                        فرض على جميع الفروع
+                    </Button>
+                 )}
+            </div>
           </CardContent>
       </Card>
 
@@ -606,6 +654,22 @@ function PoliciesContent() {
           </Button>
         </form>
       </Form>
+      <AlertDialog open={isForceApplyDialogOpen} onOpenChange={setForceApplyDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
+            <AlertDialogDescription>
+                سيؤدي هذا الإجراء إلى حذف جميع السياسات المخصصة للفروع واستبدالها بالسياسات الافتراضية الحالية. لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceApply}>
+                نعم، قم بالفرض على الجميع
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
