@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Gamepad2, Smile, User, Calendar, Star, Sun, Shield } from 'lucide-react';
+import { Gamepad2, Smile, User, Calendar, Star, Shield } from 'lucide-react';
 import React from 'react';
 
 export interface SubscriptionCardProps {
@@ -12,6 +12,17 @@ export interface SubscriptionCardProps {
   endDate: Date;
 }
 
+const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
+    <div className="flex items-start gap-2">
+        <Icon className="w-5 h-5 text-gray-500 mt-1" />
+        <div>
+            <p className="text-xs text-gray-500">{label}</p>
+            <p className="font-semibold text-sm">{value}</p>
+        </div>
+    </div>
+);
+
+
 export const SubscriptionCard = React.forwardRef<HTMLDivElement, SubscriptionCardProps>(({
   appName,
   customerName,
@@ -21,51 +32,31 @@ export const SubscriptionCard = React.forwardRef<HTMLDivElement, SubscriptionCar
 }, ref) => {
   return (
     <div ref={ref} className="bg-white text-black" style={{ width: '80mm', boxSizing: 'border-box', direction: 'rtl' }}>
-        <div className="p-4 border-4 border-dashed border-gray-400 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 m-2">
-            <div className="text-center mb-4 pb-2 border-b-2 border-gray-300">
+        <div className="p-2 border-2 border-gray-300 rounded-lg bg-white m-2">
+            <div className="text-center mb-2 pb-2 border-b border-gray-200">
                 <div className="flex justify-center items-center gap-2">
-                    <Gamepad2 className="w-8 h-8 text-primary" />
-                    <h1 className="text-xl font-bold">{appName}</h1>
+                    <Gamepad2 className="w-6 h-6 text-primary" />
+                    <h1 className="text-lg font-bold">{appName}</h1>
                 </div>
-                <p className="text-md font-semibold text-primary">بطاقة عضوية</p>
+                <p className="text-sm font-semibold text-primary">بطاقة عضوية</p>
             </div>
 
-            <div className="space-y-4 text-right">
-                 <div className="flex items-center gap-3">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-                         <Smile size={32} className="text-gray-500" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-600">اسم الطفل</p>
-                        <p className="text-lg font-bold">{childName}</p>
-                    </div>
-                 </div>
-
-                 <div className="flex items-center gap-3">
-                    <Shield size={24} className="text-gray-500 w-8"/>
-                    <div>
-                        <p className="text-sm text-gray-600">ولي الأمر</p>
-                        <p className="font-semibold">{customerName}</p>
-                    </div>
-                </div>
-                
-                 <div className="flex items-center gap-3">
-                    <Star size={24} className="text-gray-500 w-8"/>
-                     <div>
-                        <p className="text-sm text-gray-600">الباقة</p>
-                        <p className="font-semibold">{planName}</p>
+            <div className="flex gap-2">
+                <div className="w-1/3 flex flex-col items-center justify-center space-y-2">
+                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                         <Smile size={40} className="text-gray-400" />
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <Sun size={24} className="text-gray-500 w-8"/>
-                     <div>
-                        <p className="text-sm text-gray-600">صالح حتى</p>
-                        <p className="font-semibold">{endDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    </div>
+                <div className="w-2/3 space-y-2">
+                    <DetailRow icon={Smile} label="اسم الطفل" value={childName} />
+                    <DetailRow icon={Shield} label="ولي الأمر" value={customerName} />
+                    <DetailRow icon={Star} label="الباقة" value={planName} />
+                    <DetailRow icon={Calendar} label="صالح حتى" value={endDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })} />
                 </div>
             </div>
-             <div className="mt-4 text-center">
+
+             <div className="mt-2 text-center">
                  <p className="text-xs text-gray-500">بطاقة شخصية وغير قابلة للتحويل</p>
             </div>
         </div>
