@@ -37,6 +37,16 @@ const ReceiptRow = ({ label, value, valueClass = '', show }: { label: React.Reac
     );
 };
 
+const PaymentDetailRow = ({ label, value, show }: { label: string, value: string, show?: boolean }) => {
+    if (show === false) return null;
+    return (
+        <div className="grid grid-cols-2 text-xs">
+            <span>{label}</span>
+            <span className="font-mono text-left">{value}</span>
+        </div>
+    )
+}
+
 
 export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   receiptId,
@@ -71,12 +81,17 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
     }
     
     return (
-      <div className="space-y-0.5">
-          <ReceiptRow show={show('showDurationCost') && !packagePrice} label="تكلفة اللعب" value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
-          <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0 && !packagePrice} label="رسوم دخول" value={`ج.م ${entryFee.toFixed(2)}`} />
-          <ReceiptRow show={!!packagePrice} label="تكلفة الباقة" value={`ج.م ${(packagePrice ?? 0).toFixed(2)}`} />
-          <ReceiptRow show={!!overtimeCost && overtimeCost > 0} label="وقت إضافي" value={`ج.م ${(overtimeCost ?? 0).toFixed(2)}`} />
-          <ReceiptRow show={show('showDiscount') && !!discount && discount > 0} label="الخصم" value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
+      <div className="space-y-0.5 pt-1 mt-1 border-t border-dashed border-gray-400">
+          <div className="grid grid-cols-2 text-xs font-bold">
+            <span className="col-span-1">البند</span>
+            <span className="col-span-1 text-left">التكلفة</span>
+          </div>
+
+          <PaymentDetailRow show={show('showDurationCost') && !packagePrice} label="تكلفة اللعب" value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
+          <PaymentDetailRow show={show('showEntryFee') && !!entryFee && entryFee > 0 && !packagePrice} label="رسوم دخول" value={`ج.م ${entryFee.toFixed(2)}`} />
+          <PaymentDetailRow show={!!packagePrice} label="تكلفة الباقة" value={`ج.م ${(packagePrice ?? 0).toFixed(2)}`} />
+          <PaymentDetailRow show={!!overtimeCost && overtimeCost > 0} label="وقت إضافي" value={`ج.م ${(overtimeCost ?? 0).toFixed(2)}`} />
+          <PaymentDetailRow show={show('showDiscount') && !!discount && discount > 0} label="الخصم" value={`- ج.م ${discount.toFixed(2)}`} />
           
           {show('showTotalCost') && (
               <div className="flex justify-between items-center text-lg font-bold p-1 mt-1 bg-gray-200 rounded-md">
