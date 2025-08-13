@@ -4,6 +4,7 @@
 import { Gamepad2, Smile, User, Calendar, Star, Tag } from 'lucide-react';
 import React from 'react';
 import { cn } from '@/lib/utils';
+import type { Policies } from '@/lib/types';
 
 export interface SubscriptionReceiptProps {
   appName: string;
@@ -39,7 +40,6 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
   return (
     <div ref={ref} className="bg-white p-1 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
       <div className="text-center mb-1">
-        <Gamepad2 className="w-8 h-8 mx-auto text-primary" />
         <h1 className="text-xl font-bold">{appName}</h1>
         <p className="text-xs font-semibold">إيصال اشتراك</p>
       </div>

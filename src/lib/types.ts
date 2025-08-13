@@ -127,6 +127,7 @@ export interface PricingPolicy {
 export type DayOfWeek = 'saturday' | 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
 
 export interface Policies {
+    id?: string; // 'default' or branch ID
     appName?: string;
     maxCapacity: number;
     enableWeekendPricing: boolean;

@@ -59,12 +59,13 @@ export default function SubscriptionFormDialog({
     initialData?: Partial<Omit<SubscriptionFormValues, 'childNames'> & { childName: string }>
 }) {
   const { customers } = useCustomers();
-  const { subscriptionPlans, subscriptions, employees, policies } = useFirebase();
+  const { subscriptionPlans, subscriptions, employees, policies: allPolicies } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [openCombobox, setOpenCombobox] = useState(false);
   const { printReceipt } = usePosPrint();
+  const defaultPolicies = allPolicies.find(p => p.id === 'default');
 
 
   const form = useForm<SubscriptionFormValues>({
@@ -166,7 +167,7 @@ export default function SubscriptionFormDialog({
                 : cashier?.name || user?.username || 'N/A';
             
             const receiptDetails = {
-                appName: policies?.appName || 'FunTrack',
+                appName: defaultPolicies?.appName || 'FunTrack',
                 customerName: customer.parentName,
                 childName: childName,
                 planName: plan.name,

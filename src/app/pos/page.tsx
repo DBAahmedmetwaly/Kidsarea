@@ -166,13 +166,18 @@ function CheckOutDialog({
   child: Child | null;
   onConfirm: (child: Child, receiptDetails: PosReceiptProps, costBeforeDiscount: number) => void;
 }) {
-  const { games, policies, employees, receiptSettings, subscriptions, branches } = useFirebase();
+  const { games, policies: allPolicies, employees, receiptSettings, subscriptions, branches } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
   const [discount, setDiscount] = useState('');
   const [activeSubscriptions, setActiveSubscriptions] = useState<Subscription[]>([]);
   const { user } = useAuth();
   const { printReceipt } = usePosPrint();
   const amountReceivedInputRef = useRef<HTMLInputElement>(null);
+  
+  const policies = useMemo(() => {
+      if (!child || !allPolicies) return null;
+      return allPolicies.find(p => p.id === child.branchName) || allPolicies.find(p => p.id === 'default') || null;
+  }, [child, allPolicies]);
   
   const isPackageGame = child?.packageDuration && child.packageDuration > 0;
 
@@ -638,7 +643,7 @@ function CheckInDialog({
 type CartItem = InventoryItem & { cartQuantity: number };
 
 function PosTrackingContent() {
-  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
+  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
   const { printReceipt } = usePosPrint();
@@ -662,6 +667,12 @@ function PosTrackingContent() {
     if (!user) return null;
     return employees.find(e => e.username === user.username);
   }, [user, employees]);
+
+  const policies = useMemo(() => {
+      const branchId = currentUser?.branch === 'كل الفروع' ? selectedBranchFilter : currentUser?.branch;
+      if (!branchId || !allPolicies) return allPolicies.find(p => p.id === 'default') || null;
+      return allPolicies.find(p => p.id === branchId) || allPolicies.find(p => p.id === 'default') || null;
+  }, [currentUser, selectedBranchFilter, allPolicies]);
 
 
     useEffect(() => {

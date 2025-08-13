@@ -176,7 +176,7 @@ function DemoDataGenerator() {
 
 function DashboardContent() {
     const { completedSessions, activeChildren } = useSession();
-    const { branches, employees, games } = useFirebase();
+    const { branches, employees, games, policies: allPolicies } = useFirebase();
     const { toggleSidebar } = useSidebar();
     const { user } = useAuth();
 
@@ -189,6 +189,14 @@ function DashboardContent() {
     const [selectedBranch, setSelectedBranch] = useState('all');
     const [fromDate, setFromDate] = useState<Date | undefined>(subDays(new Date(), 6));
     const [toDate, setToDate] = useState<Date | undefined>(new Date());
+    
+    const policies = useMemo(() => {
+        if (!allPolicies) return null;
+        const branchId = currentUser?.branch === 'كل الفروع' ? selectedBranch : currentUser?.branch;
+        if (!branchId || branchId === 'all') return allPolicies.find(p => p.id === 'default') || null;
+        return allPolicies.find(p => p.id === branchId) || allPolicies.find(p => p.id === 'default') || null;
+    }, [currentUser, selectedBranch, allPolicies]);
+
 
     useEffect(() => {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -467,5 +475,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
-    

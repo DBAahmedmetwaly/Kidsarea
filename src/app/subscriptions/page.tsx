@@ -64,7 +64,7 @@ const subscriptionSchema = z.object({
 export type SubscriptionFormValues = z.infer<typeof subscriptionSchema>;
 
 function SubscriptionsContent() {
-  const { subscriptions: firebaseSubscriptions, policies } = useFirebase();
+  const { subscriptions: firebaseSubscriptions, policies: allPolicies } = useFirebase();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
@@ -73,6 +73,7 @@ function SubscriptionsContent() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'EndingSoon' | 'Expired'>('all');
   const { toast } = useToast();
   const { printReceipt } = usePosPrint();
+  const defaultPolicies = allPolicies.find(p => p.id === 'default');
 
   useEffect(() => {
     // Sync and update subscription statuses
@@ -120,7 +121,7 @@ function SubscriptionsContent() {
   
   const handlePrintCard = (sub: Subscription) => {
       const cardDetails = {
-        appName: policies?.appName || 'FunTrack',
+        appName: defaultPolicies?.appName || 'FunTrack',
         customerName: sub.customerName,
         childName: sub.childName,
         planName: sub.planName,

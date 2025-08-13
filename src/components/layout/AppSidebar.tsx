@@ -63,6 +63,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { useFirebase } from '@/context/FirebaseContext';
 
 
 const mainItems = [
@@ -160,24 +161,23 @@ function CollapsibleMenuGroup({
 function SidebarItems() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { policies: allPolicies } = useFirebase();
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
   const [appName, setAppName] = useState('FunTrack');
   const { setOpenMobile } = useSidebar();
 
 
   useEffect(() => {
-    const policiesRef = ref(db, 'policies');
-    const unsubPolicies = onValue(policiesRef, (snapshot) => {
-        const data = snapshot.val() as Policies;
-        if (data && data.appName) {
-            setAppName(data.appName);
-            document.title = data.appName + ' Manager';
-        }
-    });
+    const defaultPolicies = allPolicies?.find(p => p.id === 'default');
+    if (defaultPolicies?.appName) {
+        setAppName(defaultPolicies.appName);
+        document.title = defaultPolicies.appName + ' Manager';
+    }
+
 
     if (!user) {
       setPermissions(null); // Clear permissions on logout
-      return () => unsubPolicies();
+      return;
     }
     
     // Handle admin user
@@ -192,7 +192,7 @@ function SidebarItems() {
         'مشرف': allPermissions,
       };
       setPermissions(fullPermissions);
-      return () => unsubPolicies();
+      return;
     }
 
     if ('role' in user && user.role) {
@@ -220,18 +220,13 @@ function SidebarItems() {
           setPermissions(null);
       });
       return () => {
-        unsubPolicies();
         unsubRoles();
       };
     } else {
         setPermissions(null);
     }
-    
 
-    return () => {
-        unsubPolicies();
-    };
-  }, [user]);
+  }, [user, allPolicies]);
 
   const hasPermission = (href: string) => {
     if (!user || !permissions) return false;

@@ -22,7 +22,7 @@ interface FirebaseContextType {
   employees: Employee[];
   branches: Branch[];
   safes: Safe[];
-  policies: Policies | null;
+  policies: Policies[];
   receiptSettings: ReceiptSettings | null;
   openShifts: OpenShift[];
   transactions: SafeTransaction[];
@@ -58,7 +58,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [safes, setSafes] = useState<Safe[]>([]);
-  const [policies, setPolicies] = useState<Policies | null>(null);
+  const [policies, setPolicies] = useState<Policies[]>([]);
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings | null>(null);
   const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
   const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
@@ -85,7 +85,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       { key: 'employees', setter: setEmployees, isArray: true },
       { key: 'branches', setter: setBranches, isArray: true },
       { key: 'safes', setter: setSafes, isArray: true },
-      { key: 'policies', setter: setPolicies, isArray: false },
+      { key: 'policies', setter: setPolicies, isArray: true }, // Changed to true
       { key: 'receiptSettings', setter: setReceiptSettings, isArray: false },
       { key: 'openShifts', setter: setOpenShifts, isArray: true },
       { key: 'safeTransactions', setter: setTransactions, isArray: true },
@@ -154,8 +154,35 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     };
   }, [isInitialLoad]);
 
+  const value = {
+    games,
+    employees,
+    branches,
+    safes,
+    policies,
+    receiptSettings,
+    openShifts,
+    transactions,
+    subscriptions,
+    subscriptionPlans,
+    gameCategories,
+    products,
+    productCategories,
+    inventory,
+    productSales,
+    activeChildren,
+    completedSessions,
+    shiftRecords,
+    expenses,
+    expenseTypes,
+    loading,
+    isInitialLoad,
+    error,
+  };
+
+
   return (
-    <FirebaseContext.Provider value={{ games, employees, branches, safes, policies, receiptSettings, openShifts, transactions, subscriptions, subscriptionPlans, gameCategories, products, productCategories, inventory, productSales, activeChildren, completedSessions, shiftRecords, expenses, expenseTypes, loading, isInitialLoad, error }}>
+    <FirebaseContext.Provider value={value}>
       {children}
     </FirebaseContext.Provider>
   );

@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { ref, update, onValue } from 'firebase/database';
+import { ref, update, onValue, set } from 'firebase/database';
 import { useFirebase } from '@/context/FirebaseContext';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -41,7 +41,7 @@ import { Switch } from '@/components/ui/switch';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { DayOfWeek } from '@/lib/types';
+import type { DayOfWeek, Policies } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 
 const pricingPolicySchema = z.object({
@@ -90,14 +90,7 @@ const daysOfWeek: { id: DayOfWeek, label: string }[] = [
     { id: 'friday', label: 'الجمعة' },
 ];
 
-function PoliciesContent() {
-  const { games } = useFirebase();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-
-  const form = useForm<PoliciesFormValues>({
-    resolver: zodResolver(policiesSchema),
-    defaultValues: {
+const defaultPolicies: PoliciesFormValues = {
       appName: 'FunTrack',
       maxCapacity: 50,
       entryFee: 0,
@@ -105,13 +98,13 @@ function PoliciesContent() {
       enableWeekendPricing: false,
       pricingPolicies: [],
       weekendDays: {
-        saturday: true, // Default weekend
+        saturday: true,
         sunday: false,
         monday: false,
         tuesday: false,
         wednesday: false,
         thursday: false,
-        friday: true, // Default weekend
+        friday: true,
       },
       showPosStats: true,
       showCompletedSessions: true,
@@ -123,7 +116,17 @@ function PoliciesContent() {
       enablePackageOvertime: false,
       packageOvertimeRatePerMinute: 1,
       packageOvertimeRounding: 'quarter-hour',
-    },
+}
+
+function PoliciesContent() {
+  const { games, branches, policies } = useFirebase();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [selectedBranchId, setSelectedBranchId] = useState('default');
+  
+  const form = useForm<PoliciesFormValues>({
+    resolver: zodResolver(policiesSchema),
+    defaultValues: defaultPolicies,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -132,52 +135,30 @@ function PoliciesContent() {
   });
 
   useEffect(() => {
-    const policiesRef = ref(db, 'policies');
-    const unsubscribe = onValue(policiesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        form.reset({
-            appName: data.appName || 'FunTrack',
-            maxCapacity: data.maxCapacity || 50,
-            entryFee: data.entryFee || 0,
-            roundingPolicy: data.roundingPolicy || 'none',
-            enableWeekendPricing: data.enableWeekendPricing || false,
-            pricingPolicies: data.pricingPolicies || [],
-            weekendDays: data.weekendDays || {
-                saturday: true,
-                sunday: false,
-                monday: false,
-                tuesday: false,
-                wednesday: false,
-                thursday: false,
-                friday: true,
-            },
-            showPosStats: data.showPosStats !== false,
-            showCompletedSessions: data.showCompletedSessions !== false,
-            posLabels: {
-                activeSessionsTitle: data.posLabels?.activeSessionsTitle || 'الأطفال النشطون حاليًا',
-                childColumnTitle: data.posLabels?.childColumnTitle || 'الطفل',
-                parentColumnTitle: data.posLabels?.parentColumnTitle || 'ولي الأمر',
-            },
-            enablePackageOvertime: data.enablePackageOvertime || false,
-            packageOvertimeRatePerMinute: data.packageOvertimeRatePerMinute || 1,
-            packageOvertimeRounding: data.packageOvertimeRounding || 'quarter-hour',
-        });
-      }
-      setLoading(false);
-    });
+    setLoading(true);
+    if (policies) {
+        const branchPolicies = policies.find(p => p.id === selectedBranchId);
+        const defaultPoliciesData = policies.find(p => p.id === 'default');
 
-    return () => unsubscribe();
-  }, [form]);
+        if (branchPolicies) {
+            form.reset(branchPolicies);
+        } else if (defaultPoliciesData) {
+            form.reset(defaultPoliciesData);
+        } else {
+            form.reset(defaultPolicies);
+        }
+        setLoading(false);
+    }
+  }, [selectedBranchId, policies, form]);
 
 
   async function onSubmit(values: PoliciesFormValues) {
     try {
-      const policiesRef = ref(db, 'policies');
-      await update(policiesRef, values);
+      const policiesRef = ref(db, `policies/${selectedBranchId}`);
+      await set(policiesRef, values);
       toast({
         title: 'تم الحفظ بنجاح',
-        description: 'تم تحديث سياسات النظام بنجاح.',
+        description: `تم تحديث سياسات ${selectedBranchId === 'default' ? 'الافتراضية' : `فرع ${branches.find(b=>b.id === selectedBranchId)?.name}`}.`,
       });
     } catch (error) {
       console.error('Failed to save policies:', error);
@@ -214,6 +195,28 @@ function PoliciesContent() {
         <Settings className="h-8 w-8 text-primary" />
         <h1 className="text-lg font-semibold md:text-2xl">إدارة السياسات</h1>
       </div>
+
+      <Card>
+          <CardHeader>
+            <CardTitle>اختر مجموعة السياسات</CardTitle>
+            <CardDescription>يمكنك تحديد سياسات افتراضية للجميع، أو تخصيص سياسات لكل فرع على حدة.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                <SelectTrigger className="w-full md:w-1/3">
+                    <SelectValue placeholder="اختر مجموعة سياسات..." />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="default">السياسات الافتراضية (للجميع)</SelectItem>
+                    {branches.map(branch => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                            سياسات فرع: {branch.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          </CardContent>
+      </Card>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
