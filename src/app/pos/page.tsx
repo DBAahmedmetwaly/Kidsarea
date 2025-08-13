@@ -171,49 +171,50 @@ function CheckOutDialog({
   const checkoutData = useMemo(() => {
     if (!child) return null;
     
-    // For package games, the cost is already paid.
-    if (isPackageGame) {
-        return {
-            duration: formatDuration(Date.now() - child.checkInTime),
-            totalCost: 0,
-            costBeforeDiscount: child.packagePrice || 0,
-            durationCost: child.packagePrice || 0,
-            entryFee: 0,
-            discount: 0,
-        }
-    }
-
     const durationMs = Date.now() - child.checkInTime;
+    let finalTotalCost: number;
+    let finalDurationCost: number = 0;
+    let finalEntryFee: number = 0;
+    let costBeforeDiscount: number;
 
-    const gameDetails = games.find((g) => g.name === child.game);
-    let hourlyRate = gameDetails?.hourly_rate || 0;
+    if (isPackageGame) {
+        finalTotalCost = child.packagePrice || 0;
+        costBeforeDiscount = child.packagePrice || 0;
+    } else {
+        const gameDetails = games.find((g) => g.name === child.game);
+        let hourlyRate = gameDetails?.hourly_rate || 0;
 
-    if (policies?.enableWeekendPricing) {
-        const today = getDayOfWeek(new Date());
-        if (policies.weekendDays[today]) {
-            const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-            if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
-        } else {
-             const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-             if(weekdayPolicy) hourlyRate = weekdayPolicy.weekendRate;
+        if (policies?.enableWeekendPricing) {
+            const today = getDayOfWeek(new Date());
+            if (policies.weekendDays[today]) {
+                const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+                if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
+            } else {
+                 const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+                 if(weekdayPolicy) hourlyRate = weekdayPolicy.weekendRate;
+            }
         }
-    }
-    
-    const nonSubscribedChildrenCount = child.children.filter(c => 
-        !activeSubscriptions.some(s => s.childName === c.name)
-    ).length;
+        
+        const nonSubscribedChildrenCount = child.children.filter(c => 
+            !activeSubscriptions.some(s => s.childName === c.name)
+        ).length;
 
-    const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies, nonSubscribedChildrenCount);
-    
+        const { totalCost, durationCost, entryFee } = calculateCost(durationMs, hourlyRate, policies, nonSubscribedChildrenCount);
+        finalTotalCost = totalCost;
+        finalDurationCost = durationCost;
+        finalEntryFee = entryFee;
+        costBeforeDiscount = totalCost;
+    }
+
     const discountAmount = parseFloat(discount) || 0;
-    const finalCost = totalCost - discountAmount > 0 ? totalCost - discountAmount : 0;
+    const finalCostAfterDiscount = finalTotalCost - discountAmount > 0 ? finalTotalCost - discountAmount : 0;
 
     return {
         duration: formatDuration(durationMs),
-        totalCost: finalCost,
-        costBeforeDiscount: totalCost,
-        durationCost,
-        entryFee,
+        totalCost: finalCostAfterDiscount,
+        costBeforeDiscount: costBeforeDiscount,
+        durationCost: finalDurationCost,
+        entryFee: finalEntryFee,
         discount: discountAmount,
     }
 
@@ -240,13 +241,11 @@ function CheckOutDialog({
     if (open) {
         setAmountReceived('');
         setDiscount('');
-        if (!isPackageGame) {
-            setTimeout(() => {
-                amountReceivedInputRef.current?.focus();
-            }, 100);
-        }
+        setTimeout(() => {
+            amountReceivedInputRef.current?.focus();
+        }, 100);
     }
-  }, [open, isPackageGame]);
+  }, [open]);
 
   const handleConfirm = async () => {
     if(!child || !checkoutData) return;
@@ -320,7 +319,7 @@ function CheckOutDialog({
                     <PackageCheck className="h-4 w-4 text-blue-600" />
                     <AlertTitle className="text-blue-800">لعبة باقة وقت</AlertTitle>
                     <AlertDescription className="text-blue-700">
-                      هذه الجلسة مدفوعة مسبقًا. لا توجد تكلفة إضافية عند الخروج.
+                      هذه الجلسة بوقت محدد. سيتم تحصيل المبلغ عند الخروج.
                     </AlertDescription>
                 </Alert>
             )}
@@ -340,38 +339,34 @@ function CheckOutDialog({
                 <span className="font-bold text-primary">{`ج.م ${checkoutData.totalCost.toFixed(2)}`}</span>
             </div>
             
-            {!isPackageGame && (
-                <>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="discount">الخصم (ج.م)</Label>
-                            <Input
-                            id="discount"
-                            type="number"
-                            value={discount}
-                            onChange={(e) => setDiscount(e.target.value)}
-                            placeholder="أدخل الخصم"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="amount-received">المبلغ المستلم</Label>
-                            <Input
-                            id="amount-received"
-                            ref={amountReceivedInputRef}
-                            type="number"
-                            value={amountReceived}
-                            onChange={(e) => setAmountReceived(e.target.value)}
-                            placeholder="أدخل المبلغ المستلم"
-                            />
-                        </div>
-                    </div>
-                    {amountReceived && (
-                        <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            <span className="font-medium">الباقي:</span>
-                            <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
-                        </div>
-                    )}
-                </>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="discount">الخصم (ج.م)</Label>
+                    <Input
+                    id="discount"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                    placeholder="أدخل الخصم"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="amount-received">المبلغ المستلم</Label>
+                    <Input
+                    id="amount-received"
+                    ref={amountReceivedInputRef}
+                    type="number"
+                    value={amountReceived}
+                    onChange={(e) => setAmountReceived(e.target.value)}
+                    placeholder="أدخل المبلغ المستلم"
+                    />
+                </div>
+            </div>
+            {amountReceived && (
+                <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className="font-medium">الباقي:</span>
+                    <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
+                </div>
             )}
         </div>
         <DialogFooter>
@@ -380,7 +375,7 @@ function CheckOutDialog({
           </DialogClose>
             <Button 
               onClick={handleConfirm} 
-              disabled={!isPackageGame && checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost || !amountReceived)}
+              disabled={checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost || !amountReceived)}
             >
                 حفظ و طباعة
             </Button>
@@ -889,6 +884,12 @@ function PosTrackingContent() {
     }
   };
 
+  const hasTimeExpired = (session: Child) => {
+    if (!session.packageDuration) return false;
+    const elapsedMs = Date.now() - session.checkInTime;
+    const totalDurationMs = session.packageDuration * 60 * 1000;
+    return elapsedMs >= totalDurationMs;
+  }
 
   const selectedBranchName = selectedBranchFilter === 'all' ? 'كل الفروع' : selectedBranchFilter;
   const [currentTab, setCurrentTab] = useState('products-tab');
@@ -1136,7 +1137,7 @@ function PosTrackingContent() {
                                 <TableBody>
                                     {searchedActiveChildren.length > 0 ? (
                                     searchedActiveChildren.map((session) => (
-                                        <TableRow key={session.id}>
+                                        <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-red-500/10")}>
                                         <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                         <TableCell className="text-right">{session.parentName}</TableCell>
                                         <TableCell className="text-right">{(session.phoneNumbers || []).join(', ')}</TableCell>

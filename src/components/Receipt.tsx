@@ -67,17 +67,12 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         </div>
       );
     }
-    if (packagePrice) {
-         return (
-        <div className="flex justify-center items-center text-md font-bold p-2 mt-1 bg-blue-100 text-blue-800 rounded-md">
-            <span className="flex items-center gap-2"><PackageCheck size={16} /> مدفوع بالباقة</span>
-        </div>
-      );
-    }
+    
     return (
       <div className="space-y-0.5">
-          <ReceiptRow show={show('showDurationCost')} label={<><Tag size={12}/> تكلفة اللعب</>} value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
-          <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0} label={<><PlusCircle size={12}/> رسوم دخول</>} value={`ج.م ${entryFee.toFixed(2)}`} />
+          <ReceiptRow show={show('showDurationCost') && !packagePrice} label={<><Tag size={12}/> تكلفة اللعب</>} value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
+          <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0 && !packagePrice} label={<><PlusCircle size={12}/> رسوم دخول</>} value={`ج.م ${entryFee.toFixed(2)}`} />
+          <ReceiptRow show={!!packagePrice} label={<><PackageCheck size={12}/> تكلفة الباقة</>} value={`ج.م ${(packagePrice ?? 0).toFixed(2)}`} />
           <ReceiptRow show={show('showDiscount') && !!discount && discount > 0} label={<><MinusCircle size={12}/> الخصم</>} value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
           
           {show('showTotalCost') && (
