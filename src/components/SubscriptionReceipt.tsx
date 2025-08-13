@@ -45,14 +45,14 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
       </div>
 
       <div className="space-y-0.5">
-        <ReceiptRow label={<><User/> ولي الأمر</>} value={customerName} />
-        <ReceiptRow label={<><Smile/> الطفل</>} value={childName} />
+        <ReceiptRow label="ولي الأمر" value={customerName} />
+        <ReceiptRow label="الطفل" value={childName} />
 
         <div className='my-1 border-t border-dashed border-gray-400' />
         
-        <ReceiptRow label={<><Star/> الباقة</>} value={planName} />
-        <ReceiptRow label={<><Calendar/> تاريخ البدء</>} value={startDate.toLocaleDateString('ar-EG')} />
-        <ReceiptRow label={<><Calendar/> تاريخ الانتهاء</>} value={endDate.toLocaleDateString('ar-EG')} />
+        <ReceiptRow label="الباقة" value={planName} />
+        <ReceiptRow label="تاريخ البدء" value={startDate.toLocaleDateString('ar-EG')} />
+        <ReceiptRow label="تاريخ الانتهاء" value={endDate.toLocaleDateString('ar-EG')} />
 
         <div className='my-1 border-t border-dashed border-gray-400' />
         

@@ -63,17 +63,17 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
     if (isSubscription) {
       return (
         <div className="flex justify-center items-center text-md font-bold p-1 mt-1 bg-green-100 text-green-800 rounded-md">
-            <span className="flex items-center gap-2"><Star size={16} /> مدفوع بالاشتراك</span>
+            <span className="flex items-center gap-2">مدفوع بالاشتراك</span>
         </div>
       );
     }
     
     return (
       <div className="space-y-0.5">
-          <ReceiptRow show={show('showDurationCost') && !packagePrice} label={<><Tag size={12}/> تكلفة اللعب</>} value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
-          <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0 && !packagePrice} label={<><PlusCircle size={12}/> رسوم دخول</>} value={`ج.م ${entryFee.toFixed(2)}`} />
-          <ReceiptRow show={!!packagePrice} label={<><PackageCheck size={12}/> تكلفة الباقة</>} value={`ج.م ${(packagePrice ?? 0).toFixed(2)}`} />
-          <ReceiptRow show={show('showDiscount') && !!discount && discount > 0} label={<><MinusCircle size={12}/> الخصم</>} value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
+          <ReceiptRow show={show('showDurationCost') && !packagePrice} label="تكلفة اللعب" value={`ج.م ${(durationCost ?? 0).toFixed(2)}`} />
+          <ReceiptRow show={show('showEntryFee') && !!entryFee && entryFee > 0 && !packagePrice} label="رسوم دخول" value={`ج.م ${entryFee.toFixed(2)}`} />
+          <ReceiptRow show={!!packagePrice} label="تكلفة الباقة" value={`ج.م ${(packagePrice ?? 0).toFixed(2)}`} />
+          <ReceiptRow show={show('showDiscount') && !!discount && discount > 0} label="الخصم" value={`-ج.م ${discount.toFixed(2)}`} valueClass='text-red-600' />
           
           {show('showTotalCost') && (
               <div className="flex justify-between items-center text-lg font-bold p-1 mt-1 bg-gray-200 rounded-md">
@@ -94,12 +94,12 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
       </div>
 
       <div className="space-y-0 border-t border-b border-dashed border-gray-400 py-1 my-1">
-        <ReceiptRow show={show('showParentName')} label={<><User size={12}/> ولي الأمر</>} value={parentName} />
-        <ReceiptRow show={show('showChildName')} label={<><Smile size={12}/> الطفل</>} value={children.map(c => c.name).join(', ')} />
-        <ReceiptRow show={show('showGameName')} label={<><Gamepad2 size={12}/> اللعبة</>} value={gameName} />
-        <ReceiptRow show={show('showCheckInTime')} label={<><Clock size={12}/> دخول</>} value={checkInTime.toLocaleTimeString('ar-EG')} />
-        <ReceiptRow show={show('showCheckOutTime')} label={<><Clock size={12}/> خروج</>} value={checkOutTime.toLocaleTimeString('ar-EG')} />
-        <ReceiptRow show={show('showDuration')} label={<><Calendar size={12}/> المدة</>} value={duration} />
+        <ReceiptRow show={show('showParentName')} label="ولي الأمر" value={parentName} />
+        <ReceiptRow show={show('showChildName')} label="الطفل" value={children.map(c => c.name).join(', ')} />
+        <ReceiptRow show={show('showGameName')} label="اللعبة" value={gameName} />
+        <ReceiptRow show={show('showCheckInTime')} label="دخول" value={checkInTime.toLocaleTimeString('ar-EG')} />
+        <ReceiptRow show={show('showCheckOutTime')} label="خروج" value={checkOutTime.toLocaleTimeString('ar-EG')} />
+        <ReceiptRow show={show('showDuration')} label="المدة" value={duration} />
       </div>
 
        {renderPaymentDetails()}
