@@ -17,7 +17,7 @@ export interface SubscriptionReceiptProps {
 }
 
 const ReceiptRow = ({ label, value, valueClass = '' }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string }) => (
-    <div className="flex justify-between items-center text-xs py-1 border-b border-dashed border-gray-400">
+    <div className="flex justify-between items-center text-xs py-0.5 border-b border-dashed border-gray-400">
         <span className="font-semibold flex items-center gap-1">{label}</span>
         <span className={cn("font-bold text-left", valueClass)}>{value}</span>
     </div>
@@ -37,8 +37,8 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
   const receiptId = `SUB-${new Date().getTime().toString().slice(-6)}`;
 
   return (
-    <div ref={ref} className="bg-white p-2 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
-      <div className="text-center mb-2">
+    <div ref={ref} className="bg-white p-1 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
+      <div className="text-center mb-1">
         <Gamepad2 className="w-8 h-8 mx-auto text-primary" />
         <h1 className="text-xl font-bold">{appName}</h1>
         <p className="text-xs font-semibold">إيصال اشتراك</p>
@@ -48,21 +48,21 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
         <ReceiptRow label={<><User/> ولي الأمر</>} value={customerName} />
         <ReceiptRow label={<><Smile/> الطفل</>} value={childName} />
 
-        <div className='my-2 border-t border-dashed border-gray-400' />
+        <div className='my-1 border-t border-dashed border-gray-400' />
         
         <ReceiptRow label={<><Star/> الباقة</>} value={planName} />
         <ReceiptRow label={<><Calendar/> تاريخ البدء</>} value={startDate.toLocaleDateString('ar-EG')} />
         <ReceiptRow label={<><Calendar/> تاريخ الانتهاء</>} value={endDate.toLocaleDateString('ar-EG')} />
 
-        <div className='my-2 border-t border-dashed border-gray-400' />
+        <div className='my-1 border-t border-dashed border-gray-400' />
         
-        <div className="flex justify-between items-center text-lg font-bold p-2 mt-1 bg-gray-200 rounded-md">
+        <div className="flex justify-between items-center text-lg font-bold p-1 mt-1 bg-gray-200 rounded-md">
             <span>الإجمالي المدفوع</span>
             <span>{`ج.م ${price.toFixed(2)}`}</span>
         </div>
       </div>
 
-       <div className="mt-4 text-center text-xs text-gray-600 space-y-0.5">
+       <div className="mt-2 text-center text-xs text-gray-600 space-y-0">
             <p>الكاشير: {cashierName}</p>
             <p>رقم الإيصال: {receiptId}</p>
             <p>{new Date().toLocaleString('ar-EG')}</p>
