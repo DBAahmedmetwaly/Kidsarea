@@ -105,7 +105,7 @@ function ReceiptDesignerContent() {
         showCashierName: true,
         showReceiptId: true,
         showTimestamp: true,
-        customFooter: 'نتمنى لكم يوماً سعيداً!',
+        customFooter: 'نتمنى لكم يوماً سعيداً ونتمنى عودتكم',
     },
   });
 
@@ -267,7 +267,7 @@ function ReceiptDesignerContent() {
                     <CardTitle>معاينة حية</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="bg-gray-200 p-2 rounded-md">
+                    <div className="bg-white p-2 rounded-md border">
                         <PosReceipt {...dummyReceiptProps} />
                     </div>
                 </CardContent>
