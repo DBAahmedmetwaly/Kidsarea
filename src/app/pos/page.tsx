@@ -1162,7 +1162,7 @@ function PosTrackingContent() {
                                 <TableBody>
                                     {searchedActiveChildren.length > 0 ? (
                                     searchedActiveChildren.map((session) => (
-                                        <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-red-500/10")}>
+                                        <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-red-100")}>
                                         <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                         <TableCell className="text-right">{session.parentName}</TableCell>
                                         <TableCell className="text-right">{(session.phoneNumbers || []).join(', ')}</TableCell>
@@ -1335,3 +1335,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
