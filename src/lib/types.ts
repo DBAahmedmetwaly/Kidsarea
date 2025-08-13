@@ -254,6 +254,7 @@ export interface InventoryItem {
 
 export interface ProductSale {
     id: string;
+    receiptNumber?: number;
     items: (Omit<InventoryItem, 'quantity'> & { cartQuantity: number })[];
     totalAmount: number;
     branchName: string;

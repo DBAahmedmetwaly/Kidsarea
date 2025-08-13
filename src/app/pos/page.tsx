@@ -50,6 +50,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatCard } from '@/components/StatCard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
+import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 
 const TimeCounter = ({ startTime, packageDuration }: { startTime: number, packageDuration?: number }) => {
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -596,9 +597,10 @@ function CheckInDialog({
 type CartItem = InventoryItem & { cartQuantity: number };
 
 function PosTrackingContent() {
-  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, loading: firebaseLoading } = useFirebase();
+  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { printReceipt } = usePosPrint();
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   
@@ -850,9 +852,22 @@ function PosTrackingContent() {
     if (!user?.username || !currentUser) return;
 
     const itemsToSave = cart.map(({ quantity, ...item}) => item);
+    
+    const branch = branches.find(b => b.name === currentUser.branch);
+    if (!branch) {
+        toast({ title: "خطأ", description: "لم يتم العثور على الفرع الحالي.", variant: "destructive"});
+        return;
+    }
+
+    const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
+    const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => {
+        return (currentValue || 0) + 1;
+    });
+    const receiptNumber = (committed && snapshot.val()) ? snapshot.val() : 0;
 
     const saleRecord: ProductSale = {
         id: push(ref(db, 'productSales')).key!,
+        receiptNumber: receiptNumber,
         items: itemsToSave,
         totalAmount: cartTotal,
         branchName: currentUser.branch,
@@ -872,7 +887,17 @@ function PosTrackingContent() {
         }
         await update(ref(db), updates);
 
-        // TODO: Print receipt
+        // 3. Print receipt
+        const receiptProps: ProductReceiptProps = {
+            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
+            settings: receiptSettings,
+            appName: policies?.appName || 'FunTrack',
+            branchName: currentUser.branch,
+            cashierName: currentUser.name,
+            items: cart.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
+            totalAmount: cartTotal,
+        }
+        printReceipt(<ProductReceipt {...receiptProps} />);
 
         toast({ title: "تم البيع بنجاح", description: "تم تسجيل عملية البيع وتحديث المخزون." });
         setCart([]);

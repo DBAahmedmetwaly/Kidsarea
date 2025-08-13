@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -36,6 +37,7 @@ import { StatCard } from '@/components/StatCard';
 
 type FlattenedSaleItem = {
     saleId: string;
+    receiptNumber?: number;
     productName: string;
     cartQuantity: number;
     price: number;
@@ -69,6 +71,7 @@ function ProductSalesContent() {
         return productSales.flatMap(sale => 
             sale.items.map(item => ({
                 saleId: sale.id,
+                receiptNumber: sale.receiptNumber,
                 productName: item.productName,
                 cartQuantity: item.cartQuantity,
                 price: item.price,
@@ -99,7 +102,7 @@ function ProductSalesContent() {
     
      const clearFilters = () => {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
-            // Don't clear branch filter if user is assigned to a specific branch
+            // Don't clear branch filter
         } else {
             setBranchFilter('all');
         }
@@ -235,6 +238,7 @@ function ProductSalesContent() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="text-right">رقم الإيصال</TableHead>
                 <TableHead className="text-right">التاريخ</TableHead>
                 <TableHead className="text-right">الفرع</TableHead>
                 <TableHead className="text-right">الكاشير</TableHead>
@@ -247,6 +251,7 @@ function ProductSalesContent() {
             <TableBody>
               {filteredSales.map((item, index) => (
                 <TableRow key={`${item.saleId}-${item.productName}-${index}`}>
+                    <TableCell className="text-right font-mono">{`${item.branchName.substring(0,3).toUpperCase()}-${item.receiptNumber}`}</TableCell>
                     <TableCell className="text-right">{new Date(item.createdAt).toLocaleString('ar-EG')}</TableCell>
                     <TableCell className="text-right">{item.branchName}</TableCell>
                     <TableCell className="text-right">{item.cashierName}</TableCell>
@@ -258,7 +263,7 @@ function ProductSalesContent() {
               ))}
                {filteredSales.length === 0 && (
                  <TableRow>
-                    <TableCell colSpan={7} className="text-center h-24">
+                    <TableCell colSpan={8} className="text-center h-24">
                         لا توجد مبيعات تطابق الفلاتر المحددة.
                     </TableCell>
                 </TableRow>
