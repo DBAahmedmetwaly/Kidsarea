@@ -101,6 +101,13 @@ export default function EmployeeFormDialog({
         onSubmit(employeeData);
         onOpenChange(false);
     };
+    
+    const isBranchSelectDisabled = () => {
+        if (user?.username === 'admin') return false; // Admin can always edit
+        if (!isEditMode && currentUser?.branch !== 'كل الفروع') return true; // Branch manager can only add to their own branch
+        if (isEditMode && currentUser?.branch !== 'كل الفروع') return false; // Branch manager can edit branch for their employees
+        return false;
+    }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -143,7 +150,7 @@ export default function EmployeeFormDialog({
                     )}
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="branch" className="text-right">الفرع</Label>
-                        <Select value={branch} onValueChange={setBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
+                        <Select value={branch} onValueChange={setBranch} disabled={isBranchSelectDisabled()}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>
