@@ -135,6 +135,11 @@ export interface Policies {
     weekendDays: Record<DayOfWeek, boolean>;
     showPosStats: boolean;
     showCompletedSessions: boolean;
+    posLabels?: {
+        activeSessionsTitle?: string;
+        childColumnTitle?: string;
+        parentColumnTitle?: string;
+    }
 }
 
 export interface Customer {

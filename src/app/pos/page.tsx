@@ -52,9 +52,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 
-const TimeCounter = ({ startTime, packageDuration }: { startTime: number, packageDuration?: number }) => {
+const TimeCounter = ({ startTime, packageDuration, onTimeEnd }: { startTime: number, packageDuration?: number, onTimeEnd?: () => void }) => {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
+  const timeEnded = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -64,12 +65,18 @@ const TimeCounter = ({ startTime, packageDuration }: { startTime: number, packag
 
         if (packageDuration) {
             const totalDurationMs = packageDuration * 60 * 1000;
-            setRemaining(Math.max(0, totalDurationMs - elapsedMs));
+            const newRemaining = Math.max(0, totalDurationMs - elapsedMs);
+            setRemaining(newRemaining);
+            
+            if(newRemaining === 0 && !timeEnded.current) {
+                timeEnded.current = true;
+                onTimeEnd?.();
+            }
         }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [startTime, packageDuration]);
+  }, [startTime, packageDuration, onTimeEnd]);
   
   const formatTime = (ms: number) => {
     if (ms < 0) ms = 0;
@@ -192,7 +199,7 @@ function CheckOutDialog({
                 if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
             } else {
                  const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-                 if(weekdayPolicy) hourlyRate = weekdayPolicy.weekendRate;
+                 if(weekdayPolicy) hourlyRate = weekdayPolicy.weekdayRate;
             }
         }
         
@@ -400,6 +407,7 @@ function CheckInDialog({
 }) {
     const { customers } = useCustomers();
     const { subscriptions } = useFirebase();
+    const { toast } = useToast();
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
@@ -446,7 +454,7 @@ function CheckInDialog({
 
         if (selectedGame.gameType === 'package') {
             if (!selectedPackage) {
-                // toast({ title: "يرجى اختيار باقة وقت", variant: "destructive" });
+                toast({ title: "يرجى اختيار باقة وقت", variant: "destructive" });
                 return;
             }
             childData.packageDuration = selectedPackage.duration;
@@ -461,7 +469,7 @@ function CheckInDialog({
       try {
           const existingCustomer = customers.find(c => (c.phoneNumbers || []).some(p => newCustomerData.phoneNumbers.includes(p)));
           if (existingCustomer) {
-                // toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
+                toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
                 return;
           }
           const customersRef = ref(db, 'customers');
@@ -1133,7 +1141,7 @@ function PosTrackingContent() {
                     <Card>
                         <CardHeader>
                             <div className='flex justify-between items-center'>
-                                <CardTitle>الأطفال النشطون حاليًا</CardTitle>
+                                <CardTitle>{policies?.posLabels?.activeSessionsTitle || 'الأطفال النشطون حاليًا'}</CardTitle>
                                 <span className='text-sm text-muted-foreground'>الفرع</span>
                             </div>
                             <div className="relative">
@@ -1150,8 +1158,8 @@ function PosTrackingContent() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="text-right">الطفل</TableHead>
-                                        <TableHead className="text-right">ولي الأمر</TableHead>
+                                        <TableHead className="text-right">{policies?.posLabels?.childColumnTitle || 'الطفل'}</TableHead>
+                                        <TableHead className="text-right">{policies?.posLabels?.parentColumnTitle || 'ولي الأمر'}</TableHead>
                                         <TableHead className="text-right">رقم الهاتف</TableHead>
                                         <TableHead className="text-right">اللعبة</TableHead>
                                         <TableHead className="text-right">الفرع</TableHead>
@@ -1162,14 +1170,22 @@ function PosTrackingContent() {
                                 <TableBody>
                                     {searchedActiveChildren.length > 0 ? (
                                     searchedActiveChildren.map((session) => (
-                                        <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-red-100")}>
+                                        <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-red-100 dark:bg-red-900/30")}>
                                         <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                         <TableCell className="text-right">{session.parentName}</TableCell>
                                         <TableCell className="text-right">{(session.phoneNumbers || []).join(', ')}</TableCell>
                                         <TableCell className="text-right">{session.game}</TableCell>
                                         <TableCell className="text-right">{session.branchName}</TableCell>
                                         <TableCell className="text-center">
-                                            <TimeCounter startTime={session.checkInTime} packageDuration={session.packageDuration} />
+                                            <TimeCounter 
+                                                startTime={session.checkInTime} 
+                                                packageDuration={session.packageDuration}
+                                                onTimeEnd={() => toast({
+                                                    title: "🔔 انتهى الوقت!",
+                                                    description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c=>c.name).join(', ')}.`,
+                                                    variant: "destructive"
+                                                })} 
+                                            />
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <Button
@@ -1335,4 +1351,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-

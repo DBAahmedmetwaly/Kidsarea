@@ -67,6 +67,11 @@ const policiesSchema = z.object({
   }),
   showPosStats: z.boolean(),
   showCompletedSessions: z.boolean(),
+  posLabels: z.object({
+      activeSessionsTitle: z.string().optional(),
+      childColumnTitle: z.string().optional(),
+      parentColumnTitle: z.string().optional(),
+  }).optional(),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -106,6 +111,11 @@ function PoliciesContent() {
       },
       showPosStats: true,
       showCompletedSessions: true,
+      posLabels: {
+          activeSessionsTitle: 'الأطفال النشطون حاليًا',
+          childColumnTitle: 'الطفل',
+          parentColumnTitle: 'ولي الأمر',
+      }
     },
   });
 
@@ -137,6 +147,11 @@ function PoliciesContent() {
             },
             showPosStats: data.showPosStats !== false,
             showCompletedSessions: data.showCompletedSessions !== false,
+            posLabels: {
+                activeSessionsTitle: data.posLabels?.activeSessionsTitle || 'الأطفال النشطون حاليًا',
+                childColumnTitle: data.posLabels?.childColumnTitle || 'الطفل',
+                parentColumnTitle: data.posLabels?.parentColumnTitle || 'ولي الأمر',
+            }
         });
       }
       setLoading(false);
@@ -250,9 +265,9 @@ function PoliciesContent() {
 
           <Card>
             <CardHeader>
-              <CardTitle>إعدادات عرض شاشة نقاط البيع</CardTitle>
+              <CardTitle>إعدادات عرض شاشة يلا نلعب</CardTitle>
               <CardDescription>
-                تحكم في الوحدات التي تظهر في شاشة نقاط البيع.
+                تحكم في الوحدات التي تظهر في شاشة نقاط البيع والعناوين الخاصة بها.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -300,6 +315,44 @@ function PoliciesContent() {
                     </FormItem>
                     )}
                 />
+                 <div className="space-y-4 pt-4 border-t">
+                    <h3 className="text-md font-medium">تخصيص العناوين</h3>
+                    <div className="grid md:grid-cols-3 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="posLabels.activeSessionsTitle"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>عنوان قسم النشطون حاليًا</FormLabel>
+                                <FormControl><Input placeholder="الأطفال النشطون حاليًا" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="posLabels.childColumnTitle"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>عنوان عمود الطفل</FormLabel>
+                                <FormControl><Input placeholder="الطفل" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="posLabels.parentColumnTitle"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>عنوان عمود ولي الأمر</FormLabel>
+                                <FormControl><Input placeholder="ولي الأمر" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
             </CardContent>
           </Card>
 
