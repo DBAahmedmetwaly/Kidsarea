@@ -55,16 +55,18 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
       </div>
 
       <div className="space-y-0.5 border-t border-b border-dashed border-gray-400 py-1 my-1">
-        <div className="flex justify-between text-xs font-bold">
-            <span className="w-2/4">الصنف</span>
-            <span className="w-1/4 text-center">الكمية</span>
-            <span className="w-1/4 text-left">السعر</span>
+        <div className="grid grid-cols-12 text-xs font-bold">
+            <span className="col-span-5">الصنف</span>
+            <span className="col-span-2 text-center">الكمية</span>
+            <span className="col-span-2 text-center">السعر</span>
+            <span className="col-span-3 text-left">الإجمالي</span>
         </div>
          {items.map((item, index) => (
-            <div key={index} className="flex justify-between text-xs">
-                <span className="w-2/4">{item.name}</span>
-                <span className="w-1/4 text-center">{item.quantity}</span>
-                <span className="w-1/4 text-left font-mono">{`ج.م ${(item.price * item.quantity).toFixed(2)}`}</span>
+            <div key={index} className="grid grid-cols-12 text-xs">
+                <span className="col-span-5">{item.name}</span>
+                <span className="col-span-2 text-center">{item.quantity}</span>
+                <span className="col-span-2 text-center font-mono">{item.price.toFixed(2)}</span>
+                <span className="col-span-3 text-left font-mono">{`ج.م ${(item.price * item.quantity).toFixed(2)}`}</span>
             </div>
          ))}
       </div>
