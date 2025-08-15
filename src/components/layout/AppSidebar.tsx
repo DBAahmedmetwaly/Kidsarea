@@ -49,6 +49,7 @@ import {
   type LucideIcon,
   Archive,
   Receipt,
+  Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -103,6 +104,7 @@ const settingsMenuItems = [
     { href: '/policies', label: 'السياسات', icon: FileCog },
     { href: '/receipt-designer', label: 'تصميم الإيصال', icon: FileText },
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
+    { href: '/contact', label: 'اتصل بنا', icon: Phone },
 ]
 
 const allMenuItems = [

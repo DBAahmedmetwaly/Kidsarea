@@ -42,6 +42,7 @@ const ALL_SCREENS = [
   { href: '/data-management', label: 'إدارة البيانات' },
   { href: '/branches', label: 'الفروع' },
   { href: '/roles', label: 'الصلاحيات' },
+  { href: '/contact', label: 'اتصل بنا' },
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
