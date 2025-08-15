@@ -30,6 +30,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -51,6 +62,7 @@ function ExpensesContent() {
     
     const [isTypeDialogOpen, setTypeDialogOpen] = useState(false);
     const [isFormDialogOpen, setFormDialogOpen] = useState(false);
+    const [expenseToConfirm, setExpenseToConfirm] = useState<Omit<Expense, 'id'> | null>(null);
 
     // Filters
     const [branchFilter, setBranchFilter] = useState('all');
@@ -101,8 +113,12 @@ function ExpensesContent() {
             toast({ title: 'خطأ', description: 'فشل إضافة نوع المصروف', variant: 'destructive' });
         }
     };
+    
+    const handleConfirmAndAddExpense = async () => {
+        if (!expenseToConfirm) return;
+        
+        const expenseData = expenseToConfirm;
 
-    const handleAddExpense = async (expenseData: Omit<Expense, 'id'>) => {
         try {
             // 1. Add the expense record
             const newExpenseRef = push(ref(db, 'expenses'));
@@ -113,6 +129,7 @@ function ExpensesContent() {
             const employee = employees.find(e => e.username === user?.username);
             if (!safe || !employee) {
                 toast({ title: 'خطأ', description: 'لم يتم العثور على الخزينة أو الموظف.', variant: 'destructive' });
+                setExpenseToConfirm(null);
                 return;
             }
 
@@ -138,7 +155,13 @@ function ExpensesContent() {
         } catch (error) {
              console.error("Expense submission error:", error);
             toast({ title: 'خطأ', description: 'فشل تسجيل المصروف', variant: 'destructive' });
+        } finally {
+            setExpenseToConfirm(null);
         }
+    }
+
+    const handleFormSubmit = (expenseData: Omit<Expense, 'id'>) => {
+        setExpenseToConfirm(expenseData);
     }
 
 
@@ -319,9 +342,23 @@ function ExpensesContent() {
           <ExpenseFormDialog 
             open={isFormDialogOpen}
             onOpenChange={setFormDialogOpen}
-            onSubmit={handleAddExpense}
+            onSubmit={handleFormSubmit}
           />
       )}
+       <AlertDialog open={!!expenseToConfirm} onOpenChange={() => setExpenseToConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد تسجيل المصروف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من تسجيل مصروف بمبلغ {expenseToConfirm?.amount.toFixed(2)} ج.م؟ سيتم خصم هذا المبلغ من الخزينة المحددة.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setExpenseToConfirm(null)}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAndAddExpense}>تأكيد</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
