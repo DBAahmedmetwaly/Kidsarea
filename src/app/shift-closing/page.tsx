@@ -38,7 +38,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useSession } from '@/context/SessionContext';
-import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession, Subscription, ProductSale } from '@/lib/types';
+import type { ShiftRecord, OpenShift, Safe, SafeTransaction, CompletedSession, Subscription, ProductSale, Branch } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -506,7 +506,7 @@ function ActiveShiftsTable() {
 }
 
 function DayEndClosing() {
-    const { safes, employees, shiftRecords: allShiftRecords } = useFirebase();
+    const { safes, employees, shiftRecords: allShiftRecords, branches } = useFirebase();
     const { user } = useAuth();
     const { toast } = useToast();
     const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
@@ -636,7 +636,7 @@ function DayEndClosing() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">كل الفروع</SelectItem>
-                                    {employees.map((b: any) => (
+                                    {branches.map((b: Branch) => (
                                         <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
                                     ))}
                                 </SelectContent>
@@ -912,3 +912,4 @@ export default function ShiftManagementPage() {
         </SidebarProvider>
     );
 }
+

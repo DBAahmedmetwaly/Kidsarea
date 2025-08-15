@@ -671,7 +671,7 @@ function PosTrackingContent() {
 
   const policies = useMemo(() => {
     const branchName = currentUser?.branch === 'كل الفروع' ? selectedBranchFilter : currentUser?.branch;
-    const branch = branches.find(b => b.name === branchName);
+    const branch = branches.find(b => b.id === branchName);
     const branchPolicy = allPolicies.find(p => p.id === branch?.id);
     if (branchPolicy) return branchPolicy;
     return allPolicies.find(p => p.id === 'default') || null;
@@ -1232,7 +1232,8 @@ function PosTrackingContent() {
                                                 onTimeEnd={() => toast({
                                                     title: "🔔 انتهى الوقت!",
                                                     description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c=>c.name).join(', ')}.`,
-                                                    variant: "destructive"
+                                                    variant: "destructive",
+                                                    duration: Infinity,
                                                 })} 
                                             />
                                         </TableCell>
@@ -1400,3 +1401,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
