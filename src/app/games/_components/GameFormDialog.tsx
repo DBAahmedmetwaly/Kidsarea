@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import type { Game, GameCategory, GamePackage } from '@/lib/types';
+import type { Game, GameCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, push, set } from 'firebase/database';
@@ -64,9 +64,8 @@ export default function GameFormDialog({
     const [branch, setBranch] = useState('');
     const [status, setStatus] = useState<'Available' | 'Maintenance'>('Available');
     const [categoryId, setCategoryId] = useState('');
-    const [gameType, setGameType] = useState<'hourly' | 'package'>('hourly');
-    const [hourlyRate, setHourlyRate] = useState('');
-   
+    const [paymentModel, setPaymentModel] = useState<'postpaid' | 'prepaid'>('postpaid');
+    const [price, setPrice] = useState('');
 
     // UI State
     const [openCategoryCombobox, setOpenCategoryCombobox] = useState(false);
@@ -79,11 +78,11 @@ export default function GameFormDialog({
                 setBranch(initialData.branch);
                 setStatus(initialData.status);
                 setCategoryId(initialData.categoryId || '');
-                setGameType(initialData.gameType || 'hourly');
-                setHourlyRate(String(initialData.hourly_rate || ''));
+                setPaymentModel(initialData.paymentModel || 'postpaid');
+                setPrice(String(initialData.price || ''));
             } else {
                 setName('');
-                setHourlyRate('');
+                setPrice('');
                 if (currentUser && currentUser.branch !== 'كل الفروع') {
                     setBranch(currentUser.branch);
                 } else {
@@ -91,7 +90,7 @@ export default function GameFormDialog({
                 }
                 setStatus('Available');
                 setCategoryId('');
-                setGameType('hourly');
+                setPaymentModel('postpaid');
             }
         }
     }, [initialData, isEditMode, open, currentUser]);
@@ -117,40 +116,23 @@ export default function GameFormDialog({
     };
     
     const handleSubmit = () => {
-        if (!name || !branch || !status || !categoryId) {
-            toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية.", variant: "destructive" });
+        if (!name || !branch || !status || !categoryId || !price || parseFloat(price) <= 0) {
+            toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية وإدخال سعر صالح.", variant: "destructive" });
             return;
         }
 
         const category = gameCategories.find(c => c.id === categoryId);
-        let gameData: Omit<Game, 'id'>;
-
-        if (gameType === 'hourly') {
-            if (!hourlyRate || parseFloat(hourlyRate) <= 0) {
-                 toast({ title: "خطأ في الإدخال", description: "يرجى إدخال سعر ساعة صالح.", variant: "destructive" });
-                 return;
-            }
-            gameData = {
-                name,
-                branch,
-                status,
-                categoryId,
-                categoryName: category?.name || '',
-                gameType: 'hourly',
-                hourly_rate: parseFloat(hourlyRate)
-            }
-        } else {
-            gameData = {
-                name,
-                branch,
-                status,
-                categoryId,
-                categoryName: category?.name || '',
-                gameType: 'package',
-            }
+        
+        const gameData: Omit<Game, 'id'> = {
+            name,
+            branch,
+            status,
+            categoryId,
+            categoryName: category?.name || '',
+            paymentModel,
+            price: parseFloat(price)
         }
         
-
         const finalData = isEditMode && initialData ? { ...gameData, id: initialData.id } : gameData;
 
         onSubmit(finalData);
@@ -245,29 +227,28 @@ export default function GameFormDialog({
                     </div>
 
                     <div className="grid grid-cols-1 items-center gap-4 border-t pt-4 mt-2">
-                        <Label>نموذج التسعير</Label>
+                        <Label>نموذج الدفع</Label>
                         <RadioGroup
-                            value={gameType}
-                            onValueChange={(value: 'hourly' | 'package') => setGameType(value)}
+                            value={paymentModel}
+                            onValueChange={(value: 'postpaid' | 'prepaid') => setPaymentModel(value)}
                             className="flex gap-4"
                         >
                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="hourly" id="hourly" />
-                                <Label htmlFor="hourly">بالساعة (عداد تصاعدي)</Label>
+                                <RadioGroupItem value="postpaid" id="postpaid" />
+                                <Label htmlFor="postpaid">دفع آجل (للألعاب بالساعة)</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="package" id="package" />
-                                <Label htmlFor="package">باقة وقت (عداد تنازلي)</Label>
+                                <RadioGroupItem value="prepaid" id="prepaid" />
+                                <Label htmlFor="prepaid">دفع مسبق (للألعاب بالباقة/السلة)</Label>
                             </div>
                         </RadioGroup>
                     </div>
                     
-                    {gameType === 'hourly' && (
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="hourly_rate" className="text-right">السعر/ساعة</Label>
-                            <Input id="hourly_rate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
-                        </div>
-                    )}
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="price" className="text-right">السعر (ج.م)</Label>
+                        <Input id="price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="col-span-3" placeholder={paymentModel === 'postpaid' ? "سعر الساعة" : "سعر الباقة"} />
+                    </div>
+
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button type="button" variant="secondary">إلغاء</Button></DialogClose>

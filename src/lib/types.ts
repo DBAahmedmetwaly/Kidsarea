@@ -34,12 +34,6 @@ export interface CompletedSession extends Child {
     overtimeCost?: number;
 }
 
-export interface GamePackage {
-    id: string;
-    duration: number; // in minutes
-    price: number;
-}
-
 export interface Game {
     id: string;
     name: string;
@@ -47,8 +41,8 @@ export interface Game {
     status: 'Available' | 'Maintenance';
     categoryId: string;
     categoryName: string;
-    gameType: 'hourly' | 'package';
-    hourly_rate?: number; // Optional now
+    paymentModel: 'prepaid' | 'postpaid'; // prepaid (cart), postpaid (play then pay)
+    price: number; // hourly rate for postpaid, base price for prepaid packages
 }
 
 export interface Employee {

@@ -70,8 +70,11 @@ function GameDetailsContent() {
                     <Badge variant={game.status === 'Available' ? 'default' : 'destructive'} className={game.status === 'Available' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}>
                         {game.status === 'Available' ? 'متاح' : 'صيانة'}
                     </Badge>
-                     {game.gameType === 'hourly' && (
-                        <span className="text-muted-foreground">{`السعر: ج.م${game.hourly_rate}/ساعة`}</span>
+                     {game.paymentModel === 'postpaid' && (
+                        <span className="text-muted-foreground">{`السعر: ج.م${game.price}/ساعة`}</span>
+                     )}
+                       {game.paymentModel === 'prepaid' && (
+                        <span className="text-muted-foreground">{`السعر: ج.م${game.price} للباقة`}</span>
                      )}
                  </div>
             </div>

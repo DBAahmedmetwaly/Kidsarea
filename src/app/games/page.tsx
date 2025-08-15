@@ -167,10 +167,10 @@ function GamesContent() {
                 <TableHead className="text-right">التصنيف</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
                 <TableHead className="hidden md:table-cell text-center">
-                  التسعير
+                  نموذج الدفع
                 </TableHead>
                 <TableHead className="hidden md:table-cell text-right">
-                  الفروع المتاحة
+                  السعر
                 </TableHead>
                 <TableHead className="text-center">
                   <span>الإجراءات</span>
@@ -191,11 +191,13 @@ function GamesContent() {
                       {game.status === 'Available' ? 'متاح' : 'صيانة'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-center">
-                     {game.gameType === 'hourly' ? `ج.م${game.hourly_rate}/ساعة` : 'باقات'}
+                   <TableCell className="hidden md:table-cell text-center">
+                    <Badge variant="secondary">
+                        {game.paymentModel === 'postpaid' ? 'دفع آجل (بالساعة)' : 'دفع مسبق (باقة)'}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-right">
-                    {game.branch}
+                  <TableCell className="hidden md:table-cell text-right font-semibold">
+                     {`ج.م ${game.price?.toFixed(2) || '0.00'}`}
                   </TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>

@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2 } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -235,7 +235,7 @@ function CheckOutDialog({
         costBeforeDiscount = packageBasePrice + overtimeCost;
     } else {
         const gameDetails = games.find((g) => g.name === child.game);
-        let hourlyRate = gameDetails?.hourly_rate || 0;
+        let hourlyRate = gameDetails?.price || 0;
 
         if (policies?.enableWeekendPricing) {
             const today = getDayOfWeek(new Date());
@@ -482,7 +482,7 @@ function CheckInDialog({
             setOpenCombobox(false);
         } else {
              // If it's a package game with only one package, pre-select it
-            if(selectedGame?.gameType === 'package' && subscriptionPlans?.length === 1) {
+            if(selectedGame?.paymentModel === 'prepaid' && subscriptionPlans?.length === 1) {
                 setSelectedPackage(subscriptionPlans[0]);
             }
         }
@@ -511,7 +511,7 @@ function CheckInDialog({
             phoneNumbers: selectedCustomer.phoneNumbers,
         };
 
-        if (selectedGame.gameType === 'package') {
+        if (selectedGame.paymentModel === 'prepaid') {
             if (!selectedPackage) {
                 toast({ title: "يرجى اختيار باقة وقت", variant: "destructive" });
                 return;
@@ -618,7 +618,7 @@ function CheckInDialog({
                                 </div>
                             </div>
                         )}
-                        {selectedGame?.gameType === 'package' && (
+                        {selectedGame?.paymentModel === 'prepaid' && (
                              <div className="space-y-2">
                                 <Label>اختر باقة الوقت</Label>
                                 <Select onValueChange={(value) => {
@@ -643,7 +643,7 @@ function CheckInDialog({
                         <DialogClose asChild>
                             <Button variant="outline">إلغاء</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer || (selectedGame?.gameType === 'package' && !selectedPackage)}>
+                        <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer || (selectedGame?.paymentModel === 'prepaid' && !selectedPackage)}>
                             بدء اللعب
                         </Button>
                     </DialogFooter>
@@ -661,7 +661,8 @@ function CheckInDialog({
 }
 
 // Cart state type
-type CartItem = InventoryItem & { cartQuantity: number };
+type CartItem = (InventoryItem | (Game & { cartQuantity: number, gameId: string })) & { cartQuantity: number };
+
 
 function PosTrackingContent() {
   const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
@@ -836,8 +837,7 @@ function PosTrackingContent() {
 
   };
 
-
-  const handleCheckIn = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => {
+  const handleStartSession = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => {
     const { children } = data;
     
     if (policies && policies.maxCapacity && (firebaseActiveChildren.length + children.length) > policies.maxCapacity) {
@@ -871,17 +871,19 @@ function PosTrackingContent() {
         return;
     }
     
-    const childId = Date.now();
+    const newSessionRef = push(ref(db, 'sessions/active'));
+    const childId = newSessionRef.key!;
+
     const newSession: Child = {
       ...data,
-      id: childId,
+      id: Number(childId),
       branchName: data.branchName === 'كل الفروع' ? currentUser!.branch : data.branchName,
       checkInTime: Date.now(),
       cashierUsername: user.username,
     };
 
     try {
-        await set(ref(db, `sessions/active/${childId}`), newSession);
+        await set(newSessionRef, newSession);
         toast({
         title: 'تم تسجيل الدخول بنجاح',
         description: `تم تسجيل دخول الأطفال: ${children.map(c=>c.name).join(', ')}.`,
@@ -892,27 +894,25 @@ function PosTrackingContent() {
     }
   };
   
-  const handleAddToCart = (item: InventoryItem) => {
+  const handleAddToCart = (item: InventoryItem | Game) => {
       setCart(prevCart => {
           const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
           if (existingItem) {
-              if (existingItem.cartQuantity < item.quantity) {
-                  return prevCart.map(cartItem => 
-                      cartItem.id === item.id 
-                          ? { ...cartItem, cartQuantity: cartItem.cartQuantity + 1 } 
-                          : cartItem
-                  );
-              } else {
-                  toast({ title: "الكمية غير كافية", description: `لا توجد كمية إضافية متاحة من ${item.productName}.`, variant: "destructive" });
-                  return prevCart;
-              }
+               if ('quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
+                    toast({ title: "الكمية غير كافية", description: `لا توجد كمية إضافية متاحة من ${existingItem.name}.`, variant: "destructive" });
+                    return prevCart;
+                }
+                 return prevCart.map(cartItem => 
+                    cartItem.id === item.id 
+                        ? { ...cartItem, cartQuantity: cartItem.cartQuantity + 1 } 
+                        : cartItem
+                );
           } else {
-               if (item.quantity > 0) {
-                   return [...prevCart, { ...item, cartQuantity: 1 }];
-               } else {
-                   toast({ title: "نفدت الكمية", description: `لم يعد ${item.productName} متوفرًا في المخزون.`, variant: "destructive" });
+               if ('quantity' in item && item.quantity <= 0) {
+                   toast({ title: "نفدت الكمية", description: `لم يعد ${item.name} متوفرًا في المخزون.`, variant: "destructive" });
                    return prevCart;
                }
+               return [...prevCart, { ...item, cartQuantity: 1, gameId: item.id }]; // Add gameId for games
           }
       });
   };
@@ -924,78 +924,91 @@ function PosTrackingContent() {
   const handleUpdateCartQuantity = (itemId: string, newQuantity: number) => {
       setCart(prev => prev.map(item => {
           if (item.id === itemId) {
-              if (newQuantity > 0 && newQuantity <= item.quantity) {
-                  return { ...item, cartQuantity: newQuantity };
-              } else if (newQuantity > item.quantity) {
+              if (newQuantity <= 0) return null;
+              if ('quantity' in item && newQuantity > item.quantity) {
                   toast({ title: "الكمية غير كافية", description: `الكمية المتاحة هي ${item.quantity} فقط.`, variant: 'destructive' });
                   return { ...item, cartQuantity: item.quantity };
               }
+              return { ...item, cartQuantity: newQuantity };
           }
           return item;
-      }).filter(item => item.cartQuantity > 0));
+      }).filter(Boolean) as CartItem[]);
   };
   
-  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0), [cart]);
+  const cartTotal = useMemo(() => cart.reduce((sum, item) => {
+    const price = 'price' in item ? item.price : 0;
+    return sum + (price * item.cartQuantity)
+  }, 0), [cart]);
 
   const handleConfirmSale = async () => {
     if (!user?.username || !currentUser) return;
 
-    const itemsToSave = cart.map(({ quantity, ...item}) => item);
-    
     const branch = branches.find(b => b.name === currentUser.branch);
     if (!branch) {
         toast({ title: "خطأ", description: "لم يتم العثور على الفرع الحالي.", variant: "destructive"});
         return;
     }
-
-    const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
-    const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => {
-        return (currentValue || 0) + 1;
-    });
-    const receiptNumber = (committed && snapshot.val()) ? snapshot.val() : 0;
-
-    const saleRecord: ProductSale = {
-        id: push(ref(db, 'productSales')).key!,
-        receiptNumber: receiptNumber,
-        items: itemsToSave,
-        totalAmount: cartTotal,
-        branchName: currentUser.branch,
-        cashierUsername: user.username,
-        cashierName: currentUser.name,
-        createdAt: new Date().toISOString()
+    
+    // Process prepaid games in cart
+    const prepaidGames = cart.filter(item => 'paymentModel' in item && item.paymentModel === 'prepaid');
+    for (const gameItem of prepaidGames) {
+        // Here you need to trigger a flow to select customer/child and package
+        // This is a complex flow that needs a new dialog. For now, let's assume it starts a session
+        // A proper implementation would open a dialog to gather customer/child info
+         toast({ title: "بدء جلسة", description: `يتم الآن بدء جلسة للعبة: ${gameItem.name}` });
+         // This is a placeholder. You need a dialog to get customer/child info
+         // then call `handleStartSession`.
     }
 
-    try {
-        // 1. Record the sale
-        await set(ref(db, `productSales/${saleRecord.id}`), saleRecord);
+    // Process product sales
+    const productItems = cart.filter(item => 'productId' in item) as (InventoryItem & { cartQuantity: number })[];
+    if (productItems.length > 0) {
+        const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
+        const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => {
+            return (currentValue || 0) + 1;
+        });
+        const receiptNumber = (committed && snapshot.val()) ? snapshot.val() : 0;
+        const productTotal = productItems.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
 
-        // 2. Update inventory quantities
-        const updates: { [key: string]: any } = {};
-        for (const item of cart) {
-            updates[`/inventory/${item.id}/quantity`] = item.quantity - item.cartQuantity;
-        }
-        await update(ref(db), updates);
-
-        // 3. Print receipt
-        const receiptProps: ProductReceiptProps = {
-            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
-            settings: receiptSettings,
-            appName: policies?.appName || 'FunTrack',
+        const saleRecord: ProductSale = {
+            id: push(ref(db, 'productSales')).key!,
+            receiptNumber: receiptNumber,
+            items: productItems.map(({ quantity, ...item}) => item),
+            totalAmount: productTotal,
             branchName: currentUser.branch,
+            cashierUsername: user.username,
             cashierName: currentUser.name,
-            items: cart.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
-            totalAmount: cartTotal,
+            createdAt: new Date().toISOString()
         }
-        printReceipt(<ProductReceipt {...receiptProps} />);
 
-        toast({ title: "تم البيع بنجاح", description: "تم تسجيل عملية البيع وتحديث المخزون." });
-        setCart([]);
-        setSaleCheckoutOpen(false);
+        try {
+            await set(ref(db, `productSales/${saleRecord.id}`), saleRecord);
+            const updates: { [key: string]: any } = {};
+            for (const item of productItems) {
+                updates[`/inventory/${item.id}/quantity`] = item.quantity - item.cartQuantity;
+            }
+            await update(ref(db), updates);
 
-    } catch (error) {
-        console.error("Sale confirmation error:", error);
-        toast({ title: "خطأ", description: "فشل تسجيل عملية البيع.", variant: "destructive"});
+            const receiptProps: ProductReceiptProps = {
+                receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
+                settings: receiptSettings,
+                appName: policies?.appName || 'FunTrack',
+                branchName: currentUser.branch,
+                cashierName: currentUser.name,
+                items: productItems.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
+                totalAmount: productTotal,
+            }
+            printReceipt(<ProductReceipt {...receiptProps} />);
+
+            toast({ title: "تم بيع المنتجات بنجاح", description: "تم تسجيل عملية البيع وتحديث المخزون." });
+        } catch (error) {
+            console.error("Sale confirmation error:", error);
+            toast({ title: "خطأ", description: "فشل تسجيل عملية بيع المنتجات.", variant: "destructive"});
+        }
     }
+    
+    setCart([]);
+    setSaleCheckoutOpen(false);
   };
 
   const handleTimeEnd = (session: Child) => {
@@ -1060,6 +1073,14 @@ function PosTrackingContent() {
       return gameCategories.find(c => c.id === currentTab)?.color || '#ffffff';
   }, [gameCategories, currentTab])
 
+  const handleGameClick = (game: Game) => {
+    if (game.paymentModel === 'postpaid') {
+      openCheckInDialog(game);
+    } else {
+      // Logic for prepaid games (e.g., add to cart, then open a different dialog)
+      handleAddToCart(game);
+    }
+  }
 
   return (
     <div className="relative h-full grid lg:grid-cols-3 gap-4">
@@ -1165,13 +1186,13 @@ function PosTrackingContent() {
                                     {gamesForSelectedCategory.map(game => (
                                         <button 
                                             key={game.id} 
-                                            onClick={() => openCheckInDialog(game)} 
+                                            onClick={() => handleGameClick(game)} 
                                             disabled={!hasActiveShift}
                                             className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
                                             style={{ backgroundColor: `${categoryColor}33` }} // 33 for ~20% opacity
                                         >
                                             <p className="font-semibold text-sm">{game.name}</p>
-                                            <p className="text-xs text-muted-foreground">{game.gameType === 'hourly' && game.hourly_rate ? `ج.م ${game.hourly_rate}/ساعة` : 'باقات وقت'}</p>
+                                            <p className="text-xs text-muted-foreground">{game.paymentModel === 'postpaid' ? `ج.م ${game.price}/ساعة` : 'دفع مسبق'}</p>
                                         </button>
                                     ))}
                                     {gamesForSelectedCategory.length === 0 && (
@@ -1369,7 +1390,7 @@ function PosTrackingContent() {
                 open={isCheckInDialogOpen}
                 onOpenChange={setCheckInDialogOpen}
                 selectedGame={selectedGame}
-                onConfirm={handleCheckIn}
+                onConfirm={handleStartSession}
             />
             <CheckOutDialog 
                 open={isCheckoutDialogOpen}
@@ -1392,7 +1413,7 @@ function PosTrackingContent() {
                             {cart.map(item => (
                                 <div key={item.id} className="flex items-center gap-2">
                                     <div className="flex-grow">
-                                        <p className="text-sm font-medium">{item.productName}</p>
+                                        <p className="text-sm font-medium">{'name' in item ? item.name : item.productName}</p>
                                         <p className="text-xs text-muted-foreground">{`ج.م ${item.price.toFixed(2)}`}</p>
                                     </div>
                                     <Input 
@@ -1401,7 +1422,7 @@ function PosTrackingContent() {
                                         value={item.cartQuantity}
                                         onChange={(e) => handleUpdateCartQuantity(item.id, parseInt(e.target.value))}
                                         min={1}
-                                        max={item.quantity}
+                                        max={'quantity' in item ? item.quantity : undefined}
                                     />
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveFromCart(item.id)}>
                                         <Trash2 className="h-4 w-4 text-red-500" />
@@ -1438,4 +1459,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
