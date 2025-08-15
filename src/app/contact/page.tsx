@@ -7,11 +7,11 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const CodeLinkLogo = () => (
-    <svg width="64" height="64" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
+    <svg width="80" height="80" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
         <rect width="200" height="200" rx="40" fill="hsl(var(--primary))"/>
-        <path d="M107.5 76.5L92.5 124.5" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M130 92L142 100L130 108" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M70 92L58 100L70 108" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M125 75L75 125" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M140 90L160 100L140 110" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M60 90L40 100L60 110" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
 );
 
