@@ -105,7 +105,14 @@ const settingsMenuItems = [
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
 ]
 
-const allMenuItems = [...mainItems, ...managementItems, ...financialItems, ...customerItems, ...settingsMenuItems];
+const allMenuItems = [
+    { href: '/', label: 'الرئيسية', icon: Home },
+    ...mainItems, 
+    ...managementItems, 
+    ...financialItems, 
+    ...customerItems, 
+    ...settingsMenuItems
+];
 
 type Permissions = Record<string, boolean>;
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -129,12 +136,12 @@ function CollapsibleMenuGroup({
 }) {
     const renderedItems = renderMenuItems(items);
 
-    if (!Array.isArray(renderedItems) || renderedItems.length === 0) {
+    if (!Array.isArray(renderedItems) || renderedItems.filter(Boolean).length === 0) {
         return null;
     }
 
     return (
-        <Collapsible>
+        <Collapsible defaultOpen>
             <CollapsibleTrigger asChild>
                 <button className="flex items-center justify-between w-full p-2 text-sm font-medium text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent">
                    <div className='flex items-center gap-2'>
@@ -181,70 +188,51 @@ function SidebarItems() {
       return;
     }
     
-    // Handle admin user
-    if (user.username === 'admin') {
-      const allPermissions: Permissions = [...allMenuItems, { href: '/', label: 'الرئيسية', icon: Home }].reduce((acc, item) => {
-        acc[item.href] = true;
-        return acc;
-      }, {} as Permissions);
-      const fullPermissions: RolePermissions = {
-        'مدير فرع': allPermissions,
-        'كاشير': allPermissions,
-        'مشرف': allPermissions,
-      };
-      setPermissions(fullPermissions);
-      return;
-    }
-
-    if ('role' in user && user.role) {
-      const rolesRef = ref(db, 'roles');
-      const unsubRoles = onValue(rolesRef, (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-              const decodedPermissions: Partial<RolePermissions> = {};
-              for (const role in data) {
-                  if (Object.prototype.hasOwnProperty.call(data, role)) {
-                      const rolePermissions = data[role as Role];
-                      const decodedRolePermissions: Permissions = {};
-                      for (const encodedKey in rolePermissions) {
-                          if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
-                             decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
-                          }
-                      }
-                      decodedPermissions[role as Role] = decodedRolePermissions;
-                  }
-              }
-              setPermissions(decodedPermissions as RolePermissions);
-          }
-      }, (error) => {
-          console.error("Firebase roles error:", error);
-          setPermissions(null);
-      });
-      return () => {
-        unsubRoles();
-      };
-    } else {
+    const rolesRef = ref(db, 'roles');
+    const unsubRoles = onValue(rolesRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            const decodedPermissions: Partial<RolePermissions> = {};
+            for (const role in data) {
+                if (Object.prototype.hasOwnProperty.call(data, role)) {
+                    const rolePermissions = data[role as Role];
+                    const decodedRolePermissions: Permissions = {};
+                    for (const encodedKey in rolePermissions) {
+                        if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
+                           decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
+                        }
+                    }
+                    decodedPermissions[role as Role] = decodedRolePermissions;
+                }
+            }
+            setPermissions(decodedPermissions as RolePermissions);
+        }
+    }, (error) => {
+        console.error("Firebase roles error:", error);
         setPermissions(null);
-    }
+    });
+    return () => {
+      unsubRoles();
+    };
 
   }, [user, allPolicies]);
 
   const hasPermission = (href: string) => {
     if (!user || !permissions) return false;
 
-    let userRole: Role | 'admin';
+    let userRole: Role;
     if (user.username === 'admin') {
-        userRole = 'admin';
+        userRole = 'مدير فرع'; // Admin inherits permissions from 'مدير فرع'
     } else if ('role' in user) {
         userRole = (user as Employee).role;
     } else {
         return false;
     }
 
-    const userPermissions = userRole === 'admin' ? permissions['مدير فرع'] : permissions[userRole];
+    const userPermissions = permissions[userRole];
     if (!userPermissions) return false;
 
-     // Allow access to details pages if the main page is accessible
+    // Allow access to details pages if the main page is accessible
     const detailPaths = [
         {detail: '/subscriptions/[subscriptionId]', main: '/subscriptions'},
         {detail: '/customers/[customerId]', main: '/customers'},
@@ -253,7 +241,7 @@ function SidebarItems() {
     ];
     
     for (const path of detailPaths) {
-        if (href.startsWith(path.main) && userPermissions[path.main]) {
+        if (pathname.startsWith(path.main) && userPermissions[path.main]) {
             return true;
         }
     }
@@ -272,31 +260,29 @@ function SidebarItems() {
     setOpenMobile(false);
   }
 
-  const getHomeLink = () => {
-    return '/';
-  }
-
   const renderMenuItems = (items: typeof allMenuItems) => {
-    return items.filter(item => hasPermission(item.href)).map(item => (
-        <SidebarMenuItem key={item.href} onClick={handleLinkClick}>
-            <SidebarMenuButton
-            asChild
-            isActive={isActive(item.href)}
-            tooltip={{ children: item.label, side: 'left' }}
-            >
-            <Link href={item.href}>
-                <item.icon />
-                <span>{item.label}</span>
-            </Link>
-            </SidebarMenuButton>
-        </SidebarMenuItem>
-    ))
+    return items.map(item => 
+        hasPermission(item.href) ? (
+            <SidebarMenuItem key={item.href} onClick={handleLinkClick}>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive(item.href)}
+                tooltip={{ children: item.label, side: 'left' }}
+                >
+                <Link href={item.href}>
+                    <item.icon />
+                    <span>{item.label}</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        ) : null
+    )
   }
 
   return (
     <>
       <SidebarHeader className="justify-between">
-         <Link href={getHomeLink()} className="flex items-center gap-2 font-bold text-lg text-primary px-2">
+         <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
             <Gamepad2 className="h-6 w-6 text-accent" />
             <span className={cn(
                 "duration-200 text-sidebar-foreground",
@@ -313,11 +299,7 @@ function SidebarItems() {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-            <SidebarMenuItem onClick={handleLinkClick}>
-                <SidebarMenuButton asChild isActive={isActive('/')} tooltip={{children: 'الرئيسية', side: 'left'}}>
-                    <Link href={'/'}><Home/><span>الرئيسية</span></Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
+            {renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
             {renderMenuItems(mainItems)}
             <SidebarSeparator />
             <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} />

@@ -12,10 +12,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, UserCog, Wrench } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import PasswordDialog from '../branches/_components/PasswordDialog';
 
 const ALL_SCREENS = [
+  { href: '/', label: 'الرئيسية' },
   { href: '/dashboard', label: 'لوحة التحكم' },
   { href: '/pos', label: 'يلا نلعب' },
   { href: '/sessions', label: 'سجل الجلسات' },
@@ -57,6 +59,8 @@ function RolesContent() {
   const [selectedRole, setSelectedRole] = useState<Role>('مدير فرع');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [permissionChange, setPermissionChange] = useState<{ screenHref: string, checked: boolean } | null>(null);
 
   useEffect(() => {
     const rolesRef = ref(db, 'roles');
@@ -78,41 +82,21 @@ function RolesContent() {
             }
         }
         setPermissions(decodedPermissions);
-        setLoading(false);
       } else {
-        // Initialize and SAVE default permissions if none exist
-        const defaultPermissions: RolePermissions = {
-          'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {}),
-          'كاشير': {
-             [encodeKey('/pos')]: true,
-             [encodeKey('/sessions')]: true,
-             [encodeKey('/shift-closing')]: true,
-             [encodeKey('/customers')]: true,
-             [encodeKey('/subscriptions')]: true,
-             [encodeKey('/subscription-plans')]: true,
-          },
-          'مشرف': { 
-            [encodeKey('/sessions')]: true,
-           },
-        };
-        set(rolesRef, defaultPermissions).then(() => {
-            // After setting, we need to decode for the current session's state
-            const decodedForState: RolePermissions = {
-                 'مدير فرع': ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {}),
-                 'كاشير': {
-                    '/pos': true,
-                    '/sessions': true,
-                    '/shift-closing': true,
-                    '/customers': true,
-                    '/subscriptions': true,
-                    '/subscription-plans': true,
-                },
-                'مشرف': { '/sessions': true },
-            }
-            setPermissions(decodedForState);
-            setLoading(false);
+        // Initialize default permissions if none exist
+        const defaultPermissions: any = {};
+         ROLES.forEach(role => {
+            defaultPermissions[role] = ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {});
         });
+        set(rolesRef, defaultPermissions);
+        
+        const decodedForState: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
+         ROLES.forEach(role => {
+            decodedForState[role] = ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {});
+        });
+        setPermissions(decodedForState);
       }
+      setLoading(false);
     }, (error) => {
         console.error(error);
         setLoading(false);
@@ -121,36 +105,34 @@ function RolesContent() {
     return () => unsubscribe();
   }, []);
 
-  const handlePermissionChange = (screenHref: string, checked: boolean) => {
-    setPermissions(prev => {
-        if (!prev) return null;
-        const newPermissions = JSON.parse(JSON.stringify(prev)); // Deep copy
-        
-        if (!newPermissions[selectedRole]) {
-            newPermissions[selectedRole] = {};
-        }
-
-        newPermissions[selectedRole][screenHref] = checked;
-
-        // Auto-enable dependent screens
-        if (checked) {
-            if(screenHref.startsWith('/subscriptions/')) {
-                 newPermissions[selectedRole]['/subscriptions'] = true;
-            }
-             if(screenHref.startsWith('/customers/')) {
-                 newPermissions[selectedRole]['/customers'] = true;
-            }
-        }
-
-
-        return newPermissions;
-    });
+  const handlePermissionChangeAttempt = (screenHref: string, checked: boolean) => {
+    setPermissionChange({ screenHref, checked });
+    setPasswordDialogOpen(true);
   };
+  
+  const handlePasswordConfirm = (password: string) => {
+    if (password === 'metoomar') {
+        if (permissionChange) {
+            setPermissions(prev => {
+                if (!prev) return null;
+                const newPermissions = JSON.parse(JSON.stringify(prev));
+                if (!newPermissions[selectedRole]) {
+                    newPermissions[selectedRole] = {};
+                }
+                newPermissions[selectedRole][permissionChange.screenHref] = permissionChange.checked;
+                return newPermissions;
+            });
+        }
+    } else {
+        toast({ title: 'كلمة مرور خاطئة', variant: 'destructive' });
+    }
+    setPermissionChange(null);
+  };
+
 
   const handleSaveChanges = async () => {
     if (!permissions) return;
     try {
-      // We only need to update the permissions for the selected role
       const rolePermissions = permissions[selectedRole];
       if (!rolePermissions) return;
 
@@ -178,11 +160,6 @@ function RolesContent() {
     }
   };
   
-  const allScreensWithDetails = ALL_SCREENS.map(screen => ({
-      ...screen,
-      isDetail: screen.href.includes('[')
-  }))
-
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center gap-4">
@@ -229,16 +206,12 @@ function RolesContent() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                    {allScreensWithDetails.filter(s => !s.isDetail).map(screen => (
+                    {ALL_SCREENS.map(screen => (
                         <div key={screen.href} className="flex items-center space-x-2">
                             <Checkbox
                                 id={`${selectedRole}-${screen.href}`}
                                 checked={permissions?.[selectedRole]?.[screen.href] || false}
-                                onCheckedChange={(checked) => handlePermissionChange(screen.href, !!checked)}
-                                disabled={
-                                    (screen.href === '/subscriptions' && permissions?.[selectedRole]?.['/subscriptions/[subscriptionId]']) ||
-                                    (screen.href === '/customers' && permissions?.[selectedRole]?.['/customers/[customerId]'])
-                                }
+                                onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
                             />
                             <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                 {screen.label}
@@ -254,6 +227,11 @@ function RolesContent() {
           </div>
         </CardContent>
       </Card>
+       <PasswordDialog 
+        open={isPasswordDialogOpen} 
+        onOpenChange={setPasswordDialogOpen} 
+        onConfirm={handlePasswordConfirm} 
+       />
     </div>
   );
 }
