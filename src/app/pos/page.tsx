@@ -230,12 +230,12 @@ function CheckOutDialog({
 
         if (policies?.enableWeekendPricing) {
             const today = getDayOfWeek(new Date());
-            if (policies.weekendDays[today]) {
-                const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-                if(weekendPolicy) hourlyRate = weekendPolicy.weekendRate;
-            } else {
-                 const weekdayPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
-                 if(weekdayPolicy) hourlyRate = weekdayPolicy.weekdayRate;
+            const weekendPolicy = policies.pricingPolicies.find(p => p.gameId === gameDetails?.id);
+            
+            if (policies.weekendDays[today] && weekendPolicy) {
+                hourlyRate = weekendPolicy.weekendRate;
+            } else if (weekendPolicy) {
+                 hourlyRate = weekendPolicy.weekdayRate;
             }
         }
         
@@ -672,7 +672,9 @@ function PosTrackingContent() {
   const policies = useMemo(() => {
     const branchName = currentUser?.branch === 'كل الفروع' ? selectedBranchFilter : currentUser?.branch;
     const branch = branches.find(b => b.name === branchName);
-    return allPolicies.find(p => p.id === branch?.id) || allPolicies.find(p => p.id === 'default') || null;
+    const branchPolicy = allPolicies.find(p => p.id === branch?.id);
+    if (branchPolicy) return branchPolicy;
+    return allPolicies.find(p => p.id === 'default') || null;
 }, [currentUser, selectedBranchFilter, allPolicies, branches]);
 
 
