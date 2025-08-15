@@ -84,6 +84,7 @@ function PayrollContent() {
     };
     
     const employeePayrollData = useMemo(() => {
+        if (!payrollTransactions) return [];
         return employees.map(emp => {
             const empTransactions = payrollTransactions.filter(t => t.employeeId === emp.id);
             const totalAdvances = empTransactions.filter(t => t.type === 'advance').reduce((sum, t) => sum + t.amount, 0);
