@@ -6,12 +6,12 @@ import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-const ZeroLogo = () => (
+const CodelinecLogo = () => (
     <svg width="64" height="64" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
         <rect width="200" height="200" rx="40" fill="hsl(var(--primary))"/>
-        <path d="M128.5 54.5L71.5 145.5" stroke="hsl(var(--primary-foreground))" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M128.5 54.5H86C77.7157 54.5 71.5 60.7157 71.5 69V75.5" stroke="hsl(var(--primary-foreground))" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M71.5 145.5H114C122.284 145.5 128.5 139.284 128.5 131V124.5" stroke="hsl(var(--primary-foreground))" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M107.5 76.5L92.5 124.5" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M130 92L142 100L130 108" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M70 92L58 100L70 108" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
 );
 
@@ -29,8 +29,8 @@ function ContactContent() {
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader className="text-center">
-            <ZeroLogo />
-            <CardTitle className="text-2xl pt-4">Zero for Programming and IT Services</CardTitle>
+            <CodelinecLogo />
+            <CardTitle className="text-2xl pt-4">كودلينك</CardTitle>
             <CardDescription>للدعم الفني والاستفسارات، يمكنكم التواصل معنا عبر القنوات التالية:</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-4">
@@ -53,7 +53,7 @@ function ContactContent() {
                 </div>
             </div>
              <div className="text-center text-muted-foreground pt-4 border-t">
-                <p>&copy; {new Date().getFullYear()} Zero Services. جميع الحقوق محفوظة.</p>
+                <p>&copy; {new Date().getFullYear()} Codelinec. جميع الحقوق محفوظة.</p>
             </div>
         </CardContent>
       </Card>
