@@ -41,8 +41,8 @@ const ALL_SCREENS = [
   { href: '/subscription-plans', label: 'باقات الاشتراكات' },
   { href: '/data-management', label: 'إدارة البيانات' },
   { href: '/branches', label: 'الفروع' },
-  { href: '/roles', label: 'الصلاحيات' },
-  { href: '/contact', label: 'اتصل بنا' },
+  // { href: '/roles', label: 'الصلاحيات' }, // This screen should not be controlled by itself
+  // { href: '/contact', label: 'اتصل بنا' }, // This screen is public
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';

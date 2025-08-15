@@ -104,8 +104,10 @@ const settingsMenuItems = [
     { href: '/policies', label: 'السياسات', icon: FileCog },
     { href: '/receipt-designer', label: 'تصميم الإيصال', icon: FileText },
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
-    { href: '/contact', label: 'اتصل بنا', icon: Phone },
-]
+];
+
+const contactItem = { href: '/contact', label: 'اتصل بنا', icon: Phone };
+
 
 const allMenuItems = [
     { href: '/', label: 'الرئيسية', icon: Home },
@@ -113,7 +115,8 @@ const allMenuItems = [
     ...managementItems, 
     ...financialItems, 
     ...customerItems, 
-    ...settingsMenuItems
+    ...settingsMenuItems,
+    contactItem,
 ];
 
 type Permissions = Record<string, boolean>;
@@ -220,18 +223,19 @@ function SidebarItems() {
   }, [user, allPolicies]);
 
   const hasPermission = (href: string) => {
+    // The "Contact Us" page is always public
+    if (href === '/contact') return true;
+    
     if (!user || !permissions) return false;
 
-    let userRole: Role;
-    if (user.username === 'admin') {
-        userRole = 'مدير فرع'; // Admin inherits permissions from 'مدير فرع'
-    } else if ('role' in user) {
-        userRole = (user as Employee).role;
-    } else {
-        return false;
+    let userRole: Role | 'admin' = 'admin';
+    if (user.username !== 'admin') {
+      userRole = (user as Employee).role;
     }
 
-    const userPermissions = permissions[userRole];
+    const roleToCheck = userRole === 'admin' ? 'مدير فرع' : userRole;
+    const userPermissions = permissions[roleToCheck];
+    
     if (!userPermissions) return false;
 
     // Allow access to details pages if the main page is accessible
@@ -308,6 +312,7 @@ function SidebarItems() {
             <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} />
             <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} />
              <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} />
+              {renderMenuItems([contactItem])}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
