@@ -30,7 +30,7 @@ function ContactContent() {
       <Card className="max-w-2xl mx-auto">
         <CardHeader className="text-center">
             <CodelinecLogo />
-            <CardTitle className="text-2xl pt-4">كودلينك</CardTitle>
+            <CardTitle className="text-2xl pt-4">Codelinec</CardTitle>
             <CardDescription>للدعم الفني والاستفسارات، يمكنكم التواصل معنا عبر القنوات التالية:</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-4">
