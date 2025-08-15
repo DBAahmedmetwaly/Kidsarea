@@ -41,8 +41,7 @@ const ALL_SCREENS = [
   { href: '/subscription-plans', label: 'باقات الاشتراكات' },
   { href: '/data-management', label: 'إدارة البيانات' },
   { href: '/branches', label: 'الفروع' },
-  // { href: '/roles', label: 'الصلاحيات' }, // This screen should not be controlled by itself
-  // { href: '/contact', label: 'اتصل بنا' }, // This screen is public
+  { href: '/roles', label: 'الصلاحيات' },
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -107,8 +106,20 @@ function RolesContent() {
   }, []);
 
   const handlePermissionChangeAttempt = (screenHref: string, checked: boolean) => {
-    setPermissionChange({ screenHref, checked });
-    setPasswordDialogOpen(true);
+    if (checked) {
+        setPermissions(prev => {
+            if (!prev) return null;
+            const newPermissions = JSON.parse(JSON.stringify(prev));
+            if (!newPermissions[selectedRole]) {
+                newPermissions[selectedRole] = {};
+            }
+            newPermissions[selectedRole][screenHref] = checked;
+            return newPermissions;
+        });
+    } else {
+        setPermissionChange({ screenHref, checked });
+        setPasswordDialogOpen(true);
+    }
   };
   
   const handlePasswordConfirm = (password: string) => {
