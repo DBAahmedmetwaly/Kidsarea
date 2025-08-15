@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2 } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage, InventoryItem, ProductSale, Product, ProductCategory } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, GamePackage, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -465,12 +465,12 @@ function CheckInDialog({
     onConfirm: (childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => void
 }) {
     const { customers } = useCustomers();
-    const { subscriptions } = useFirebase();
+    const { subscriptions, subscriptionPlans } = useFirebase();
     const { toast } = useToast();
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
-    const [selectedPackage, setSelectedPackage] = useState<GamePackage | null>(null);
+    const [selectedPackage, setSelectedPackage] = useState<SubscriptionPlan | null>(null);
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
     
@@ -481,12 +481,12 @@ function CheckInDialog({
             setSelectedPackage(null);
             setOpenCombobox(false);
         } else {
-            // If it's a package game with only one package, pre-select it
-            if(selectedGame?.gameType === 'package' && selectedGame.packages?.length === 1) {
-                setSelectedPackage(selectedGame.packages[0]);
+             // If it's a package game with only one package, pre-select it
+            if(selectedGame?.gameType === 'package' && subscriptionPlans?.length === 1) {
+                setSelectedPackage(subscriptionPlans[0]);
             }
         }
-    }, [open, selectedGame]);
+    }, [open, selectedGame, subscriptionPlans]);
 
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
@@ -622,16 +622,16 @@ function CheckInDialog({
                              <div className="space-y-2">
                                 <Label>اختر باقة الوقت</Label>
                                 <Select onValueChange={(value) => {
-                                    const pkg = selectedGame.packages?.find(p => p.id === value);
+                                    const pkg = subscriptionPlans?.find(p => p.id === value);
                                     setSelectedPackage(pkg || null);
                                 }} defaultValue={selectedPackage?.id}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="اختر باقة..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {selectedGame.packages?.map(pkg => (
+                                        {subscriptionPlans?.map(pkg => (
                                             <SelectItem key={pkg.id} value={pkg.id}>
-                                                {pkg.duration} دقيقة / {pkg.price} ج.م
+                                                {pkg.name} ({pkg.duration} دقيقة / {pkg.price} ج.م)
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1171,7 +1171,7 @@ function PosTrackingContent() {
                                             style={{ backgroundColor: `${categoryColor}33` }} // 33 for ~20% opacity
                                         >
                                             <p className="font-semibold text-sm">{game.name}</p>
-                                            <p className="text-xs text-muted-foreground">{game.gameType === 'hourly' ? `ج.م ${game.hourly_rate}/ساعة` : 'باقات وقت'}</p>
+                                            <p className="text-xs text-muted-foreground">{game.gameType === 'hourly' && game.hourly_rate ? `ج.م ${game.hourly_rate}/ساعة` : 'باقات وقت'}</p>
                                         </button>
                                     ))}
                                     {gamesForSelectedCategory.length === 0 && (
@@ -1438,3 +1438,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
