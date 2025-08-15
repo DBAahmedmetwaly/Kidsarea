@@ -6,7 +6,7 @@ import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-const CodelinecLogo = () => (
+const CodeLinkLogo = () => (
     <svg width="64" height="64" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
         <rect width="200" height="200" rx="40" fill="hsl(var(--primary))"/>
         <path d="M107.5 76.5L92.5 124.5" stroke="hsl(var(--primary-foreground))" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
@@ -29,8 +29,8 @@ function ContactContent() {
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader className="text-center">
-            <CodelinecLogo />
-            <CardTitle className="text-2xl pt-4">Codelinec</CardTitle>
+            <CodeLinkLogo />
+            <CardTitle className="text-2xl pt-4">CodeLink</CardTitle>
             <CardDescription>للدعم الفني والاستفسارات، يمكنكم التواصل معنا عبر القنوات التالية:</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-4">
@@ -53,7 +53,7 @@ function ContactContent() {
                 </div>
             </div>
              <div className="text-center text-muted-foreground pt-4 border-t">
-                <p>&copy; {new Date().getFullYear()} Codelinec. جميع الحقوق محفوظة.</p>
+                <p>&copy; {new Date().getFullYear()} CodeLink. جميع الحقوق محفوظة.</p>
             </div>
         </CardContent>
       </Card>
