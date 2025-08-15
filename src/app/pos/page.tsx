@@ -716,9 +716,10 @@ function PosTrackingContent() {
 
   const filteredProductsForDisplay = useMemo(() => {
     return branchInventory.filter(item => {
+        const quantityMatch = item.quantity > 0;
         const categoryMatch = selectedProductCategory === 'all' || item.categoryId === selectedProductCategory;
         const searchMatch = productSearch === '' || item.productName.toLowerCase().includes(productSearch.toLowerCase());
-        return categoryMatch && searchMatch;
+        return quantityMatch && categoryMatch && searchMatch;
     });
   }, [branchInventory, selectedProductCategory, productSearch]);
 
