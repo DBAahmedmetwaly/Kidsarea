@@ -106,8 +106,6 @@ const settingsMenuItems = [
     { href: '/data-management', label: 'إدارة البيانات', icon: Database },
 ];
 
-const contactItem = { href: '/contact', label: 'اتصل بنا', icon: Phone };
-
 
 const allMenuItems = [
     { href: '/', label: 'الرئيسية', icon: Home },
@@ -116,7 +114,6 @@ const allMenuItems = [
     ...financialItems, 
     ...customerItems, 
     ...settingsMenuItems,
-    contactItem,
 ];
 
 type Permissions = Record<string, boolean>;
@@ -223,9 +220,6 @@ function SidebarItems() {
   }, [user, allPolicies]);
 
   const hasPermission = (href: string) => {
-    // The "Contact Us" page is always public
-    if (href === '/contact') return true;
-    
     if (!user || !permissions) return false;
 
     let userRole: Role | 'admin' = 'admin';
@@ -312,7 +306,6 @@ function SidebarItems() {
             <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} />
             <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} />
              <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} />
-              {renderMenuItems([contactItem])}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
