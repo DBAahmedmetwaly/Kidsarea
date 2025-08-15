@@ -94,7 +94,6 @@ export default function EmployeeFormDialog({
             role,
             branch,
             status,
-            avatarUrl: initialData?.avatarUrl || 'https://placehold.co/40x40.png',
             username: requiresCredentials ? username : '',
             password: requiresCredentials ? password : '',
         };
@@ -186,6 +185,3 @@ export default function EmployeeFormDialog({
         </Dialog>
     );
 }
-
-
-    

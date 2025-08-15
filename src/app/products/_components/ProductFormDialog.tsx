@@ -92,7 +92,6 @@ export default function ProductFormDialog({
             name,
             categoryId,
             categoryName: category?.name || '',
-            image: initialData?.image || 'https://placehold.co/64x64.png',
         };
 
         const finalData = isEditMode && initialData ? { ...productData, id: initialData.id } : productData;

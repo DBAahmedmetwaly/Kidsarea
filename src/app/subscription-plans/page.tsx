@@ -56,7 +56,7 @@ const PlanFormDialog = dynamic(() => import('./_components/PlanFormDialog'), {
 const planSchema = z.object({
   name: z.string().min(3, 'اسم الباقة مطلوب'),
   price: z.coerce.number().min(1, 'السعر يجب أن يكون أكبر من صفر'),
-  duration: z.coerce.number().int().min(1, 'المدة (بالأيام) مطلوبة'),
+  duration: z.coerce.number().int().min(1, 'المدة (بالدقائق) مطلوبة'),
   description: z.string().optional(),
 });
 
@@ -117,7 +117,7 @@ function SubscriptionPlansContent() {
       <div className="flex items-center">
         <div className="md:hidden"><SidebarTrigger /></div>
          <Package className="h-8 w-8 text-primary" />
-        <h1 className="text-lg font-semibold md:text-2xl me-auto">إدارة باقات الاشتراكات</h1>
+        <h1 className="text-lg font-semibold md:text-2xl me-auto">إدارة باقات اللعب</h1>
         <Button size="sm" className="h-8 gap-1" onClick={() => openForm()}>
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">إضافة باقة</span>
@@ -125,9 +125,9 @@ function SubscriptionPlansContent() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>باقات الاشتراكات</CardTitle>
+          <CardTitle>باقات اللعب العامة</CardTitle>
           <CardDescription>
-            قم بإدارة باقات الاشتراكات المتاحة للعملاء.
+            قم بإدارة باقات الوقت التي يمكن تطبيقها على أي لعبة من نوع "باقات".
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -137,7 +137,7 @@ function SubscriptionPlansContent() {
                 <TableHead>اسم الباقة</TableHead>
                 <TableHead>الوصف</TableHead>
                 <TableHead className="text-center">السعر</TableHead>
-                <TableHead className="text-center">المدة (بالأيام)</TableHead>
+                <TableHead className="text-center">المدة (بالدقائق)</TableHead>
                 <TableHead className="text-center">إجراءات</TableHead>
               </TableRow>
             </TableHeader>
@@ -147,7 +147,7 @@ function SubscriptionPlansContent() {
                   <TableCell className="font-medium">{plan.name}</TableCell>
                   <TableCell className="text-muted-foreground">{plan.description || '-'}</TableCell>
                   <TableCell className="text-center">{`ج.م ${plan.price.toFixed(2)}`}</TableCell>
-                  <TableCell className="text-center">{plan.duration} يوم</TableCell>
+                  <TableCell className="text-center">{plan.duration} دقيقة</TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -209,5 +209,3 @@ export default function SubscriptionPlansPage() {
     </SidebarProvider>
   );
 }
-
-    

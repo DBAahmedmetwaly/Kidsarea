@@ -3,7 +3,6 @@
 
 import { useState } from 'react';
 import { MoreHorizontal, PlusCircle, ShoppingCart } from 'lucide-react';
-import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
@@ -120,7 +119,6 @@ function ProductsContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="hidden w-[100px] sm:table-cell text-right">صورة</TableHead>
                 <TableHead className="text-right">اسم المنتج</TableHead>
                 <TableHead className="text-right">الفئة</TableHead>
                 <TableHead className="text-center">إجراءات</TableHead>
@@ -129,16 +127,6 @@ function ProductsContent() {
             <TableBody>
               {products.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell className="hidden sm:table-cell">
-                     <Image
-                      alt={product.name}
-                      className="aspect-square rounded-md object-cover"
-                      height="64"
-                      src={product.image}
-                      width="64"
-                      data-ai-hint="product image"
-                    />
-                  </TableCell>
                   <TableCell className="font-medium text-right">{product.name}</TableCell>
                   <TableCell className="text-right">{product.categoryName}</TableCell>
                   <TableCell className="text-center">

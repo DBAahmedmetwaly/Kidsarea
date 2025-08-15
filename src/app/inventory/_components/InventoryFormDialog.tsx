@@ -102,7 +102,6 @@ export default function InventoryFormDialog({
         const itemData = {
             productId: product.id,
             productName: product.name,
-            productImage: product.image,
             categoryId: product.categoryId,
             categoryName: product.categoryName,
             branchId: branch.id,

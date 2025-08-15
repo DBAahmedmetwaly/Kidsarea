@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 const planSchema = z.object({
   name: z.string().min(3, 'اسم الباقة مطلوب'),
   price: z.coerce.number().min(1, 'السعر يجب أن يكون أكبر من صفر'),
-  duration: z.coerce.number().int().min(1, 'المدة (بالأيام) مطلوبة'),
+  duration: z.coerce.number().int().min(1, 'المدة (بالدقائق) مطلوبة'),
   description: z.string().optional(),
 });
 
@@ -67,21 +67,21 @@ export default function PlanFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? 'تعديل باقة اشتراك' : 'إضافة باقة اشتراك جديدة'}</DialogTitle>
+          <DialogTitle>{isEditMode ? 'تعديل باقة' : 'إضافة باقة جديدة'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
           <div>
             <Label htmlFor="name">اسم الباقة</Label>
-            <Input id="name" {...register('name')} placeholder="مثال: الباقة الذهبية" />
+            <Input id="name" {...register('name')} placeholder="مثال: باقة نصف ساعة" />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
           </div>
           <div>
             <Label htmlFor="price">السعر (ج.م)</Label>
-            <Input id="price" type="number" {...register('price')} placeholder="300" />
+            <Input id="price" type="number" {...register('price')} placeholder="50" />
             {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
           </div>
           <div>
-            <Label htmlFor="duration">المدة (بالأيام)</Label>
+            <Label htmlFor="duration">المدة (بالدقائق)</Label>
             <Input id="duration" type="number" {...register('duration')} placeholder="30" />
             {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration.message}</p>}
           </div>
@@ -101,6 +101,3 @@ export default function PlanFormDialog({
     </Dialog>
   );
 }
-
-
-    

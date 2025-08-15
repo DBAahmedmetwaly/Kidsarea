@@ -44,13 +44,11 @@ export interface Game {
     id: string;
     name: string;
     branch: string;
-    image: string;
     status: 'Available' | 'Maintenance';
     categoryId: string;
     categoryName: string;
     gameType: 'hourly' | 'package';
     hourly_rate?: number; // Optional now
-    packages?: GamePackage[]; // For package-based games
 }
 
 export interface Employee {
@@ -59,7 +57,6 @@ export interface Employee {
     role: 'مشرف' | 'كاشير' | 'مدير فرع';
     branch: string | 'كل الفروع';
     status: 'Active' | 'On Leave' | 'Disabled';
-    avatarUrl: string;
     username?: string;
     password?: string;
     baseSalary?: number;
@@ -247,7 +244,6 @@ export interface ProductCategory {
 export interface Product {
     id: string;
     name: string;
-    image: string;
     categoryId: string;
     categoryName: string;
 }
@@ -257,7 +253,6 @@ export interface InventoryItem {
     id: string; // The ID of this specific inventory entry
     productId: string;
     productName: string;
-    productImage: string;
     categoryId: string;
     categoryName: string;
     branchId: string;

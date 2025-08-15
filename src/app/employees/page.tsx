@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -33,7 +32,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Employee } from '@/lib/types';
@@ -148,9 +146,6 @@ function EmployeesContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="hidden w-[100px] sm:table-cell text-right">
-                  <span>الصورة</span>
-                </TableHead>
                 <TableHead className="text-right">الاسم</TableHead>
                 <TableHead className="text-right">الدور</TableHead>
                 <TableHead className="hidden md:table-cell text-right">الفرع</TableHead>
@@ -164,12 +159,6 @@ function EmployeesContent() {
             <TableBody>
               {employees.map((employee) => (
                 <TableRow key={employee.id}>
-                  <TableCell className="hidden sm:table-cell">
-                    <Avatar>
-                        <AvatarImage src={employee.avatarUrl} alt={employee.name} data-ai-hint="person portrait" />
-                        <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                  </TableCell>
                   <TableCell className="font-medium text-right">
                     {employee.name}
                   </TableCell>

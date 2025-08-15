@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -81,8 +80,8 @@ const managementItems = [
   { href: '/products', label: 'كتالوج المنتجات', icon: ShoppingCart },
   { href: '/inventory', label: 'المخزون', icon: Archive },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
-  { href: '/subscriptions', label: 'الاشتراكات', icon: Star },
-  { href: '/subscription-plans', label: 'باقات الاشتراكات', icon: Package },
+  { href: '/subscriptions', label: 'الاشتراكات طويلة الأمد', icon: Star },
+  { href: '/subscription-plans', label: 'باقات اللعب', icon: Package },
 ];
 
 const financialItems = [

@@ -66,8 +66,7 @@ export default function GameFormDialog({
     const [categoryId, setCategoryId] = useState('');
     const [gameType, setGameType] = useState<'hourly' | 'package'>('hourly');
     const [hourlyRate, setHourlyRate] = useState('');
-    const [packages, setPackages] = useState<Omit<GamePackage, 'id'>[]>([]);
-
+   
 
     // UI State
     const [openCategoryCombobox, setOpenCategoryCombobox] = useState(false);
@@ -82,7 +81,6 @@ export default function GameFormDialog({
                 setCategoryId(initialData.categoryId || '');
                 setGameType(initialData.gameType || 'hourly');
                 setHourlyRate(String(initialData.hourly_rate || ''));
-                setPackages(initialData.packages?.map(({id, ...rest}) => rest) || []);
             } else {
                 setName('');
                 setHourlyRate('');
@@ -94,7 +92,6 @@ export default function GameFormDialog({
                 setStatus('Available');
                 setCategoryId('');
                 setGameType('hourly');
-                setPackages([]);
             }
         }
     }, [initialData, isEditMode, open, currentUser]);
@@ -119,21 +116,6 @@ export default function GameFormDialog({
         }
     };
     
-    const handleAddPackage = () => {
-        setPackages([...packages, { duration: 30, price: 50 }]);
-    };
-
-    const handlePackageChange = (index: number, field: 'duration' | 'price', value: string) => {
-        const newPackages = [...packages];
-        newPackages[index] = { ...newPackages[index], [field]: Number(value) };
-        setPackages(newPackages);
-    };
-
-    const handleRemovePackage = (index: number) => {
-        const newPackages = packages.filter((_, i) => i !== index);
-        setPackages(newPackages);
-    };
-
     const handleSubmit = () => {
         if (!name || !branch || !status || !categoryId) {
             toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية.", variant: "destructive" });
@@ -154,24 +136,17 @@ export default function GameFormDialog({
                 status,
                 categoryId,
                 categoryName: category?.name || '',
-                image: initialData?.image || 'https://placehold.co/64x64.png',
                 gameType: 'hourly',
                 hourly_rate: parseFloat(hourlyRate)
             }
         } else {
-            if (packages.length === 0 || packages.some(p => p.duration <= 0 || p.price <= 0)) {
-                 toast({ title: "خطأ في الإدخال", description: "يرجى إضافة باقة واحدة على الأقل بمدة وسعر صالحين.", variant: "destructive" });
-                 return;
-            }
             gameData = {
                 name,
                 branch,
                 status,
                 categoryId,
                 categoryName: category?.name || '',
-                image: initialData?.image || 'https://placehold.co/64x64.png',
                 gameType: 'package',
-                packages: packages.map((p, i) => ({ ...p, id: `pkg-${i}` })),
             }
         }
         
@@ -293,44 +268,6 @@ export default function GameFormDialog({
                             <Input id="hourly_rate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
                         </div>
                     )}
-
-                    {gameType === 'package' && (
-                        <div className="col-span-4 space-y-4 pt-4 border-t">
-                            <Label>باقات الوقت المتاحة</Label>
-                             {packages.map((pkg, index) => (
-                                <div key={index} className="grid grid-cols-12 items-end gap-2">
-                                    <div className="col-span-5">
-                                        <Label className="text-xs">المدة (دقائق)</Label>
-                                        <Input
-                                            type="number"
-                                            value={pkg.duration}
-                                            onChange={(e) => handlePackageChange(index, 'duration', e.target.value)}
-                                            placeholder="e.g. 30"
-                                        />
-                                    </div>
-                                    <div className="col-span-5">
-                                        <Label className="text-xs">السعر (ج.م)</Label>
-                                        <Input
-                                            type="number"
-                                            value={pkg.price}
-                                            onChange={(e) => handlePackageChange(index, 'price', e.target.value)}
-                                            placeholder="e.g. 50"
-                                        />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <Button type="button" variant="destructive" size="icon" onClick={() => handleRemovePackage(index)}>
-                                            <Trash className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                            <Button type="button" variant="outline" onClick={handleAddPackage}>
-                                <PlusCircle className="me-2 h-4 w-4" />
-                                إضافة باقة جديدة
-                            </Button>
-                        </div>
-                    )}
-
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button type="button" variant="secondary">إلغاء</Button></DialogClose>

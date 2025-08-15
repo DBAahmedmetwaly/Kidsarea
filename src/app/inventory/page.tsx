@@ -3,7 +3,6 @@
 
 import { useState, useMemo } from 'react';
 import { MoreHorizontal, PlusCircle, Archive } from 'lucide-react';
-import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
@@ -154,7 +153,6 @@ function InventoryContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="hidden w-[64px] sm:table-cell">صورة</TableHead>
                 <TableHead className="text-right">اسم المنتج</TableHead>
                 <TableHead className="text-right">الفئة</TableHead>
                 <TableHead className="text-center">الكمية</TableHead>
@@ -165,16 +163,6 @@ function InventoryContent() {
             <TableBody>
               {branchInventory.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="hidden sm:table-cell">
-                     <Image
-                      alt={item.productName}
-                      className="aspect-square rounded-md object-cover"
-                      height="40"
-                      src={item.productImage}
-                      width="40"
-                      data-ai-hint="product image"
-                    />
-                  </TableCell>
                   <TableCell className="font-medium text-right">{item.productName}</TableCell>
                   <TableCell className="text-right">{item.categoryName}</TableCell>
                    <TableCell className="text-center">

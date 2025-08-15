@@ -2,7 +2,6 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import Image from 'next/image';
 import {
   Card,
   CardContent,
@@ -65,21 +64,15 @@ function GameDetailsContent() {
              <div className="md:hidden">
                 <SidebarTrigger />
             </div>
-            <Image
-                alt={game.name}
-                className="aspect-square rounded-md object-cover"
-                height="100"
-                src={game.image}
-                width="100"
-                data-ai-hint="kids playground"
-            />
             <div>
                  <h1 className="text-2xl md:text-3xl font-bold">{game.name}</h1>
                  <div className="flex items-center gap-2 mt-2">
                     <Badge variant={game.status === 'Available' ? 'default' : 'destructive'} className={game.status === 'Available' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}>
                         {game.status === 'Available' ? 'متاح' : 'صيانة'}
                     </Badge>
-                    <span className="text-muted-foreground">{`السعر: ج.م${game.hourly_rate}/ساعة`}</span>
+                     {game.gameType === 'hourly' && (
+                        <span className="text-muted-foreground">{`السعر: ج.م${game.hourly_rate}/ساعة`}</span>
+                     )}
                  </div>
             </div>
 
@@ -108,7 +101,7 @@ function GameDetailsContent() {
               {gameSessions.length > 0 ? (
                 gameSessions.map((session) => (
                   <TableRow key={session.id}>
-                    <TableCell className="font-medium">{session.name}</TableCell>
+                    <TableCell className="font-medium">{session.children.map(c => c.name).join(', ')}</TableCell>
                     <TableCell>{session.parentName}</TableCell>
                     <TableCell>{session.branchName}</TableCell>
                     <TableCell>{formatDuration(session.durationMs)}</TableCell>

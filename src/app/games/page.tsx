@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -164,9 +163,6 @@ function GamesContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="hidden w-[100px] sm:table-cell text-right">
-                  <span>صورة اللعبة</span>
-                </TableHead>
                 <TableHead className="text-right">اسم اللعبة</TableHead>
                 <TableHead className="text-right">التصنيف</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
@@ -184,16 +180,6 @@ function GamesContent() {
             <TableBody>
               {games.map((game) => (
                 <TableRow key={game.id}>
-                  <TableCell className="hidden sm:table-cell text-right">
-                     <Image
-                      alt="صورة اللعبة"
-                      className="aspect-square rounded-md object-cover"
-                      height="64"
-                      src={game.image}
-                      width="64"
-                      data-ai-hint="kids playground"
-                    />
-                  </TableCell>
                   <TableCell className="font-medium text-right">
                      <Link href={`/games/${encodeURIComponent(game.name)}`} className="hover:underline">
                         {game.name}
