@@ -89,6 +89,7 @@ const policiesSchema = z.object({
   packageOvertimeRounding: z.enum(['none', 'quarter-hour', 'half-hour', 'hour']),
   entryFeeApplication: z.enum(['all', 'hourly', 'package', 'none']),
   packagePricingModel: z.enum(['per_session', 'per_child']),
+  toastDuration: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -131,6 +132,7 @@ const defaultPolicies: PoliciesFormValues = {
       packageOvertimeRounding: 'quarter-hour',
       entryFeeApplication: 'hourly',
       packagePricingModel: 'per_session',
+      toastDuration: 5,
 }
 
 function PoliciesContent() {
@@ -329,6 +331,19 @@ function PoliciesContent() {
                             <SelectItem value="none">عدم التطبيق</SelectItem>
                         </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="toastDuration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>مدة ظهور الإشعار (بالثواني)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="5" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -724,4 +739,3 @@ export default function PoliciesPage() {
     </SidebarProvider>
   );
 }
-

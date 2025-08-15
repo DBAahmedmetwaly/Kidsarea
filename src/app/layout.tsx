@@ -43,12 +43,12 @@ export default function RootLayout({
               <SessionProvider>
                 <SidebarProvider>
                     {children}
+                    <Toaster />
                 </SidebarProvider>
               </SessionProvider>
             </CustomerProvider>
           </FirebaseProvider>
         </AuthProvider>
-        <Toaster />
       </body>
     </html>
   );

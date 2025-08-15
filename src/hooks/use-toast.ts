@@ -8,6 +8,7 @@ import type {
   ToastActionElement,
   ToastProps,
 } from "@/components/ui/toast"
+import { useFirebase } from "@/context/FirebaseContext";
 
 const TOAST_LIMIT = 3
 const TOAST_REMOVE_DELAY = 1000000
@@ -159,7 +160,6 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
-      duration: props.duration ?? 3000,
       onOpenChange: (open) => {
         if (!open) dismiss()
       },
@@ -175,6 +175,10 @@ function toast({ ...props }: Toast) {
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
+  const { policies } = useFirebase(); // Use the hook here
+  const defaultPolicies = policies.find(p => p.id === 'default');
+  const toastDuration = (defaultPolicies?.toastDuration || 5) * 1000;
+
 
   React.useEffect(() => {
     listeners.push(setState)
@@ -188,7 +192,7 @@ function useToast() {
 
   return {
     ...state,
-    toast,
+    toast: (props: Toast) => toast({ ...props, duration: props.duration ?? toastDuration }),
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }
 }

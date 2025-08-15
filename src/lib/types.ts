@@ -54,7 +54,7 @@ export interface Game {
 }
 
 export interface Employee {
-    id: string;
+    id:string;
     name: string;
     role: 'مشرف' | 'كاشير' | 'مدير فرع';
     branch: string | 'كل الفروع';
@@ -147,6 +147,7 @@ export interface Policies {
     packageOvertimeRounding: 'hour' | 'half-hour' | 'quarter-hour' | 'none';
     entryFeeApplication: 'all' | 'hourly' | 'package' | 'none';
     packagePricingModel: 'per_session' | 'per_child';
+    toastDuration?: number;
 }
 
 export interface Customer {
