@@ -132,9 +132,9 @@ function DataManagementContent() {
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
     try {
-      // This will delete transactional and user-generated setup data.
-      // Core setup like employees, branches, policies, and roles are kept.
+      // This will delete EVERYTHING except for employees and policies.
       const dataPathsToDelete = [
+        'branches',
         'customers',
         'expenses',
         'expenseTypes',
@@ -146,6 +146,7 @@ function DataManagementContent() {
         'products',
         'productCategories',
         'productSales',
+        'roles', // Also delete roles
         'safes',
         'safeTransactions', 
         'sessions', 
@@ -158,7 +159,7 @@ function DataManagementContent() {
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف جميع بيانات المعاملات والبيانات المُعدة من قبل المستخدم بنجاح.',
+        description: 'تم حذف جميع بيانات التطبيق بنجاح باستثناء الموظفين والسياسات.',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -261,9 +262,9 @@ function DataManagementContent() {
             <div>
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>حذف بيانات المعاملات والإعدادات</AlertTitle>
+                    <AlertTitle>إعادة ضبط المصنع (حذف البيانات)</AlertTitle>
                     <AlertDescription>
-                        سيؤدي هذا الإجراء إلى حذف جميع بيانات المعاملات والبيانات التي أنشأها المستخدم (مثل الألعاب والمنتجات). سيتم الاحتفاظ ببيانات الإعداد الأساسية (الموظفين، الفروع، السياسات، إلخ).
+                        سيؤدي هذا الإجراء إلى حذف جميع بيانات التطبيق بشكل دائم، بما في ذلك الفروع، الخزائن، الأدوار، وكل المعاملات. سيتم الاحتفاظ فقط ببيانات الموظفين والسياسات.
                     </AlertDescription>
                 </Alert>
               <AlertDialog>
@@ -286,7 +287,7 @@ function DataManagementContent() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
                     <AlertDialogDescription>
-                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات المعاملات والبيانات التي أنشأتها بشكل دائم. هل تريد المتابعة؟
+                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات التطبيق بشكل دائم باستثناء الموظفين والسياسات. هل تريد المتابعة؟
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
