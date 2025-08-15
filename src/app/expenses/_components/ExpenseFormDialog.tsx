@@ -85,15 +85,30 @@ export default function ExpenseFormDialog({
 
   const filteredSafes = safes.filter(s => s.branchName === watchedBranch);
   const filteredGames = games.filter(g => g.branch === watchedBranch || g.branch === 'كل الفروع');
+  
+  useEffect(() => {
+    if (open) {
+        const defaultBranch = currentUser?.branch !== 'كل الفروع' ? currentUser?.branch : '';
+        const defaultSafes = safes.filter(s => s.branchName === defaultBranch);
+        form.reset({
+            date: new Date(),
+            typeId: '',
+            branchName: defaultBranch,
+            amount: 0,
+            safeId: defaultSafes.length === 1 ? defaultSafes[0].id : '',
+            gameId: '',
+            notes: '',
+        });
+    }
+  }, [open, form, currentUser, safes]);
 
   useEffect(() => {
-    // Auto-select safe if there's only one for the selected branch
     if (watchedBranch && filteredSafes.length === 1) {
-      form.setValue('safeId', filteredSafes[0].id);
+      form.setValue('safeId', filteredSafes[0].id, { shouldValidate: true });
     } else {
-       // form.setValue('safeId', ''); // uncomment if you want to clear safe on branch change
+       form.setValue('safeId', '', { shouldValidate: true });
     }
-  }, [watchedBranch, filteredSafes, form]);
+  }, [watchedBranch, form]);
 
 
   const handleFormSubmit = (data: ExpenseFormValues) => {
@@ -109,23 +124,6 @@ export default function ExpenseFormDialog({
     onOpenChange(false);
   };
 
-  useEffect(() => {
-    if (!open) {
-        form.reset();
-    } else {
-        const defaultBranch = currentUser?.branch !== 'كل الفروع' ? currentUser?.branch : '';
-        const defaultSafes = safes.filter(s => s.branchName === defaultBranch);
-        form.reset({
-            date: new Date(),
-            typeId: '',
-            branchName: defaultBranch,
-            amount: 0,
-            safeId: defaultSafes.length === 1 ? defaultSafes[0].id : '',
-            gameId: '',
-            notes: '',
-        })
-    }
-  }, [open, form, currentUser, safes]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
