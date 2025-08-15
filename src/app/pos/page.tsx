@@ -517,7 +517,9 @@ function CheckInDialog({
                 return;
             }
             childData.packageDuration = selectedPackage.duration;
-            childData.packagePrice = selectedPackage.price;
+            const pricePerHour = selectedGame.price || 0;
+            const pricePerMinute = pricePerHour / 60;
+            childData.packagePrice = pricePerMinute * selectedPackage.duration;
         }
 
         onConfirm(childData);
@@ -631,7 +633,7 @@ function CheckInDialog({
                                     <SelectContent>
                                         {subscriptionPlans?.map(pkg => (
                                             <SelectItem key={pkg.id} value={pkg.id}>
-                                                {pkg.name} ({pkg.duration} دقيقة / {pkg.price} ج.م)
+                                                {pkg.name} ({pkg.duration} دقيقة)
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

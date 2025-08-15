@@ -55,7 +55,6 @@ const PlanFormDialog = dynamic(() => import('./_components/PlanFormDialog'), {
 
 const planSchema = z.object({
   name: z.string().min(3, 'اسم الباقة مطلوب'),
-  price: z.coerce.number().min(1, 'السعر يجب أن يكون أكبر من صفر'),
   duration: z.coerce.number().int().min(1, 'المدة (بالدقائق) مطلوبة'),
   description: z.string().optional(),
 });
@@ -127,7 +126,7 @@ function SubscriptionPlansContent() {
         <CardHeader>
           <CardTitle>باقات اللعب العامة</CardTitle>
           <CardDescription>
-            قم بإدارة باقات الوقت التي يمكن تطبيقها على أي لعبة من نوع "باقات".
+            قم بإدارة باقات الوقت التي يمكن تطبيقها على أي لعبة من نوع "باقات". السعر سيتم تحديده من سعر اللعبة نفسها.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -136,7 +135,6 @@ function SubscriptionPlansContent() {
               <TableRow>
                 <TableHead>اسم الباقة</TableHead>
                 <TableHead>الوصف</TableHead>
-                <TableHead className="text-center">السعر</TableHead>
                 <TableHead className="text-center">المدة (بالدقائق)</TableHead>
                 <TableHead className="text-center">إجراءات</TableHead>
               </TableRow>
@@ -146,7 +144,6 @@ function SubscriptionPlansContent() {
                 <TableRow key={plan.id}>
                   <TableCell className="font-medium">{plan.name}</TableCell>
                   <TableCell className="text-muted-foreground">{plan.description || '-'}</TableCell>
-                  <TableCell className="text-center">{`ج.م ${plan.price.toFixed(2)}`}</TableCell>
                   <TableCell className="text-center">{plan.duration} دقيقة</TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>

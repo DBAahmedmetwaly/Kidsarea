@@ -169,8 +169,7 @@ export interface Subscription {
 export interface SubscriptionPlan {
     id: string;
     name: string;
-    price: number;
-    duration: number; // in days
+    duration: number; // in minutes
     description?: string;
 }
 
