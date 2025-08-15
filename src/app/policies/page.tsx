@@ -134,7 +134,7 @@ const defaultPolicies: PoliciesFormValues = {
 }
 
 function PoliciesContent() {
-  const { games, branches, policies } = useFirebase();
+  const { games, branches, policies, loading: firebaseLoading } = useFirebase();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [selectedBranchId, setSelectedBranchId] = useState('default');
@@ -152,20 +152,17 @@ function PoliciesContent() {
 
   useEffect(() => {
     setLoading(true);
-    if (policies) {
+    if (!firebaseLoading && policies) {
         const branchPolicies = policies.find(p => p.id === selectedBranchId);
         const defaultPoliciesData = policies.find(p => p.id === 'default');
         
         const basePolicies = defaultPoliciesData ? { ...defaultPolicies, ...defaultPoliciesData } : defaultPolicies;
 
-        if (branchPolicies) {
-            form.reset({ ...basePolicies, ...branchPolicies });
-        } else {
-            form.reset(basePolicies);
-        }
+        const currentPolicies = branchPolicies ? { ...basePolicies, ...branchPolicies } : basePolicies;
+        form.reset(currentPolicies);
         setLoading(false);
     }
-  }, [selectedBranchId, policies, form]);
+  }, [selectedBranchId, policies, form, firebaseLoading]);
 
 
   async function onSubmit(values: PoliciesFormValues) {
@@ -176,6 +173,7 @@ function PoliciesContent() {
         title: 'تم الحفظ بنجاح',
         description: `تم تحديث سياسات ${selectedBranchId === 'default' ? 'الافتراضية' : `فرع ${branches.find(b=>b.id === selectedBranchId)?.name}`}.`,
       });
+      // No need to manually reset form, the useEffect will handle it when `policies` from context updates.
     } catch (error) {
       console.error('Failed to save policies:', error);
       toast({
@@ -726,3 +724,4 @@ export default function PoliciesPage() {
     </SidebarProvider>
   );
 }
+
