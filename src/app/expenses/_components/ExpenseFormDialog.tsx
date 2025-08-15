@@ -86,6 +86,16 @@ export default function ExpenseFormDialog({
   const filteredSafes = safes.filter(s => s.branchName === watchedBranch);
   const filteredGames = games.filter(g => g.branch === watchedBranch || g.branch === 'كل الفروع');
 
+  useEffect(() => {
+    // Auto-select safe if there's only one for the selected branch
+    if (watchedBranch && filteredSafes.length === 1) {
+      form.setValue('safeId', filteredSafes[0].id);
+    } else {
+       // form.setValue('safeId', ''); // uncomment if you want to clear safe on branch change
+    }
+  }, [watchedBranch, filteredSafes, form]);
+
+
   const handleFormSubmit = (data: ExpenseFormValues) => {
     const selectedGame = games.find(g => g.id === data.gameId);
     
@@ -103,17 +113,19 @@ export default function ExpenseFormDialog({
     if (!open) {
         form.reset();
     } else {
+        const defaultBranch = currentUser?.branch !== 'كل الفروع' ? currentUser?.branch : '';
+        const defaultSafes = safes.filter(s => s.branchName === defaultBranch);
         form.reset({
             date: new Date(),
             typeId: '',
-            branchName: currentUser?.branch !== 'كل الفروع' ? currentUser?.branch : '',
+            branchName: defaultBranch,
             amount: 0,
-            safeId: '',
+            safeId: defaultSafes.length === 1 ? defaultSafes[0].id : '',
             gameId: '',
             notes: '',
         })
     }
-  }, [open, form, currentUser]);
+  }, [open, form, currentUser, safes]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,8 +218,8 @@ export default function ExpenseFormDialog({
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>الخزينة المصروف منها</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!watchedBranch}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="اختر الخزينة..." /></SelectTrigger></FormControl>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={!watchedBranch || filteredSafes.length <= 1}>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!watchedBranch ? "اختر فرع أولاً" : "اختر الخزينة..."} /></SelectTrigger></FormControl>
                             <SelectContent>
                             {filteredSafes.map(safe => <SelectItem key={safe.id} value={safe.id}>{safe.name}</SelectItem>)}
                             </SelectContent>

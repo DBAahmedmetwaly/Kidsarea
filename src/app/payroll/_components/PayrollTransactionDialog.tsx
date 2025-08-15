@@ -139,7 +139,7 @@ export default function PayrollTransactionDialog({
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>الخزينة المصروف منها</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={branchSafes.length <= 1}>
                             <FormControl><SelectTrigger><SelectValue placeholder="اختر الخزينة..." /></SelectTrigger></FormControl>
                             <SelectContent>
                             {branchSafes.map(safe => <SelectItem key={safe.id} value={safe.id}>{safe.name}</SelectItem>)}

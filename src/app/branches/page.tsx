@@ -56,7 +56,7 @@ import AppSidebar from '@/components/layout/AppSidebar';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useToast } from '@/hooks/use-toast';
-import type { Branch, Employee } from '@/lib/types';
+import type { Branch, Employee, Safe } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -91,15 +91,25 @@ function BranchesContent() {
               nextReceiptNumber: 0, // Initialize receipt counter
           }
           await set(ref(db, `branches/${newBranchId}`), newBranch);
+
+          // Automatically create a safe for the new branch
+          const newSafe: Omit<Safe, 'id'> = {
+            name: `خزينة فرع ${newBranch.name}`,
+            branchName: newBranch.name,
+            balance: 0,
+          };
+          const newSafeRef = push(ref(db, 'safes'));
+          await set(newSafeRef, newSafe);
+
            toast({
               title: "تمت الإضافة بنجاح",
-              description: `تمت إضافة فرع "${newBranch.name}" إلى القائمة.`,
+              description: `تمت إضافة فرع "${newBranch.name}" وخزينته التلقائية بنجاح.`,
           });
       } catch (e) {
           console.error(e);
           toast({
               title: "خطأ",
-              description: "لم يتم إضافة الفرع",
+              description: "لم يتم إضافة الفرع أو الخزينة.",
               variant: 'destructive'
           })
       }

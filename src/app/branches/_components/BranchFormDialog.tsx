@@ -78,7 +78,7 @@ export default function BranchFormDialog({
                 <DialogHeader>
                     <DialogTitle>{isEditMode ? 'تعديل فرع' : 'إضافة فرع جديد'}</DialogTitle>
                     <DialogDescription>
-                        {isEditMode ? 'قم بتحديث تفاصيل الفرع.' : 'أدخل تفاصيل الفرع الجديد. انقر على "إضافة" عند الانتهاء.'}
+                        {isEditMode ? 'قم بتحديث تفاصيل الفرع. لا يمكن تغيير اسم الفرع بعد إنشائه.' : 'أدخل تفاصيل الفرع الجديد. سيتم إنشاء خزينة تلقائية لهذا الفرع.'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -86,7 +86,7 @@ export default function BranchFormDialog({
                         <Label htmlFor="name" className="text-right">
                             اسم الفرع
                         </Label>
-                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="مثال: فرع الرياض" />
+                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="مثال: فرع الرياض" disabled={isEditMode} />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="manager" className="text-right">
