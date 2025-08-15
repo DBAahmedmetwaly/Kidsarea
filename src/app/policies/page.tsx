@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -86,6 +87,8 @@ const policiesSchema = z.object({
   enablePackageOvertime: z.boolean(),
   packageOvertimeRatePerMinute: z.coerce.number().min(0, 'السعر يجب أن يكون رقمًا موجبًا'),
   packageOvertimeRounding: z.enum(['none', 'quarter-hour', 'half-hour', 'hour']),
+  entryFeeApplication: z.enum(['all', 'hourly', 'package', 'none']),
+  packagePricingModel: z.enum(['per_session', 'per_child']),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -126,6 +129,8 @@ const defaultPolicies: PoliciesFormValues = {
       enablePackageOvertime: false,
       packageOvertimeRatePerMinute: 1,
       packageOvertimeRounding: 'quarter-hour',
+      entryFeeApplication: 'hourly',
+      packagePricingModel: 'per_session',
 }
 
 function PoliciesContent() {
@@ -150,13 +155,13 @@ function PoliciesContent() {
     if (policies) {
         const branchPolicies = policies.find(p => p.id === selectedBranchId);
         const defaultPoliciesData = policies.find(p => p.id === 'default');
+        
+        const basePolicies = defaultPoliciesData ? { ...defaultPolicies, ...defaultPoliciesData } : defaultPolicies;
 
         if (branchPolicies) {
-            form.reset(branchPolicies);
-        } else if (defaultPoliciesData) {
-            form.reset(defaultPoliciesData);
+            form.reset({ ...basePolicies, ...branchPolicies });
         } else {
-            form.reset(defaultPolicies);
+            form.reset(basePolicies);
         }
         setLoading(false);
     }
@@ -184,24 +189,18 @@ function PoliciesContent() {
   const handleForceApply = async () => {
     setForceApplyDialogOpen(false);
     try {
-        const defaultPoliciesRef = ref(db, 'policies/default');
-        const snapshot = await get(defaultPoliciesRef);
-        if (!snapshot.exists()) {
-            toast({ title: 'خطأ', description: 'لا توجد سياسات افتراضية لحفظها.', variant: 'destructive'});
-            return;
-        }
-        const defaultPoliciesData = snapshot.val();
+        const currentPoliciesOnScreen = form.getValues();
         
         const updates: { [key: string]: any } = {};
         branches.forEach(branch => {
-            updates[`/policies/${branch.id}`] = defaultPoliciesData;
+            updates[`/policies/${branch.id}`] = currentPoliciesOnScreen;
         });
 
         await update(ref(db), updates);
 
         toast({
             title: 'تم التطبيق بنجاح',
-            description: 'تم فرض السياسات الافتراضية على جميع الفروع.',
+            description: 'تم فرض السياسات الحالية على جميع الفروع.',
         });
 
     } catch (error) {
@@ -271,11 +270,8 @@ function PoliciesContent() {
           <Card>
             <CardHeader>
               <CardTitle>السياسات العامة</CardTitle>
-              <CardDescription>
-                حدد السياسات العامة لمنطقة اللعب مثل السعة الاستيعابية ورسوم الدخول.
-              </CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-6">
+            <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               <FormField
                 control={form.control}
                 name="appName"
@@ -305,7 +301,7 @@ function PoliciesContent() {
                   </FormItem>
                 )}
               />
-              <FormField
+               <FormField
                 control={form.control}
                 name="entryFee"
                 render={({ field }) => (
@@ -314,9 +310,27 @@ function PoliciesContent() {
                     <FormControl>
                       <Input type="number" placeholder="0" {...field} />
                     </FormControl>
-                     <FormDescription>
-                        مبلغ يضاف تلقائياً لكل فاتورة. أدخل 0 لإلغائه.
-                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="entryFeeApplication"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>تطبيق رسوم الدخول على</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                            <SelectTrigger><SelectValue placeholder="اختر..." /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="hourly">الألعاب بالساعة فقط</SelectItem>
+                            <SelectItem value="package">ألعاب الباقات فقط</SelectItem>
+                            <SelectItem value="all">كل الألعاب</SelectItem>
+                            <SelectItem value="none">عدم التطبيق</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -454,6 +468,31 @@ function PoliciesContent() {
 
                 <Separator />
                 
+                <h3 className="text-lg font-medium">سياسات الباقات</h3>
+                <FormField
+                    control={form.control}
+                    name="packagePricingModel"
+                    render={({ field }) => (
+                    <FormItem className="max-w-sm">
+                        <FormLabel>نموذج تسعير الباقة</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="اختر نموذج..." />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="per_session">سعر الباقة ثابت للجلسة (لكل الأطفال)</SelectItem>
+                                <SelectItem value="per_child">سعر الباقة لكل طفل</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormDescription>
+                            كيفية حساب سعر الباقة عند اختيار أكثر من طفل.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
                  <FormField
                 control={form.control}
                 name="enablePackageOvertime"
@@ -520,6 +559,7 @@ function PoliciesContent() {
                 
                 <Separator />
                 
+                <h3 className="text-lg font-medium">سياسات الألعاب بالساعة</h3>
                 <div className="space-y-4">
                   <h3 className="text-md font-medium">تحديد أيام نهاية الأسبوع</h3>
                   <div className="flex flex-wrap gap-4">
@@ -659,7 +699,7 @@ function PoliciesContent() {
             <AlertDialogHeader>
             <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
             <AlertDialogDescription>
-                سيؤدي هذا الإجراء إلى حذف جميع السياسات المخصصة للفروع واستبدالها بالسياسات الافتراضية الحالية. لا يمكن التراجع عن هذا الإجراء.
+                سيؤدي هذا الإجراء إلى استبدال سياسات جميع الفروع بالإعدادات المعروضة حاليًا على الشاشة. لا يمكن التراجع عن هذا الإجراء.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

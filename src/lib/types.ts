@@ -145,6 +145,8 @@ export interface Policies {
     enablePackageOvertime: boolean;
     packageOvertimeRatePerMinute: number;
     packageOvertimeRounding: 'hour' | 'half-hour' | 'quarter-hour' | 'none';
+    entryFeeApplication: 'all' | 'hourly' | 'package' | 'none';
+    packagePricingModel: 'per_session' | 'per_child';
 }
 
 export interface Customer {

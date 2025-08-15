@@ -88,6 +88,7 @@ const financialItems = [
   { href: '/shift-closing', label: 'إدارة الورديات', icon: Briefcase },
   { href: '/expenses', label: 'المصروفات والصيانة', icon: Wrench },
   { href: '/transactions', label: 'سجل الحركات المالية', icon: List },
+  { href: '/payroll', label: 'الرواتب', icon: UserCog },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
   { href: '/product-sales', label: 'تقرير مبيعات المنتجات', icon: Receipt },
 ];
