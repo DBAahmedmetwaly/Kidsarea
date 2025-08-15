@@ -56,9 +56,11 @@ const TimeCounter = ({ startTime, packageDuration, onTimeEnd }: { startTime: num
   const [remaining, setRemaining] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const timeEnded = useRef(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
         const now = Date.now();
         const elapsedMs = now - startTime;
         setElapsed(elapsedMs);
@@ -75,7 +77,10 @@ const TimeCounter = ({ startTime, packageDuration, onTimeEnd }: { startTime: num
         }
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+        if (timerRef.current) clearInterval(timerRef.current);
+        if (notificationIntervalRef.current) clearInterval(notificationIntervalRef.current);
+    };
   }, [startTime, packageDuration, onTimeEnd]);
   
   const formatTime = (ms: number) => {
@@ -678,6 +683,8 @@ function PosTrackingContent() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSaleCheckoutOpen, setSaleCheckoutOpen] = useState(false);
 
+  const notificationIntervals = useRef<Map<number, NodeJS.Timeout>>(new Map()).current;
+
 
   const currentUser = useMemo(() => {
     if (!user) return null;
@@ -785,6 +792,12 @@ function PosTrackingContent() {
   const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps, costBeforeDiscount: number) => {
     setCheckoutDialogOpen(false);
     
+    // Clear any running notification intervals for this child
+    if (notificationIntervals.has(child.id)) {
+        clearInterval(notificationIntervals.get(child.id));
+        notificationIntervals.delete(child.id);
+    }
+
     const activeSubs = subscriptions.filter(sub => 
         sub.customerName === child.parentName &&
         child.children.some(c => c.name === sub.childName) &&
@@ -983,6 +996,23 @@ function PosTrackingContent() {
         console.error("Sale confirmation error:", error);
         toast({ title: "خطأ", description: "فشل تسجيل عملية البيع.", variant: "destructive"});
     }
+  };
+
+  const handleTimeEnd = (session: Child) => {
+    const showToast = () => {
+        toast({
+            title: "🔔 انتهى الوقت!",
+            description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c=>c.name).join(', ')}.`,
+            variant: "destructive",
+            duration: (policies?.toastDuration || 5) * 1000,
+        });
+    };
+    
+    showToast(); // Show immediate toast
+
+    const intervalSeconds = policies?.packageOvertimeNotificationInterval || 60;
+    const intervalId = setInterval(showToast, intervalSeconds * 1000);
+    notificationIntervals.set(session.id, intervalId);
   };
 
   const hasTimeExpired = (session: Child) => {
@@ -1242,12 +1272,7 @@ function PosTrackingContent() {
                                         <TimeCounter 
                                             startTime={session.checkInTime} 
                                             packageDuration={session.packageDuration}
-                                            onTimeEnd={() => toast({
-                                                title: "🔔 انتهى الوقت!",
-                                                description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c=>c.name).join(', ')}.`,
-                                                variant: "destructive",
-                                                duration: Infinity,
-                                            })} 
+                                            onTimeEnd={() => handleTimeEnd(session)} 
                                         />
                                     </TableCell>
                                     <TableCell className="text-center">

@@ -87,6 +87,7 @@ const policiesSchema = z.object({
   enablePackageOvertime: z.boolean(),
   packageOvertimeRatePerMinute: z.coerce.number().min(0, 'السعر يجب أن يكون رقمًا موجبًا'),
   packageOvertimeRounding: z.enum(['none', 'quarter-hour', 'half-hour', 'hour']),
+  packageOvertimeNotificationInterval: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
   entryFeeApplication: z.enum(['all', 'hourly', 'package', 'none']),
   packagePricingModel: z.enum(['per_session', 'per_child']),
   toastDuration: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
@@ -130,6 +131,7 @@ const defaultPolicies: PoliciesFormValues = {
       enablePackageOvertime: false,
       packageOvertimeRatePerMinute: 1,
       packageOvertimeRounding: 'quarter-hour',
+      packageOvertimeNotificationInterval: 60,
       entryFeeApplication: 'hourly',
       packagePricingModel: 'per_session',
       toastDuration: 5,
@@ -530,7 +532,7 @@ function PoliciesContent() {
               />
 
               {form.watch('enablePackageOvertime') && (
-                <div className="grid md:grid-cols-2 gap-6 pl-4 border-s-2">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pl-4 border-s-2">
                      <FormField
                         control={form.control}
                         name="packageOvertimeRatePerMinute"
@@ -563,6 +565,22 @@ function PoliciesContent() {
                                     <SelectItem value="hour">تقريب لأقرب ساعة</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="packageOvertimeNotificationInterval"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>تكرار إشعار انتهاء الوقت (بالثواني)</FormLabel>
+                            <FormControl>
+                            <Input type="number" placeholder="60" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                                الفاصل الزمني لتكرار الإشعار.
+                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}
