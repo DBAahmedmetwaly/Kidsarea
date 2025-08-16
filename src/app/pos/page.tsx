@@ -942,7 +942,7 @@ function PosTrackingContent() {
     return sum + (price * item.cartQuantity)
   }, 0), [cart]);
 
-  const handleConfirmSale = async () => {
+  const handleConfirmSale = async (prepaidGamesToStart: (Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> & { originalCartItemId: string })[]) => {
     if (!user?.username || !currentUser) return;
 
     const branch = branches.find(b => b.name === currentUser.branch);
@@ -952,14 +952,9 @@ function PosTrackingContent() {
     }
     
     // Process prepaid games in cart
-    const prepaidGames = cart.filter(item => 'paymentModel' in item && item.paymentModel === 'prepaid');
-    for (const gameItem of prepaidGames) {
-        // Here you need to trigger a flow to select customer/child and package
-        // This is a complex flow that needs a new dialog. For now, let's assume it starts a session
-        // A proper implementation would open a dialog to gather customer/child info
-         toast({ title: "بدء جلسة", description: `يتم الآن بدء جلسة للعبة: ${gameItem.name}` });
-         // This is a placeholder. You need a dialog to get customer/child info
-         // then call `handleStartSession`.
+    for (const gameToStart of prepaidGamesToStart) {
+        const { originalCartItemId, ...sessionData } = gameToStart;
+        handleStartSession(sessionData);
     }
 
     // Process product sales
@@ -987,7 +982,7 @@ function PosTrackingContent() {
             await set(ref(db, `productSales/${saleRecord.id}`), saleRecord);
             const updates: { [key: string]: any } = {};
             for (const item of productItems) {
-                updates[`/inventory/${item.id}/quantity`] = item.quantity - item.cartQuantity;
+                updates[`/inventory/${item.id}`] = { ...item, quantity: item.quantity - item.cartQuantity};
             }
             await update(ref(db), updates);
 
@@ -1000,7 +995,9 @@ function PosTrackingContent() {
                 items: productItems.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
                 totalAmount: productTotal,
             }
-            printReceipt(<ProductReceipt {...receiptProps} />);
+            if(productItems.length > 0) {
+              printReceipt(<ProductReceipt {...receiptProps} />);
+            }
 
             toast({ title: "تم بيع المنتجات بنجاح", description: "تم تسجيل عملية البيع وتحديث المخزون." });
         } catch (error) {
@@ -1416,7 +1413,7 @@ function PosTrackingContent() {
                                 <div key={item.id} className="flex items-center gap-2">
                                     <div className="flex-grow">
                                         <p className="text-sm font-medium">{'name' in item ? item.name : item.productName}</p>
-                                        <p className="text-xs text-muted-foreground">{`ج.م ${item.price.toFixed(2)}`}</p>
+                                        <p className="text-xs text-muted-foreground">{`ج.م ${item.price?.toFixed(2) ?? '0.00'}`}</p>
                                     </div>
                                     <Input 
                                         type="number" 
@@ -1438,7 +1435,7 @@ function PosTrackingContent() {
                         <span>الإجمالي:</span>
                         <span>{`ج.م ${cartTotal.toFixed(2)}`}</span>
                     </div>
-                    <Button className="w-full" disabled={cart.length === 0 || !hasActiveShift} onClick={handleConfirmSale}>
+                    <Button className="w-full" disabled={cart.length === 0 || !hasActiveShift} onClick={() => setSaleCheckoutOpen(true)}>
                         إتمام الدفع
                     </Button>
                 </CardContent>
