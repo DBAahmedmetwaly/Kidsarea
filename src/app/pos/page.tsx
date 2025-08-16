@@ -691,7 +691,7 @@ function PosTrackingContent() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSaleCheckoutOpen, setSaleCheckoutOpen] = useState(false);
 
-  const notificationIntervals = useRef<Map<number, NodeJS.Timeout>>(new Map()).current;
+  const notificationIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map()).current;
 
 
   const currentUser = useMemo(() => {
@@ -883,7 +883,7 @@ function PosTrackingContent() {
 
     const newSession: Child = {
       ...data,
-      id: Number(newSessionId),
+      id: newSessionId,
       branchName: data.branchName === 'كل الفروع' ? currentUser!.branch : data.branchName,
       checkInTime: Date.now(),
       cashierUsername: user.username,

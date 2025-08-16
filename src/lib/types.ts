@@ -8,7 +8,7 @@ export interface CustomerChild {
 }
 
 export interface Child {
-  id: number;
+  id: string;
   children: CustomerChild[];
   parentName: string;
   phoneNumbers: string[];
