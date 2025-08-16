@@ -205,7 +205,7 @@ function CheckOutDialog({
 
     if (isPackageGame) {
         // For package games, the base price is already paid. We only calculate overtime.
-        let packageBasePrice = 0; // Already paid
+        let packageBasePrice = child.packagePrice || 0;
         
         if (policies?.enablePackageOvertime && child.packageDuration) {
             const packageDurationMs = child.packageDuration * 60 * 1000;
@@ -957,10 +957,40 @@ function PosTrackingContent() {
     }
     
     // Process prepaid games in cart
-    const prepaidGames = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & {cartQuantity: number})[];
-    for (const gameItem of prepaidGames) {
-        await handleStartSession(gameItem.sessionDetails);
+    for (const item of cart) {
+        if (item.type === 'prepaid-game') {
+            const gameItem = item as PrepaidGameCartItem;
+            
+            // 1. Create a CompletedSession to log the revenue immediately
+            const completedSessionRef = push(ref(db, 'sessions/completed'));
+            const completedSessionId = completedSessionRef.key!;
+            const now = Date.now();
+            const receiptNumber = (await runTransaction(ref(db, `branches/${branch.id}/nextReceiptNumber`), (current) => (current || 0) + 1)).snapshot.val() || 0;
+
+            const completedSessionData: CompletedSession = {
+                ...gameItem.sessionDetails,
+                id: completedSessionId,
+                cashierUsername: user.username,
+                checkInTime: now,
+                checkOutTime: now, // Logged at time of sale
+                durationMs: 0,
+                cost: gameItem.price,
+                costBeforeDiscount: gameItem.price,
+                receiptNumber: receiptNumber,
+            };
+            await set(completedSessionRef, completedSessionData);
+
+
+            // 2. Start the actual active session
+            const activeSessionData: Omit<Child, 'id'> = {
+                ...gameItem.sessionDetails,
+                // We link the active session to the completed one for traceability
+                prepaidSessionId: completedSessionId 
+            };
+            await handleStartSession(activeSessionData);
+        }
     }
+
 
     // Process product sales
     const productItems = cart.filter(item => item.type !== 'prepaid-game') as (InventoryItem & { cartQuantity: number })[];

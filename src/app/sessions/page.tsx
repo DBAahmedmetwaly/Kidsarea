@@ -34,7 +34,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { History, Calendar as CalendarIcon, FilterX, Printer, Star, Loader2 } from 'lucide-react';
+import { History, Calendar as CalendarIcon, FilterX, Printer, Star, Loader2, PackageCheck } from 'lucide-react';
 import { useFirebase } from '@/context/FirebaseContext';
 import type { CompletedSession } from '@/lib/types';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -146,7 +146,7 @@ function SessionsContent() {
 
     const receiptDetails: PosReceiptProps = {
         settings: receiptSettings,
-        appName: policies?.appName || 'FunTrack',
+        appName: policies?.find(p => p.id === 'default')?.appName || 'FunTrack',
         children: session.children,
         parentName: session.parentName,
         gameName: session.game,
@@ -159,6 +159,8 @@ function SessionsContent() {
         discount: session.discount,
         cashierName: cashierName,
         isSubscription: !!session.subscriptionId,
+        packagePrice: session.packagePrice,
+        overtimeCost: session.overtimeCost,
     };
     printReceipt(<PosReceipt {...receiptDetails} />);
   }
@@ -213,6 +215,8 @@ function SessionsContent() {
                 <TableCell className="font-bold text-center">
                     {session.subscriptionId ? (
                         <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
+                    ) : session.packagePrice && session.durationMs > 0 ? (
+                       <span className="flex items-center justify-center gap-1 text-blue-600"><PackageCheck className="h-4 w-4"/> باقة</span>
                     ) : `ج.م ${session.cost.toFixed(2)}`}
                 </TableCell>
                 <TableCell className="text-center">

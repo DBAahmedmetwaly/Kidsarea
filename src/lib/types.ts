@@ -19,6 +19,7 @@ export interface Child {
   // For package based games
   packageDuration?: number; // in minutes
   packagePrice?: number;
+  prepaidSessionId?: string; // Links active session to the completed session that paid for it
 }
 
 export interface CompletedSession extends Child {
