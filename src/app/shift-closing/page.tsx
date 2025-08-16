@@ -344,11 +344,17 @@ function OpenShiftForm() {
     });
 
     const availableEmployees = useMemo(() => {
-        const employeesForBranch = currentUser?.branch === 'كل الفروع' 
-            ? employeesWithShifts 
-            : employeesWithShifts.filter(e => e.branch === currentUser?.branch);
+        const employeesForBranch =
+            currentUser?.branch === 'كل الفروع'
+                ? employeesWithShifts
+                : employeesWithShifts.filter(
+                      (e) => e.branch === currentUser?.branch
+                  );
 
-        return employeesForBranch.filter(c => c.username && !openShifts.some(s => s.cashierUsername === c.username));
+        return employeesForBranch.filter(
+            (c) =>
+                c.username && !openShifts.some((s) => s.cashierUsername === c.username)
+        );
     }, [employeesWithShifts, openShifts, currentUser]);
 
 
@@ -913,5 +919,6 @@ export default function ShiftManagementPage() {
         </SidebarProvider>
     );
 }
+
 
 
