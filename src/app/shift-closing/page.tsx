@@ -122,10 +122,14 @@ function ShiftClosingForm() {
     }
   }, [selectedCashierUsername, openShifts, form]);
   
-  const availableShiftsToClose = useMemo(() => {
-    if (!currentUser || currentUser.branch === 'كل الفروع') return openShifts;
-    return openShifts.filter(shift => shift.branchName === currentUser.branch);
-  }, [openShifts, currentUser]);
+ const availableShiftsToClose = useMemo(() => {
+    if (currentUser?.role === 'مدير فرع' && currentUser.branch !== 'كل الفروع') {
+        const branchEmployees = employees.filter(e => e.branch === currentUser.branch);
+        const branchEmployeeUsernames = new Set(branchEmployees.map(e => e.username));
+        return openShifts.filter(shift => branchEmployeeUsernames.has(shift.cashierUsername));
+    }
+    return openShifts;
+  }, [openShifts, currentUser, employees]);
 
 
   async function onSubmit(values: CloseShiftFormValues) {
@@ -345,7 +349,7 @@ function OpenShiftForm() {
 
     const availableEmployees = useMemo(() => {
         const employeesForBranch =
-            currentUser?.branch === 'كل الفروع'
+            currentUser?.role !== 'مدير فرع' || currentUser?.branch === 'كل الفروع'
                 ? employeesWithShifts
                 : employeesWithShifts.filter(
                       (e) => e.branch === currentUser?.branch
@@ -919,6 +923,4 @@ export default function ShiftManagementPage() {
         </SidebarProvider>
     );
 }
-
-
 
