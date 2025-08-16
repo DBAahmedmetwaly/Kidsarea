@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase, Banknote, ChevronsRight, ChevronsUpDown, Check, FilterX, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, PlayCircle, LogOut, Briefcase, Banknote, ChevronsRight, ChevronsUpDown, Check, FilterX, Calendar as CalendarIcon, Wallet } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
@@ -125,24 +125,11 @@ function ShiftClosingForm() {
  const availableShiftsToClose = useMemo(() => {
     if (!currentUser) return [];
 
-    // Admin can see all open shifts
-    if (currentUser.username === 'admin') {
-      return openShifts;
-    }
-
-    // Branch manager logic
-    if (currentUser.role === 'مدير فرع') {
-      if (currentUser.branch === 'كل الفروع') {
-        // Can see all shifts
+    if (currentUser.username === 'admin' || currentUser.branch === 'كل الفروع') {
         return openShifts;
-      } else {
-        // Can see shifts in their branch
-        return openShifts.filter(shift => shift.branchName === currentUser.branch);
-      }
     }
-
-    // Other roles can only see their own shift
-    return openShifts.filter(shift => shift.cashierUsername === currentUser.username);
+    
+    return openShifts.filter(shift => shift.branchName === currentUser.branch);
 
   }, [openShifts, currentUser]);
 
@@ -365,28 +352,16 @@ function OpenShiftForm() {
     });
 
     const availableEmployees = useMemo(() => {
-        // Admin can open shift for any qualifying employee not on shift
-        if (user?.username === 'admin') {
-            return employeesWithShifts.filter(e => e.username && !openShifts.some(s => s.cashierUsername === e.username));
-        }
+        const onShiftUsernames = openShifts.map(s => s.cashierUsername);
+        const employeesNotOnShift = employeesWithShifts.filter(e => e.username && !onShiftUsernames.includes(e.username));
 
-        if (!currentUser) return [];
-        
-        // Branch manager logic
-        if (currentUser.role === 'مدير فرع') {
-            if (currentUser.branch === 'كل الفروع') {
-                // Manager for all branches can open for any employee
-                return employeesWithShifts.filter(e => e.username && !openShifts.some(s => s.cashierUsername === e.username));
-            } else {
-                // Manager for a specific branch can open for employees in their branch, including themselves
-                return employeesWithShifts.filter(
-                    (e) => e.branch === currentUser.branch && e.username && !openShifts.some((s) => s.cashierUsername === e.username)
-                );
-            }
+        if (!currentUser || user?.username === 'admin' || currentUser.branch === 'كل الفروع') {
+            return employeesNotOnShift;
         }
         
-        // Other employees can't open shifts for others
-        return [];
+        return employeesNotOnShift.filter(
+            (e) => e.branch === currentUser.branch
+        );
 
     }, [employeesWithShifts, openShifts, currentUser, user]);
 
@@ -550,7 +525,6 @@ function DayEndClosing() {
     const { user } = useAuth();
     const { toast } = useToast();
     const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
-    const [selectedSafeId, setSelectedSafeId] = useState<string>('');
     const [loading, setLoading] = useState(false);
     
     const shiftsToSettle = useMemo(() => {
@@ -559,15 +533,14 @@ function DayEndClosing() {
 
     const settlementBranch = useMemo(() => {
         if (shiftsToSettle.length === 0) return null;
-        // Check if all selected shifts are from the same branch
         const firstBranch = shiftsToSettle[0].branchName;
         const allSameBranch = shiftsToSettle.every(s => s.branchName === firstBranch);
         return allSameBranch ? firstBranch : 'multiple';
     }, [shiftsToSettle]);
 
-    const availableSafesForSettlement = useMemo(() => {
-        if (!settlementBranch || settlementBranch === 'multiple') return [];
-        return safes.filter(s => s.branchName === settlementBranch);
+    const autoSelectedSafe = useMemo(() => {
+        if (!settlementBranch || settlementBranch === 'multiple') return null;
+        return safes.find(s => s.branchName === settlementBranch) || null;
     }, [safes, settlementBranch]);
 
     const closedShifts = useMemo(() => {
@@ -580,10 +553,10 @@ function DayEndClosing() {
     }, [shiftsToSettle]);
 
     const handleSettleShifts = async () => {
-        if (shiftsToSettle.length === 0 || !selectedSafeId) {
+        if (shiftsToSettle.length === 0 || !autoSelectedSafe) {
              toast({
                 title: "بيانات غير مكتملة",
-                description: "يرجى تحديد وردية واحدة على الأقل وخزينة للترحيل.",
+                description: "يرجى تحديد وردية واحدة على الأقل. يجب أن يكون للفرع خزينة واحدة على الأقل.",
                 variant: 'destructive',
             });
             return;
@@ -597,14 +570,7 @@ function DayEndClosing() {
             return;
         }
         setLoading(true);
-
-        const safe = safes.find(s => s.id === selectedSafeId);
-        if (!safe) {
-             toast({ title: "الخزينة المحددة غير موجودة", variant: 'destructive'});
-             setLoading(false);
-             return;
-        }
-
+        
         const settlementId = `settle-${Date.now()}`;
         const adminUsername = user?.username || 'Admin';
 
@@ -613,35 +579,34 @@ function DayEndClosing() {
             const transactionRef = ref(db, 'safeTransactions');
             const newTransactionRef = push(transactionRef);
             const newTransaction: Omit<SafeTransaction, 'id'> = {
-                safeId: selectedSafeId,
+                safeId: autoSelectedSafe.id,
                 settlementId: settlementId,
                 amount: totalToSettle,
                 type: 'deposit',
                 date: new Date().toISOString(),
                 cashierName: adminUsername,
                 notes: `إيداع إغلاق اليومية لعدد ${shiftsToSettle.length} وردية.`,
-                branchName: safe.branchName,
-                safeName: safe.name,
+                branchName: autoSelectedSafe.branchName,
+                safeName: autoSelectedSafe.name,
             };
             await set(newTransactionRef, newTransaction);
             
             // 2. Update safe balance
-            const safeRef = ref(db, `safes/${selectedSafeId}`);
-            await update(safeRef, { balance: safe.balance + totalToSettle });
+            const safeRef = ref(db, `safes/${autoSelectedSafe.id}`);
+            await update(safeRef, { balance: autoSelectedSafe.balance + totalToSettle });
 
             // 3. Update status of each settled shift
             const shiftUpdatePromises = shiftsToSettle.map(shift => {
                 const shiftRef = ref(db, `shiftRecords/${shift.id}`);
-                return update(shiftRef, { status: 'Settled', settlementId: settlementId, safeId: selectedSafeId });
+                return update(shiftRef, { status: 'Settled', settlementId: settlementId, safeId: autoSelectedSafe.id });
             });
             await Promise.all(shiftUpdatePromises);
 
             toast({
                 title: "تم إغلاق اليومية بنجاح",
-                description: `تم ترحيل مبلغ ${totalToSettle.toFixed(2)} ج.م إلى خزينة ${safe.name}.`,
+                description: `تم ترحيل مبلغ ${totalToSettle.toFixed(2)} ج.م إلى خزينة ${autoSelectedSafe.name}.`,
             });
             setSelectedShiftIds([]);
-            setSelectedSafeId('');
 
         } catch(e) {
             console.error(e);
@@ -652,7 +617,8 @@ function DayEndClosing() {
     };
     
     useEffect(() => {
-        setSelectedSafeId('');
+        // This can be used for any logic that needs to run when the selected shifts change,
+        // but the core logic is now in useMemo.
     }, [selectedShiftIds]);
 
 
@@ -660,7 +626,7 @@ function DayEndClosing() {
         <Card>
             <CardHeader>
                 <CardTitle>الخطوة 2: إغلاق اليومية وترحيل النقدية</CardTitle>
-                <CardDescription>حدد الورديات المغلقة التي تريد ترحيلها إلى الخزينة. لا يمكن ترحيل ورديات من فروع مختلفة معًا.</CardDescription>
+                <CardDescription>حدد الورديات المغلقة التي تريد ترحيلها. سيتم الإيداع تلقائيًا في خزينة الفرع.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
@@ -715,24 +681,25 @@ function DayEndClosing() {
                     )}
 
                     <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-md bg-muted/50">
-                        <div className='flex-1'>
-                             <Select value={selectedSafeId} onValueChange={setSelectedSafeId} disabled={availableSafesForSettlement.length === 0}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={settlementBranch && settlementBranch !== 'multiple' ? "اختر خزينة للإيداع..." : "اختر ورديات من فرع واحد أولاً"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {availableSafesForSettlement.map(safe => (
-                                        <SelectItem key={safe.id} value={safe.id}>{safe.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div className='flex-1 text-center sm:text-left'>
+                            <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center sm:justify-start">
+                                <Wallet className="h-4 w-4" />
+                                خزينة الإيداع
+                            </p>
+                            {autoSelectedSafe ? (
+                                <p className="font-semibold text-lg">{autoSelectedSafe.name}</p>
+                            ) : shiftsToSettle.length > 0 ? (
+                                <p className="text-red-500 font-semibold">لم يتم العثور على خزينة لهذا الفرع</p>
+                            ) : (
+                                <p className="text-muted-foreground">اختر ورديات لعرض الخزينة</p>
+                            )}
                         </div>
                         <ChevronsRight className="h-6 w-6 text-muted-foreground hidden sm:block" />
                         <div className="flex-1 text-center sm:text-left">
                             <p className="text-sm text-muted-foreground">الإجمالي للترحيل</p>
                             <p className="text-2xl font-bold text-green-600">{`ج.م ${totalToSettle.toFixed(2)}`}</p>
                         </div>
-                        <Button onClick={handleSettleShifts} disabled={loading || shiftsToSettle.length === 0 || !selectedSafeId} className="w-full sm:w-auto">
+                        <Button onClick={handleSettleShifts} disabled={loading || shiftsToSettle.length === 0 || !autoSelectedSafe} className="w-full sm:w-auto">
                            {loading ? <Loader2 className="me-2 h-4 w-4 animate-spin"/> : <Banknote className="me-2 h-4 w-4"/>}
                            ترحيل النقدية
                         </Button>
