@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2 } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -204,18 +204,16 @@ function CheckOutDialog({
 
 
     if (isPackageGame) {
-        const packageChildrenCount = policies?.packagePricingModel === 'per_child' ? numberOfChildren : 1;
-        let packageBasePrice = (child.packagePrice || 0) * packageChildrenCount;
+        // For package games, the base price is already paid. We only calculate overtime.
+        let packageBasePrice = 0; // Already paid
         
-        // Calculate overtime if applicable
         if (policies?.enablePackageOvertime && child.packageDuration) {
             const packageDurationMs = child.packageDuration * 60 * 1000;
             if (durationMs > packageDurationMs) {
                 const overtimeMs = durationMs - packageDurationMs;
                 let overtimeMinutes = overtimeMs / (1000 * 60);
 
-                // Apply rounding
-                 if (policies.packageOvertimeRounding && policies.packageOvertimeRounding !== 'none') {
+                if (policies.packageOvertimeRounding && policies.packageOvertimeRounding !== 'none') {
                     switch(policies.packageOvertimeRounding) {
                         case 'quarter-hour':
                             overtimeMinutes = Math.ceil(overtimeMinutes / 15) * 15;
@@ -232,7 +230,7 @@ function CheckOutDialog({
             }
         }
         
-        costBeforeDiscount = packageBasePrice + overtimeCost;
+        costBeforeDiscount = overtimeCost;
     } else {
         const gameDetails = games.find((g) => g.name === child.game);
         let hourlyRate = gameDetails?.price || 0;
@@ -257,16 +255,11 @@ function CheckOutDialog({
         costBeforeDiscount = finalDurationCost;
     }
 
-    // Apply Entry Fee
+    // Apply Entry Fee (only for postpaid games)
     const entryFeePolicy = policies?.entryFeeApplication;
-    if (policies && policies.entryFee > 0 && entryFeePolicy !== 'none') {
-        const applyToHourly = entryFeePolicy === 'all' || entryFeePolicy === 'hourly';
-        const applyToPackage = entryFeePolicy === 'all' || entryFeePolicy === 'package';
-
-        if ((!isPackageGame && applyToHourly) || (isPackageGame && applyToPackage)) {
-            finalEntryFee = policies.entryFee * numberOfChildren;
-            costBeforeDiscount += finalEntryFee;
-        }
+    if (!isPackageGame && policies && policies.entryFee > 0 && (entryFeePolicy === 'all' || entryFeePolicy === 'hourly')) {
+        finalEntryFee = policies.entryFee * numberOfChildren;
+        costBeforeDiscount += finalEntryFee;
     }
 
     finalTotalCost = costBeforeDiscount;
@@ -383,10 +376,9 @@ function CheckOutDialog({
             {isPackageGame && (
                 <Alert className="bg-blue-50 border-blue-200">
                     <PackageCheck className="h-4 w-4 text-blue-600" />
-                    <AlertTitle className="text-blue-800">لعبة باقة وقت</AlertTitle>
+                    <AlertTitle className="text-blue-800">جلسة مدفوعة مسبقاً</AlertTitle>
                     <AlertDescription className="text-blue-700">
-                      تكلفة الباقة الأساسية: {`ج.م ${child.packagePrice?.toFixed(2)}`}.
-                      {checkoutData.overtimeCost > 0 && ` + تكلفة الوقت الإضافي: ج.م ${checkoutData.overtimeCost.toFixed(2)}`}
+                      هذه الجلسة مدفوعة مسبقاً. سيتم فقط احتساب الوقت الإضافي إن وجد.
                     </AlertDescription>
                 </Alert>
             )}
@@ -457,12 +449,14 @@ function CheckInDialog({
     open,
     onOpenChange,
     selectedGame,
-    onConfirm
+    onConfirmPostpaid, // For postpaid games
+    onConfirmPrepaid,  // For prepaid games
 } : {
     open: boolean,
     onOpenChange: (open: boolean) => void,
     selectedGame: Game | null,
-    onConfirm: (childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => void
+    onConfirmPostpaid: (childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => void,
+    onConfirmPrepaid: (cartItem: PrepaidGameCartItem) => void,
 }) {
     const { customers } = useCustomers();
     const { subscriptions, subscriptionPlans } = useFirebase();
@@ -480,13 +474,8 @@ function CheckInDialog({
             setSelectedChildren([]);
             setSelectedPackage(null);
             setOpenCombobox(false);
-        } else {
-             // If it's a package game with only one package, pre-select it
-            if(selectedGame?.paymentModel === 'prepaid' && subscriptionPlans?.length === 1) {
-                setSelectedPackage(subscriptionPlans[0]);
-            }
         }
-    }, [open, selectedGame, subscriptionPlans]);
+    }, [open]);
 
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
@@ -503,7 +492,8 @@ function CheckInDialog({
     const handleConfirm = () => {
         if (!selectedCustomer || selectedChildren.length === 0 || !selectedGame) return;
         
-        const childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> = {
+        const isPrepaid = selectedGame.paymentModel === 'prepaid';
+        const sessionDetails: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> = {
             children: selectedChildren,
             game: selectedGame.name,
             branchName: selectedGame.branch,
@@ -511,18 +501,30 @@ function CheckInDialog({
             phoneNumbers: selectedCustomer.phoneNumbers,
         };
 
-        if (selectedGame.paymentModel === 'prepaid') {
+        if (isPrepaid) {
             if (!selectedPackage) {
                 toast({ title: "يرجى اختيار باقة وقت", variant: "destructive" });
                 return;
             }
-            childData.packageDuration = selectedPackage.duration;
             const pricePerHour = selectedGame.price || 0;
             const pricePerMinute = pricePerHour / 60;
-            childData.packagePrice = pricePerMinute * selectedPackage.duration;
+            const packagePrice = pricePerMinute * selectedPackage.duration;
+            
+            sessionDetails.packageDuration = selectedPackage.duration;
+            sessionDetails.packagePrice = packagePrice;
+            
+            const cartItem: PrepaidGameCartItem = {
+                type: 'prepaid-game',
+                id: `prepaid-${Date.now()}-${Math.random()}`,
+                sessionDetails: sessionDetails,
+                price: packagePrice,
+            };
+            onConfirmPrepaid(cartItem);
+
+        } else {
+            onConfirmPostpaid(sessionDetails);
         }
 
-        onConfirm(childData);
         onOpenChange(false);
     }
     
@@ -549,7 +551,10 @@ function CheckInDialog({
                     <DialogHeader>
                         <DialogTitle>تسجيل دخول: {selectedGame?.name}</DialogTitle>
                         <DialogDescription>
-                            اختر العميل والأطفال لبدء جلسة اللعب.
+                            {selectedGame?.paymentModel === 'prepaid' 
+                                ? "اختر العميل والأطفال والباقة لإضافة الجلسة إلى سلة التسوق."
+                                : "اختر العميل والأطفال لبدء جلسة اللعب."
+                            }
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -646,7 +651,7 @@ function CheckInDialog({
                             <Button variant="outline">إلغاء</Button>
                         </DialogClose>
                         <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer || (selectedGame?.paymentModel === 'prepaid' && !selectedPackage)}>
-                            بدء اللعب
+                           {selectedGame?.paymentModel === 'prepaid' ? 'إضافة للسلة' : 'بدء اللعب'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -663,7 +668,7 @@ function CheckInDialog({
 }
 
 // Cart state type
-type CartItem = (InventoryItem | (Game & { cartQuantity: number, gameId: string })) & { cartQuantity: number };
+type CartItem = (InventoryItem | PrepaidGameCartItem) & { cartQuantity: number };
 
 
 function PosTrackingContent() {
@@ -874,11 +879,11 @@ function PosTrackingContent() {
     }
     
     const newSessionRef = push(ref(db, 'sessions/active'));
-    const childId = newSessionRef.key!;
+    const newSessionId = newSessionRef.key!;
 
     const newSession: Child = {
       ...data,
-      id: Number(childId),
+      id: Number(newSessionId),
       branchName: data.branchName === 'كل الفروع' ? currentUser!.branch : data.branchName,
       checkInTime: Date.now(),
       cashierUsername: user.username,
@@ -896,12 +901,12 @@ function PosTrackingContent() {
     }
   };
   
-  const handleAddToCart = (item: InventoryItem | Game) => {
+  const handleAddToCart = (item: InventoryItem | PrepaidGameCartItem) => {
       setCart(prevCart => {
           const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
           if (existingItem) {
-               if ('quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
-                    toast({ title: "الكمية غير كافية", description: `لا توجد كمية إضافية متاحة من ${existingItem.name}.`, variant: "destructive" });
+               if (item.type !== 'prepaid-game' && 'quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
+                    toast({ title: "الكمية غير كافية", variant: "destructive" });
                     return prevCart;
                 }
                  return prevCart.map(cartItem => 
@@ -910,11 +915,11 @@ function PosTrackingContent() {
                         : cartItem
                 );
           } else {
-               if ('quantity' in item && item.quantity <= 0) {
-                   toast({ title: "نفدت الكمية", description: `لم يعد ${item.name} متوفرًا في المخزون.`, variant: "destructive" });
+               if (item.type !== 'prepaid-game' && 'quantity' in item && item.quantity <= 0) {
+                   toast({ title: "نفدت الكمية", variant: "destructive" });
                    return prevCart;
                }
-               return [...prevCart, { ...item, cartQuantity: 1, gameId: item.id }]; // Add gameId for games
+               return [...prevCart, { ...item, cartQuantity: 1 }];
           }
       });
   };
@@ -927,7 +932,7 @@ function PosTrackingContent() {
       setCart(prev => prev.map(item => {
           if (item.id === itemId) {
               if (newQuantity <= 0) return null;
-              if ('quantity' in item && newQuantity > item.quantity) {
+               if (item.type !== 'prepaid-game' && 'quantity' in item && newQuantity > item.quantity) {
                   toast({ title: "الكمية غير كافية", description: `الكمية المتاحة هي ${item.quantity} فقط.`, variant: 'destructive' });
                   return { ...item, cartQuantity: item.quantity };
               }
@@ -942,7 +947,7 @@ function PosTrackingContent() {
     return sum + (price * item.cartQuantity)
   }, 0), [cart]);
 
-  const handleConfirmSale = async (prepaidGamesToStart: (Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> & { originalCartItemId: string })[]) => {
+  const handleConfirmSale = async () => {
     if (!user?.username || !currentUser) return;
 
     const branch = branches.find(b => b.name === currentUser.branch);
@@ -952,13 +957,13 @@ function PosTrackingContent() {
     }
     
     // Process prepaid games in cart
-    for (const gameToStart of prepaidGamesToStart) {
-        const { originalCartItemId, ...sessionData } = gameToStart;
-        handleStartSession(sessionData);
+    const prepaidGames = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & {cartQuantity: number})[];
+    for (const gameItem of prepaidGames) {
+        await handleStartSession(gameItem.sessionDetails);
     }
 
     // Process product sales
-    const productItems = cart.filter(item => 'productId' in item) as (InventoryItem & { cartQuantity: number })[];
+    const productItems = cart.filter(item => item.type !== 'prepaid-game') as (InventoryItem & { cartQuantity: number })[];
     if (productItems.length > 0) {
         const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
         const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => {
@@ -1072,15 +1077,6 @@ function PosTrackingContent() {
       return gameCategories.find(c => c.id === currentTab)?.color || '#ffffff';
   }, [gameCategories, currentTab])
 
-  const handleGameClick = (game: Game) => {
-    if (game.paymentModel === 'postpaid') {
-      openCheckInDialog(game);
-    } else {
-      // Logic for prepaid games (e.g., add to cart, then open a different dialog)
-      handleAddToCart(game);
-    }
-  }
-
   return (
     <div className="relative h-full grid lg:grid-cols-3 gap-4">
         {/* Main Content */}
@@ -1185,7 +1181,7 @@ function PosTrackingContent() {
                                     {gamesForSelectedCategory.map(game => (
                                         <button 
                                             key={game.id} 
-                                            onClick={() => handleGameClick(game)} 
+                                            onClick={() => openCheckInDialog(game)} 
                                             disabled={!hasActiveShift}
                                             className="aspect-video border rounded-lg flex flex-col items-center justify-center p-2 gap-2 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
                                             style={{ backgroundColor: `${categoryColor}33` }} // 33 for ~20% opacity
@@ -1389,7 +1385,8 @@ function PosTrackingContent() {
                 open={isCheckInDialogOpen}
                 onOpenChange={setCheckInDialogOpen}
                 selectedGame={selectedGame}
-                onConfirm={handleStartSession}
+                onConfirmPostpaid={handleStartSession}
+                onConfirmPrepaid={handleAddToCart}
             />
             <CheckOutDialog 
                 open={isCheckoutDialogOpen}
@@ -1410,22 +1407,24 @@ function PosTrackingContent() {
                     ) : (
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                             {cart.map(item => (
-                                <div key={item.id} className="flex items-center gap-2">
+                                <div key={item.id} className="flex items-center gap-2 p-2 border-b">
                                     <div className="flex-grow">
-                                        <p className="text-sm font-medium">{'name' in item ? item.name : item.productName}</p>
-                                        <p className="text-xs text-muted-foreground">{`ج.م ${item.price?.toFixed(2) ?? '0.00'}`}</p>
+                                        <p className="text-sm font-medium">
+                                            {item.type === 'prepaid-game' ? `لعبة: ${item.sessionDetails.game}` : item.productName}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                           {item.type === 'prepaid-game' 
+                                                ? `طفل: ${item.sessionDetails.children.map(c => c.name).join(', ')}`
+                                                : `الكمية: ${item.cartQuantity}`
+                                            }
+                                        </p>
                                     </div>
-                                    <Input 
-                                        type="number" 
-                                        className="w-16 h-8"
-                                        value={item.cartQuantity}
-                                        onChange={(e) => handleUpdateCartQuantity(item.id, parseInt(e.target.value))}
-                                        min={1}
-                                        max={'quantity' in item ? item.quantity : undefined}
-                                    />
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveFromCart(item.id)}>
-                                        <Trash2 className="h-4 w-4 text-red-500" />
-                                    </Button>
+                                     <div className="flex flex-col items-end">
+                                        <p className="text-sm font-semibold">{`ج.م ${item.price.toFixed(2)}`}</p>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveFromCart(item.id)}>
+                                            <Trash2 className="h-3 w-3 text-red-500" />
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -1435,7 +1434,7 @@ function PosTrackingContent() {
                         <span>الإجمالي:</span>
                         <span>{`ج.م ${cartTotal.toFixed(2)}`}</span>
                     </div>
-                    <Button className="w-full" disabled={cart.length === 0 || !hasActiveShift} onClick={() => setSaleCheckoutOpen(true)}>
+                    <Button className="w-full" disabled={cart.length === 0 || !hasActiveShift} onClick={handleConfirmSale}>
                         إتمام الدفع
                     </Button>
                 </CardContent>

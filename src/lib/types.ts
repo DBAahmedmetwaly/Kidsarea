@@ -264,3 +264,11 @@ export interface ProductSale {
     cashierUsername: string;
     createdAt: string; // ISO String
 }
+
+// Represents a prepaid game session ready to be added to the cart
+export interface PrepaidGameCartItem {
+    type: 'prepaid-game';
+    id: string; // Unique ID for the cart item
+    sessionDetails: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>;
+    price: number;
+}
