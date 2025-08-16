@@ -75,7 +75,7 @@ function ShiftClosingForm() {
   
   const currentUser = employees.find(e => e.username === user?.username);
 
-  const employeesWithShifts = employees.filter(emp => emp.role === 'كاشير' || emp.role === 'مشرف' || emp.role === 'مدير فرع');
+  const employeesWithShifts = employees.filter(e => e.role === 'كاشير' || e.role === 'مشرف' || e.role === 'مدير فرع');
   const [openCombobox, setOpenCombobox] = useState(false);
 
   const form = useForm<CloseShiftFormValues>({
@@ -123,13 +123,28 @@ function ShiftClosingForm() {
   }, [selectedCashierUsername, openShifts, form]);
   
  const availableShiftsToClose = useMemo(() => {
-    if (currentUser?.role === 'مدير فرع' && currentUser.branch !== 'كل الفروع') {
-        const branchEmployees = employees.filter(e => e.branch === currentUser.branch);
-        const branchEmployeeUsernames = new Set(branchEmployees.map(e => e.username));
-        return openShifts.filter(shift => branchEmployeeUsernames.has(shift.cashierUsername));
+    if (!currentUser) return [];
+
+    // Admin can see all open shifts
+    if (currentUser.username === 'admin') {
+      return openShifts;
     }
-    return openShifts;
-  }, [openShifts, currentUser, employees]);
+
+    // Branch manager logic
+    if (currentUser.role === 'مدير فرع') {
+      if (currentUser.branch === 'كل الفروع') {
+        // Can see all shifts
+        return openShifts;
+      } else {
+        // Can see shifts in their branch
+        return openShifts.filter(shift => shift.branchName === currentUser.branch);
+      }
+    }
+
+    // Other roles can only see their own shift
+    return openShifts.filter(shift => shift.cashierUsername === currentUser.username);
+
+  }, [openShifts, currentUser]);
 
 
   async function onSubmit(values: CloseShiftFormValues) {
@@ -348,18 +363,30 @@ function OpenShiftForm() {
     });
 
     const availableEmployees = useMemo(() => {
-        const employeesForBranch =
-            currentUser?.role !== 'مدير فرع' || currentUser?.branch === 'كل الفروع'
-                ? employeesWithShifts
-                : employeesWithShifts.filter(
-                      (e) => e.branch === currentUser?.branch
-                  );
+        // Admin can open shift for any qualifying employee not on shift
+        if (user?.username === 'admin') {
+            return employeesWithShifts.filter(e => e.username && !openShifts.some(s => s.cashierUsername === e.username));
+        }
 
-        return employeesForBranch.filter(
-            (c) =>
-                c.username && !openShifts.some((s) => s.cashierUsername === c.username)
-        );
-    }, [employeesWithShifts, openShifts, currentUser]);
+        if (!currentUser) return [];
+        
+        // Branch manager logic
+        if (currentUser.role === 'مدير فرع') {
+            if (currentUser.branch === 'كل الفروع') {
+                // Manager for all branches can open for any employee
+                return employeesWithShifts.filter(e => e.username && !openShifts.some(s => s.cashierUsername === e.username));
+            } else {
+                // Manager for a specific branch can open for employees in their branch, including themselves
+                return employeesWithShifts.filter(
+                    (e) => e.branch === currentUser.branch && e.username && !openShifts.some((s) => s.cashierUsername === e.username)
+                );
+            }
+        }
+        
+        // Other employees can't open shifts for others
+        return [];
+
+    }, [employeesWithShifts, openShifts, currentUser, user]);
 
 
     async function onSubmit(values: OpenShiftFormValues) {
@@ -748,12 +775,17 @@ function ShiftHistoryTable() {
 
     const filteredRecords = useMemo(() => {
         let records = allShiftRecords;
-        if(currentUser?.branch !== 'كل الفروع') {
+        
+        // Filter by branch
+        if (currentUser?.branch !== 'كل الفروع') {
             records = records.filter(record => record.branchName === currentUser?.branch);
-        } else if (branchFilter !== 'all') {
-            records = records.filter(record => record.branchName === branchFilter);
+        } else {
+            if (branchFilter !== 'all') {
+                records = records.filter(record => record.branchName === branchFilter);
+            }
         }
 
+        // Filter by date
         const dateFiltered = records.filter(record => {
             const dateMatch = fromDate && toDate 
                 ? isWithinInterval(new Date(record.date), { start: startOfDay(fromDate), end: endOfDay(toDate) })
@@ -763,6 +795,7 @@ function ShiftHistoryTable() {
 
         return dateFiltered;
     }, [allShiftRecords, branchFilter, fromDate, toDate, currentUser]);
+
 
     const clearFilters = () => {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -923,4 +956,3 @@ export default function ShiftManagementPage() {
         </SidebarProvider>
     );
 }
-
