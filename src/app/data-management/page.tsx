@@ -132,9 +132,8 @@ function DataManagementContent() {
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
     try {
-      // This will delete EVERYTHING except for employees and policies.
+      // This will delete EVERYTHING except for employees, policies, branches, and roles.
       const dataPathsToDelete = [
-        'branches',
         'customers',
         'expenses',
         'expenseTypes',
@@ -146,7 +145,6 @@ function DataManagementContent() {
         'products',
         'productCategories',
         'productSales',
-        'roles', // Also delete roles
         'safes',
         'safeTransactions', 
         'sessions', 
@@ -159,7 +157,7 @@ function DataManagementContent() {
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف جميع بيانات التطبيق بنجاح باستثناء الموظفين والسياسات.',
+        description: 'تم حذف جميع بيانات التطبيق بنجاح باستثناء الموظفين والفروع والصلاحيات والسياسات.',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -264,7 +262,7 @@ function DataManagementContent() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>إعادة ضبط المصنع (حذف البيانات)</AlertTitle>
                     <AlertDescription>
-                        سيؤدي هذا الإجراء إلى حذف جميع بيانات التطبيق بشكل دائم، بما في ذلك الفروع، الخزائن، الأدوار، وكل المعاملات. سيتم الاحتفاظ فقط ببيانات الموظفين والسياسات.
+                        سيؤدي هذا الإجراء إلى حذف جميع بيانات التطبيق بشكل دائم، مثل العملاء والمعاملات والمخزون. سيتم الاحتفاظ فقط ببيانات الموظفين والفروع والصلاحيات والسياسات.
                     </AlertDescription>
                 </Alert>
               <AlertDialog>
@@ -287,7 +285,7 @@ function DataManagementContent() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
                     <AlertDialogDescription>
-                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات التطبيق بشكل دائم باستثناء الموظفين والسياسات. هل تريد المتابعة؟
+                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات التطبيق بشكل دائم باستثناء الموظفين والفروع والصلاحيات والسياسات. هل تريد المتابعة؟
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
