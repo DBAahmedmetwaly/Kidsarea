@@ -66,6 +66,17 @@ function SafesContent() {
 
 
     const handleAddSafe = async (newSafe: Omit<Safe, 'id'>) => {
+        // Check if a safe already exists for the selected branch
+        const existingSafeForBranch = safes.find(s => s.branchName === newSafe.branchName);
+        if (existingSafeForBranch) {
+            toast({
+                title: "لا يمكن إضافة الخزينة",
+                description: `يوجد بالفعل خزينة لهذا الفرع (${newSafe.branchName}). لا يمكن إضافة أكثر من خزينة لكل فرع.`,
+                variant: 'destructive'
+            });
+            return;
+        }
+
         try {
             const safesRef = ref(db, 'safes');
             const newSafeRef = push(safesRef);
