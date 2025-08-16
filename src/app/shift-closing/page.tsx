@@ -165,6 +165,8 @@ function ShiftClosingForm() {
         ...values,
         cashierName: employee.name,
         expectedRevenue: expectedRevenue,
+        sessionsRevenue: sessionsRevenue,
+        subscriptionsRevenue: subscriptionsRevenue,
         productRevenue: productRevenue,
         date: new Date().toISOString(),
         difference: values.actualRevenue - expectedRevenue,
@@ -550,44 +552,28 @@ function DayEndClosing() {
     const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
     const [selectedSafeId, setSelectedSafeId] = useState<string>('');
     const [loading, setLoading] = useState(false);
-    const [branchFilter, setBranchFilter] = useState('all');
     
-    const currentUser = useMemo(() => {
-        if (!user) return null;
-        return employees.find(e => e.username === user?.username);
-    }, [user, employees]);
+    const shiftsToSettle = useMemo(() => {
+        return allShiftRecords.filter(s => selectedShiftIds.includes(s.id) && s.status === 'Closed');
+    }, [allShiftRecords, selectedShiftIds]);
 
-    useEffect(() => {
-        if (currentUser && currentUser.branch !== 'كل الفروع') {
-            setBranchFilter(currentUser.branch);
-        }
-    }, [currentUser]);
-    
-    const filteredSafes = useMemo(() => {
-        if (branchFilter === 'all') {
-            if (!currentUser || currentUser.branch === 'كل الفروع') {
-                return safes;
-            }
-            return safes.filter(s => s.branchName === currentUser?.branch);
-        }
-        return safes.filter(s => s.branchName === branchFilter);
-    }, [safes, currentUser, branchFilter]);
+    const settlementBranch = useMemo(() => {
+        if (shiftsToSettle.length === 0) return null;
+        // Check if all selected shifts are from the same branch
+        const firstBranch = shiftsToSettle[0].branchName;
+        const allSameBranch = shiftsToSettle.every(s => s.branchName === firstBranch);
+        return allSameBranch ? firstBranch : 'multiple';
+    }, [shiftsToSettle]);
+
+    const availableSafesForSettlement = useMemo(() => {
+        if (!settlementBranch || settlementBranch === 'multiple') return [];
+        return safes.filter(s => s.branchName === settlementBranch);
+    }, [safes, settlementBranch]);
 
     const closedShifts = useMemo(() => {
-        let branchFilteredShifts = allShiftRecords.filter(r => r.status === 'Closed');
-        if (!currentUser || currentUser.branch === 'كل الفروع') {
-            if (branchFilter !== 'all') {
-                branchFilteredShifts = branchFilteredShifts.filter(r => r.branchName === branchFilter);
-            }
-        } else {
-             branchFilteredShifts = branchFilteredShifts.filter(r => r.branchName === currentUser.branch);
-        }
-        return branchFilteredShifts;
-    }, [allShiftRecords, branchFilter, currentUser]);
+        return allShiftRecords.filter(r => r.status === 'Closed');
+    }, [allShiftRecords]);
 
-    const shiftsToSettle = useMemo(() => {
-        return closedShifts.filter(s => selectedShiftIds.includes(s.id));
-    }, [closedShifts, selectedShiftIds]);
 
     const totalToSettle = useMemo(() => {
         return shiftsToSettle.reduce((sum, s) => sum + s.actualRevenue, 0);
@@ -598,6 +584,14 @@ function DayEndClosing() {
              toast({
                 title: "بيانات غير مكتملة",
                 description: "يرجى تحديد وردية واحدة على الأقل وخزينة للترحيل.",
+                variant: 'destructive',
+            });
+            return;
+        }
+        if (settlementBranch === 'multiple') {
+            toast({
+                title: "خطأ في التحديد",
+                description: "لا يمكن ترحيل ورديات من فروع مختلفة في نفس العملية. يرجى ترحيل كل فرع على حدة.",
                 variant: 'destructive',
             });
             return;
@@ -656,31 +650,20 @@ function DayEndClosing() {
             setLoading(false);
         }
     };
+    
+    useEffect(() => {
+        setSelectedSafeId('');
+    }, [selectedShiftIds]);
 
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle>الخطوة 2: إغلاق اليومية وترحيل النقدية</CardTitle>
-                <CardDescription>حدد الورديات المغلقة التي تريد ترحيلها إلى الخزينة.</CardDescription>
+                <CardDescription>حدد الورديات المغلقة التي تريد ترحيلها إلى الخزينة. لا يمكن ترحيل ورديات من فروع مختلفة معًا.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {currentUser?.branch === 'كل الفروع' && (
-                        <div className='w-full sm:w-1/3'>
-                            <Select value={branchFilter} onValueChange={setBranchFilter}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="اختر الفرع" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">كل الفروع</SelectItem>
-                                    {branches.map((b: Branch) => (
-                                        <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
                     <div className="max-h-60 overflow-y-auto border rounded-md">
                         <Table>
                             <TableHeader>
@@ -717,22 +700,29 @@ function DayEndClosing() {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">لا توجد ورديات مغلقة بانتظار الترحيل لهذا الفرع.</TableCell>
+                                        <TableCell colSpan={4} className="h-24 text-center">لا توجد ورديات مغلقة بانتظار الترحيل.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
                         </Table>
                     </div>
+                     {settlementBranch === 'multiple' && (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>تحديد فروع متعددة</AlertTitle>
+                            <AlertDescription>لا يمكن ترحيل ورديات من فروع مختلفة في نفس العملية. يرجى إلغاء تحديد بعض الورديات لتوحيد الفرع.</AlertDescription>
+                        </Alert>
+                    )}
 
                     <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-md bg-muted/50">
                         <div className='flex-1'>
-                             <Select value={selectedSafeId} onValueChange={setSelectedSafeId} disabled={shiftsToSettle.length === 0}>
+                             <Select value={selectedSafeId} onValueChange={setSelectedSafeId} disabled={availableSafesForSettlement.length === 0}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="اختر خزينة للإيداع..." />
+                                    <SelectValue placeholder={settlementBranch && settlementBranch !== 'multiple' ? "اختر خزينة للإيداع..." : "اختر ورديات من فرع واحد أولاً"} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {filteredSafes.map(safe => (
-                                        <SelectItem key={safe.id} value={safe.id}>{safe.name} ({safe.branchName})</SelectItem>
+                                    {availableSafesForSettlement.map(safe => (
+                                        <SelectItem key={safe.id} value={safe.id}>{safe.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>

@@ -78,6 +78,8 @@ export interface ShiftRecord {
   safeId: string;
   status: 'Open' | 'Closed' | 'Settled';
   settlementId?: string;
+  sessionsRevenue?: number;
+  subscriptionsRevenue?: number;
   productRevenue?: number;
 }
 
