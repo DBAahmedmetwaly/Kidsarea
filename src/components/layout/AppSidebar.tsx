@@ -197,7 +197,7 @@ function SidebarItems() {
   const { user, logout } = useAuth();
   const { policies: allPolicies } = useFirebase();
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [appName, setAppName] = useState('FunTrack');
   const { setOpenMobile } = useSidebar();
 
@@ -211,11 +211,11 @@ function SidebarItems() {
   }, [allPolicies]);
 
   useEffect(() => {
-    setIsReady(false);
+    setLoading(true);
 
     if (!user) {
       setPermissions(null);
-      setIsReady(true);
+      setLoading(false);
       return;
     }
     
@@ -225,7 +225,7 @@ function SidebarItems() {
         adminPermissions[item.href] = true;
       });
       setPermissions({ 'مشرف': adminPermissions, 'كاشير': adminPermissions, 'مدير فرع': adminPermissions });
-      setIsReady(true);
+      setLoading(false);
       return;
     }
     
@@ -248,13 +248,13 @@ function SidebarItems() {
             }
             setPermissions(decodedPermissions as RolePermissions);
         } else {
-            setPermissions(null); // Explicitly set to null if no roles data
+            setPermissions(null);
         }
-        setIsReady(true);
+        setLoading(false);
     }, (error) => {
         console.error("Firebase roles error:", error);
         setPermissions(null);
-        setIsReady(true);
+        setLoading(false);
     });
 
     return () => {
@@ -264,7 +264,7 @@ function SidebarItems() {
   }, [user]);
 
   const hasPermission = (href: string) => {
-    if (!user) return false;
+    if (loading || !user) return false;
     if (user.username === 'admin') return true;
     if (!permissions) return false; 
 
@@ -272,7 +272,6 @@ function SidebarItems() {
     if (!userRole) return false;
     
     const userPermissions = permissions[userRole];
-    
     if (!userPermissions) return false;
 
     // Allow access to details pages if the main page is accessible
@@ -289,7 +288,7 @@ function SidebarItems() {
         }
     }
     
-    return userPermissions[href];
+    return !!userPermissions[href];
   };
 
   const isActive = (path: string) => {
@@ -357,7 +356,7 @@ function SidebarItems() {
 
       <SidebarContent className="p-2">
         <SidebarMenu>
-            {!isReady ? (
+            {loading ? (
                 <>
                     <SidebarMenuSkeleton />
                     <SidebarMenuSkeleton />
@@ -368,10 +367,10 @@ function SidebarItems() {
                     {renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
                     {renderMenuItems(mainItems)}
                     <SidebarSeparator />
-                    <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={!isReady} />
-                    <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={!isReady} />
-                    <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={!isReady} />
-                    <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={!isReady} />
+                    <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={loading} />
+                    <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={loading} />
+                    <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={loading} />
+                    <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={loading} />
                 </>
              )}
         </SidebarMenu>
