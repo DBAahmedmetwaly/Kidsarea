@@ -219,15 +219,12 @@ function SidebarItems() {
   }, [user, allPolicies]);
 
   const hasPermission = (href: string) => {
-    if (!user || !permissions) return false;
+    if (!user) return false;
+    if (user.username === 'admin') return true;
+    if (!permissions) return false;
 
-    let userRole: Role | 'admin' = 'admin';
-    if (user.username !== 'admin') {
-      userRole = (user as Employee).role;
-    }
-
-    const roleToCheck = userRole === 'admin' ? 'مدير فرع' : userRole;
-    const userPermissions = permissions[roleToCheck];
+    const userRole = (user as Employee).role;
+    const userPermissions = permissions[userRole];
     
     if (!userPermissions) return false;
 
