@@ -139,7 +139,7 @@ function CollapsibleMenuGroup({
     renderMenuItems: (items: typeof allMenuItems) => React.ReactNode;
     loading: boolean;
 }) {
-
+    // This component will now rely on the parent's `isReady` state
     if (loading) {
         return (
              <Collapsible defaultOpen>
@@ -160,7 +160,6 @@ function CollapsibleMenuGroup({
              </Collapsible>
         )
     }
-
 
     const renderedItems = renderMenuItems(items);
 
@@ -199,7 +198,7 @@ function SidebarItems() {
   const { user, logout } = useAuth();
   const { policies: allPolicies } = useFirebase();
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
-  const [permissionsLoading, setPermissionsLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false); // New state to control rendering
   const [appName, setAppName] = useState('FunTrack');
   const { setOpenMobile } = useSidebar();
 
@@ -211,24 +210,24 @@ function SidebarItems() {
         document.title = defaultPolicies.appName + ' Manager';
     }
 
-
+    // If there is no user, we are ready to show a limited sidebar (or nothing)
     if (!user) {
-      setPermissionsLoading(false);
+      setIsReady(true);
       return;
     }
     
-    setPermissionsLoading(true);
-
+    // If the user is admin, we can set permissions immediately and be ready.
     if (user.username === 'admin') {
       const adminPermissions: Permissions = {};
       allMenuItems.forEach(item => {
         adminPermissions[item.href] = true;
       });
       setPermissions({ 'مشرف': adminPermissions, 'كاشير': adminPermissions, 'مدير فرع': adminPermissions });
-      setPermissionsLoading(false);
+      setIsReady(true);
       return;
     }
     
+    // For other users, fetch permissions from Firebase.
     const rolesRef = ref(db, 'roles');
     const unsubRoles = onValue(rolesRef, (snapshot) => {
         const data = snapshot.val();
@@ -248,11 +247,11 @@ function SidebarItems() {
             }
             setPermissions(decodedPermissions as RolePermissions);
         }
-        setPermissionsLoading(false);
+        setIsReady(true); // Set ready state only after permissions are fetched
     }, (error) => {
         console.error("Firebase roles error:", error);
         setPermissions(null);
-        setPermissionsLoading(false);
+        setIsReady(true); // Also set ready on error to prevent infinite loading
     });
 
     return () => {
@@ -355,13 +354,23 @@ function SidebarItems() {
 
       <SidebarContent className="p-2">
         <SidebarMenu>
-            {permissionsLoading ? <SidebarMenuSkeleton /> : renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
-            {permissionsLoading ? <SidebarMenuSkeleton /> : renderMenuItems(mainItems)}
-            <SidebarSeparator />
-            <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
-            <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
-            <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
-             <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
+            {!isReady ? (
+                <>
+                    <SidebarMenuSkeleton />
+                    <SidebarMenuSkeleton />
+                    <SidebarMenuSkeleton />
+                </>
+             ) : (
+                <>
+                    {renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
+                    {renderMenuItems(mainItems)}
+                    <SidebarSeparator />
+                    <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={!isReady} />
+                    <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={!isReady} />
+                    <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={!isReady} />
+                    <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={!isReady} />
+                </>
+             )}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
