@@ -198,7 +198,7 @@ function SidebarItems() {
   const { user, logout } = useAuth();
   const { policies: allPolicies } = useFirebase();
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
-  const [isReady, setIsReady] = useState(false); // New state to control rendering
+  const [isReady, setIsReady] = useState(false);
   const [appName, setAppName] = useState('FunTrack');
   const { setOpenMobile } = useSidebar();
 
@@ -210,13 +210,14 @@ function SidebarItems() {
         document.title = defaultPolicies.appName + ' Manager';
     }
 
-    // If there is no user, we are ready to show a limited sidebar (or nothing)
+    setIsReady(false);
+
     if (!user) {
+      setPermissions(null);
       setIsReady(true);
       return;
     }
     
-    // If the user is admin, we can set permissions immediately and be ready.
     if (user.username === 'admin') {
       const adminPermissions: Permissions = {};
       allMenuItems.forEach(item => {
@@ -227,7 +228,6 @@ function SidebarItems() {
       return;
     }
     
-    // For other users, fetch permissions from Firebase.
     const rolesRef = ref(db, 'roles');
     const unsubRoles = onValue(rolesRef, (snapshot) => {
         const data = snapshot.val();
@@ -246,12 +246,14 @@ function SidebarItems() {
                 }
             }
             setPermissions(decodedPermissions as RolePermissions);
+        } else {
+            setPermissions(null); // Explicitly set to null if no roles data
         }
-        setIsReady(true); // Set ready state only after permissions are fetched
+        setIsReady(true);
     }, (error) => {
         console.error("Firebase roles error:", error);
         setPermissions(null);
-        setIsReady(true); // Also set ready on error to prevent infinite loading
+        setIsReady(true);
     });
 
     return () => {
