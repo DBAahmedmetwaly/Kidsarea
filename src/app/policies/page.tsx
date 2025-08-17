@@ -80,6 +80,7 @@ const policiesSchema = z.object({
   showPosStats: z.boolean(),
   showCompletedSessions: z.boolean(),
   posLabels: z.object({
+      screenTitle: z.string().optional(),
       activeSessionsTitle: z.string().optional(),
       childColumnTitle: z.string().optional(),
       parentColumnTitle: z.string().optional(),
@@ -124,6 +125,7 @@ const defaultPolicies: PoliciesFormValues = {
       showPosStats: true,
       showCompletedSessions: true,
       posLabels: {
+          screenTitle: 'يلا نلعب',
           activeSessionsTitle: 'الأطفال النشطون حاليًا',
           childColumnTitle: 'الطفل',
           parentColumnTitle: 'ولي الأمر',
@@ -408,6 +410,17 @@ function PoliciesContent() {
                  <div className="space-y-4 pt-4 border-t">
                     <h3 className="text-md font-medium">تخصيص العناوين</h3>
                     <div className="grid md:grid-cols-3 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="posLabels.screenTitle"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>عنوان شاشة يلا نلعب (في الشريط الجانبي)</FormLabel>
+                                <FormControl><Input placeholder="يلا نلعب" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
                         <FormField
                             control={form.control}
                             name="posLabels.activeSessionsTitle"

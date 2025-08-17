@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -190,17 +191,18 @@ function SidebarItems() {
   const { user, logout } = useAuth();
   const { policies: allPolicies } = useFirebase();
   const { permissions, loading } = usePermissions();
-  const [appName, setAppName] = useState('FunTrack');
   const { setOpenMobile } = useSidebar();
 
 
+  const defaultPolicies = allPolicies?.find(p => p.id === 'default');
+  const appName = defaultPolicies?.appName || 'FunTrack';
+  const posScreenTitle = defaultPolicies?.posLabels?.screenTitle || 'يلا نلعب';
+
   useEffect(() => {
-    const defaultPolicies = allPolicies?.find(p => p.id === 'default');
-    if (defaultPolicies?.appName) {
-        setAppName(defaultPolicies.appName);
-        document.title = defaultPolicies.appName + ' Manager';
+    if (appName) {
+        document.title = appName + ' Manager';
     }
-  }, [allPolicies]);
+  }, [appName]);
 
   const hasPermission = (href: string) => {
     if (loading || !permissions) return false;
@@ -244,7 +246,7 @@ function SidebarItems() {
                 >
                 <Link href={item.href}>
                     <item.icon />
-                    <span>{item.label}</span>
+                    <span>{item.href === '/pos' ? posScreenTitle : item.label}</span>
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>

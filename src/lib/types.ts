@@ -132,6 +132,7 @@ export interface Policies {
     showPosStats: boolean;
     showCompletedSessions: boolean;
     posLabels?: {
+        screenTitle?: string;
         activeSessionsTitle?: string;
         childColumnTitle?: string;
         parentColumnTitle?: string;
