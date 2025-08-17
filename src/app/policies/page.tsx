@@ -283,7 +283,7 @@ function PoliciesContent() {
                   <FormItem>
                     <FormLabel>اسم التطبيق</FormLabel>
                     <FormControl>
-                      <Input placeholder="FunTrack" {...field} />
+                      <Input placeholder="FunTrack" {...field} value={field.value || ''} />
                     </FormControl>
                      <FormDescription>
                         هذا الاسم سيظهر في الشريط الجانبي والإيصالات.
@@ -409,14 +409,14 @@ function PoliciesContent() {
                 />
                  <div className="space-y-4 pt-4 border-t">
                     <h3 className="text-md font-medium">تخصيص العناوين</h3>
-                    <div className="grid md:grid-cols-3 gap-4">
-                        <FormField
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                         <FormField
                             control={form.control}
                             name="posLabels.screenTitle"
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>عنوان شاشة يلا نلعب (في الشريط الجانبي)</FormLabel>
-                                <FormControl><Input placeholder="يلا نلعب" {...field} /></FormControl>
+                                <FormControl><Input placeholder="يلا نلعب" {...field} value={field.value || ''} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -427,7 +427,7 @@ function PoliciesContent() {
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>عنوان قسم النشطون حاليًا</FormLabel>
-                                <FormControl><Input placeholder="الأطفال النشطون حاليًا" {...field} /></FormControl>
+                                <FormControl><Input placeholder="الأطفال النشطون حاليًا" {...field} value={field.value || ''} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -438,7 +438,7 @@ function PoliciesContent() {
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>عنوان عمود الطفل</FormLabel>
-                                <FormControl><Input placeholder="الطفل" {...field} /></FormControl>
+                                <FormControl><Input placeholder="الطفل" {...field} value={field.value || ''} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -449,7 +449,7 @@ function PoliciesContent() {
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>عنوان عمود ولي الأمر</FormLabel>
-                                <FormControl><Input placeholder="ولي الأمر" {...field} /></FormControl>
+                                <FormControl><Input placeholder="ولي الأمر" {...field} value={field.value || ''} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                             )}
