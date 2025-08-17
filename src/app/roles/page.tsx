@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ref, onValue, update, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import AppSidebar from '@/components/layout/AppSidebar';
@@ -15,8 +15,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Shield } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PasswordDialog from '../branches/_components/PasswordDialog';
+import { useFirebase } from '@/context/FirebaseContext';
 
-const ALL_SCREENS = [
+const STATIC_SCREENS = [
   { href: '/', label: 'الرئيسية' },
   { href: '/dashboard', label: 'لوحة التحكم' },
   { href: '/pos', label: 'يلا نلعب' },
@@ -61,6 +62,19 @@ function RolesContent() {
   const { toast } = useToast();
   const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [permissionChange, setPermissionChange] = useState<{ screenHref: string, checked: boolean } | null>(null);
+  const { policies: allPolicies } = useFirebase();
+
+  const allScreens = useMemo(() => {
+    const defaultPolicies = allPolicies?.find(p => p.id === 'default');
+    const posScreenTitle = defaultPolicies?.posLabels?.screenTitle;
+
+    if (posScreenTitle) {
+        return STATIC_SCREENS.map(screen => 
+            screen.href === '/pos' ? { ...screen, label: posScreenTitle } : screen
+        );
+    }
+    return STATIC_SCREENS;
+  }, [allPolicies]);
 
   useEffect(() => {
     const rolesRef = ref(db, 'roles');
@@ -86,13 +100,13 @@ function RolesContent() {
         // Initialize default permissions if none exist
         const defaultPermissions: any = {};
          ROLES.forEach(role => {
-            defaultPermissions[role] = ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {});
+            defaultPermissions[role] = allScreens.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {});
         });
         set(rolesRef, defaultPermissions);
         
         const decodedForState: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
          ROLES.forEach(role => {
-            decodedForState[role] = ALL_SCREENS.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {});
+            decodedForState[role] = allScreens.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {});
         });
         setPermissions(decodedForState);
       }
@@ -103,7 +117,7 @@ function RolesContent() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [allScreens]);
 
   const handlePermissionChangeAttempt = (screenHref: string, checked: boolean) => {
     if (checked) {
@@ -218,7 +232,7 @@ function RolesContent() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                    {ALL_SCREENS.map(screen => (
+                    {allScreens.map(screen => (
                         <div key={screen.href} className="flex items-center space-x-2">
                             <Checkbox
                                 id={`${selectedRole}-${screen.href}`}
@@ -260,3 +274,4 @@ export default function RolesPage() {
     </SidebarProvider>
   );
 }
+
