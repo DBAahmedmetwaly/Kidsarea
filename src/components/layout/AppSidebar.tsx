@@ -64,6 +64,8 @@ import {
 } from "@/components/ui/collapsible"
 import type { Employee } from '@/lib/types';
 import { usePermissions } from '@/context/PermissionsContext';
+import { onValue, ref } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
 
 const mainItems = [
@@ -251,8 +253,30 @@ function SidebarItems() {
   
   const currentUserName = user ? ('name' in user ? user.name : 'Admin') : 'Guest';
 
+  if (loading) {
+      return (
+        <div className="flex flex-col h-full">
+          <SidebarHeader className="justify-between">
+              <Skeleton className="h-8 w-32" />
+          </SidebarHeader>
+          <div className="p-2"><Skeleton className="h-12 w-full" /></div>
+          <SidebarContent className="p-2">
+            {[...Array(3)].map((_, i) => (
+                 <div key={i} className='mb-4'>
+                    <Skeleton className="h-8 w-24 mb-2" />
+                    <div className="space-y-2">
+                        <SidebarMenuSkeleton />
+                        <SidebarMenuSkeleton />
+                    </div>
+                </div>
+            ))}
+          </SidebarContent>
+        </div>
+      )
+  }
+
   return (
-    <>
+    <div className="flex flex-col h-full overflow-y-auto">
       <SidebarHeader className="justify-between">
          <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
             <Gamepad2 className="h-6 w-6 text-accent" />
@@ -284,26 +308,16 @@ function SidebarItems() {
 
       <SidebarContent className="p-2">
         <SidebarMenu>
-            {loading ? (
-                <>
-                    <SidebarMenuSkeleton />
-                    <SidebarMenuSkeleton />
-                    <SidebarMenuSkeleton />
-                </>
-             ) : (
-                <>
-                    {renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
-                    {renderMenuItems(mainItems)}
-                    <SidebarSeparator />
-                    <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={loading} />
-                    <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={loading} />
-                    <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={loading} />
-                    <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={loading} />
-                </>
-             )}
+            {renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
+            {renderMenuItems(mainItems)}
+            <SidebarSeparator />
+            <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={loading} />
+            <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={loading} />
+            <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={loading} />
+            <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={loading} />
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-2">
+      <SidebarFooter className="p-2 mt-auto">
           <SidebarMenu>
              <SidebarSeparator />
              <SidebarMenuItem>
@@ -314,7 +328,7 @@ function SidebarItems() {
             </SidebarMenuItem>
           </SidebarMenu>
       </SidebarFooter>
-    </>
+    </div>
   );
 }
 
