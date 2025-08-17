@@ -417,7 +417,7 @@ function CustomersContent() {
                         {customer.parentName}
                      </Link>
                   </TableCell>
-                  <TableCell className="text-right">{(customer.phoneNumbers || []).join(', ')}</TableCell>
+                  <TableCell className="text-right">{(customer.phoneNumbers || []).join(' / ')}</TableCell>
                   <TableCell className="text-right">{customer.children?.map(c => `${c.name} (${c.age})`).join(', ')}</TableCell>
                   <TableCell className="text-center">{new Date(customer.createdAt).toLocaleDateString('ar-EG')}</TableCell>
                   <TableCell className="text-center">
