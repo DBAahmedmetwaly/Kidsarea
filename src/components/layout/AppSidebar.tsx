@@ -231,7 +231,7 @@ function SidebarItems() {
   const hasPermission = (href: string) => {
     if (!user) return false;
     if (user.username === 'admin') return true;
-    if (!permissions) return false;
+    if (!permissions) return false; // Return false if permissions are not yet loaded
 
     const userRole = (user as Employee).role;
     if (!userRole) return false;
@@ -315,7 +315,7 @@ function SidebarItems() {
                 "duration-200 text-sidebar-accent-foreground group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8"
             )}>
             <p className="font-semibold text-sm">{currentUserName}</p>
-            {'role' in user! && <p className="text-xs text-sidebar-foreground/70">{(user as Employee).role}</p>}
+            {user && 'role' in user && <p className="text-xs text-sidebar-foreground/70">{(user as Employee).role}</p>}
           </div>
         </div>
       </div>
