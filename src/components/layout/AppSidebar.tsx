@@ -139,7 +139,6 @@ function CollapsibleMenuGroup({
     renderMenuItems: (items: typeof allMenuItems) => React.ReactNode;
     loading: boolean;
 }) {
-    // This component will now rely on the parent's `isReady` state
     if (loading) {
         return (
              <Collapsible defaultOpen>
@@ -209,7 +208,9 @@ function SidebarItems() {
         setAppName(defaultPolicies.appName);
         document.title = defaultPolicies.appName + ' Manager';
     }
+  }, [allPolicies]);
 
+  useEffect(() => {
     setIsReady(false);
 
     if (!user) {
@@ -260,7 +261,7 @@ function SidebarItems() {
       unsubRoles();
     };
 
-  }, [user, allPolicies]);
+  }, [user]);
 
   const hasPermission = (href: string) => {
     if (!user) return false;
