@@ -14,6 +14,7 @@ import {
   SidebarTrigger,
   useSidebar,
   SidebarSeparator,
+  SidebarMenuSkeleton,
 } from '@/components/ui/sidebar';
 import {
   Building2,
@@ -129,13 +130,38 @@ function CollapsibleMenuGroup({
     title,
     icon: TitleIcon,
     items,
-    renderMenuItems
+    renderMenuItems,
+    loading
 }: {
     title: string;
     icon: LucideIcon;
     items: typeof allMenuItems;
     renderMenuItems: (items: typeof allMenuItems) => React.ReactNode;
+    loading: boolean;
 }) {
+
+    if (loading) {
+        return (
+             <Collapsible defaultOpen>
+                 <CollapsibleTrigger asChild>
+                    <button className="flex items-center justify-between w-full p-2 text-sm font-medium text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent">
+                        <div className='flex items-center gap-2'>
+                            <TitleIcon className="h-4 w-4" />
+                            <span className="duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8">{title}</span>
+                        </div>
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180 group-data-[collapsible=icon]:hidden" />
+                    </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <div className='ps-8 space-y-2 py-2'>
+                        {[...Array(2)].map((_, i) => <SidebarMenuSkeleton key={i} />)}
+                    </div>
+                </CollapsibleContent>
+             </Collapsible>
+        )
+    }
+
+
     const renderedItems = renderMenuItems(items);
 
     if (!Array.isArray(renderedItems) || renderedItems.filter(Boolean).length === 0) {
@@ -173,6 +199,7 @@ function SidebarItems() {
   const { user, logout } = useAuth();
   const { policies: allPolicies } = useFirebase();
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [appName, setAppName] = useState('FunTrack');
   const { setOpenMobile } = useSidebar();
 
@@ -186,16 +213,19 @@ function SidebarItems() {
 
 
     if (!user) {
-      setPermissions(null); // Clear permissions on logout
+      setPermissionsLoading(false);
       return;
     }
     
+    setPermissionsLoading(true);
+
     if (user.username === 'admin') {
       const adminPermissions: Permissions = {};
       allMenuItems.forEach(item => {
         adminPermissions[item.href] = true;
       });
       setPermissions({ 'مشرف': adminPermissions, 'كاشير': adminPermissions, 'مدير فرع': adminPermissions });
+      setPermissionsLoading(false);
       return;
     }
     
@@ -218,10 +248,13 @@ function SidebarItems() {
             }
             setPermissions(decodedPermissions as RolePermissions);
         }
+        setPermissionsLoading(false);
     }, (error) => {
         console.error("Firebase roles error:", error);
         setPermissions(null);
+        setPermissionsLoading(false);
     });
+
     return () => {
       unsubRoles();
     };
@@ -231,7 +264,7 @@ function SidebarItems() {
   const hasPermission = (href: string) => {
     if (!user) return false;
     if (user.username === 'admin') return true;
-    if (!permissions) return false; // Return false if permissions are not yet loaded
+    if (!permissions) return false; 
 
     const userRole = (user as Employee).role;
     if (!userRole) return false;
@@ -322,13 +355,13 @@ function SidebarItems() {
 
       <SidebarContent className="p-2">
         <SidebarMenu>
-            {renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
-            {renderMenuItems(mainItems)}
+            {permissionsLoading ? <SidebarMenuSkeleton /> : renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
+            {permissionsLoading ? <SidebarMenuSkeleton /> : renderMenuItems(mainItems)}
             <SidebarSeparator />
-            <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} />
-            <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} />
-            <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} />
-             <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} />
+            <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
+            <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
+            <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
+             <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
