@@ -8,6 +8,7 @@ import { SessionProvider } from '@/context/SessionContext';
 import { CustomerProvider } from '@/context/CustomerContext';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { FirebaseProvider } from '@/context/FirebaseContext';
+import { PermissionsProvider } from '@/context/PermissionsContext';
 
 
 export const metadata: Metadata = {
@@ -38,16 +39,18 @@ export default function RootLayout({
         )}
       >
         <FirebaseProvider>
-          <AuthProvider>
-            <CustomerProvider>
-              <SessionProvider>
-                <SidebarProvider>
-                    {children}
-                    <Toaster />
-                </SidebarProvider>
-              </SessionProvider>
-            </CustomerProvider>
-          </AuthProvider>
+            <AuthProvider>
+              <PermissionsProvider>
+                <CustomerProvider>
+                  <SessionProvider>
+                    <SidebarProvider>
+                        {children}
+                        <Toaster />
+                    </SidebarProvider>
+                  </SessionProvider>
+                </CustomerProvider>
+              </PermissionsProvider>
+            </AuthProvider>
         </FirebaseProvider>
       </body>
     </html>

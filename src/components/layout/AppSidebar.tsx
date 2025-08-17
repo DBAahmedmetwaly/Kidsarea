@@ -55,17 +55,15 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
 import { useEffect, useState } from 'react';
-import { ref, onValue } from 'firebase/database';
-import { db } from '@/lib/firebase';
-import type { Employee, Policies } from '@/lib/types';
-import { Sheet, SheetContent, SheetTitle, SheetTrigger as SheetTriggerComponent } from '@/components/ui/sheet';
-import { Button } from '../ui/button';
+import { useFirebase } from '@/context/FirebaseContext';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { useFirebase } from '@/context/FirebaseContext';
+import type { Employee } from '@/lib/types';
+import { usePermissions } from '@/context/PermissionsContext';
 
 
 const mainItems = [
@@ -108,7 +106,7 @@ const settingsMenuItems = [
 ];
 
 
-const allMenuItems = [
+export const allMenuItems = [
     { href: '/', label: 'الرئيسية', icon: Home },
     ...mainItems, 
     ...managementItems, 
@@ -116,14 +114,6 @@ const allMenuItems = [
     ...customerItems, 
     ...settingsMenuItems,
 ];
-
-type Permissions = Record<string, boolean>;
-type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
-type RolePermissions = Record<Role, Permissions>;
-
-// Firebase keys cannot contain '.', '#', '$', '/', '[', or ']'
-const encodeKey = (key: string) => key.replace(/\//g, '__slash__');
-const decodeKey = (key: string) => key.replace(/__slash__/g, '/');
 
 
 function CollapsibleMenuGroup({
@@ -196,8 +186,7 @@ function SidebarItems() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { policies: allPolicies } = useFirebase();
-  const [permissions, setPermissions] = useState<RolePermissions | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { permissions, loading } = usePermissions();
   const [appName, setAppName] = useState('FunTrack');
   const { setOpenMobile } = useSidebar();
 
@@ -210,69 +199,8 @@ function SidebarItems() {
     }
   }, [allPolicies]);
 
-  useEffect(() => {
-    setLoading(true);
-
-    if (!user) {
-      setPermissions(null);
-      setLoading(false);
-      return;
-    }
-    
-    if (user.username === 'admin') {
-      const adminPermissions: Permissions = {};
-      allMenuItems.forEach(item => {
-        adminPermissions[item.href] = true;
-      });
-      setPermissions({ 'مشرف': adminPermissions, 'كاشير': adminPermissions, 'مدير فرع': adminPermissions });
-      setLoading(false);
-      return;
-    }
-    
-    const rolesRef = ref(db, 'roles');
-    const unsubRoles = onValue(rolesRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            const decodedPermissions: Partial<RolePermissions> = {};
-            for (const role in data) {
-                if (Object.prototype.hasOwnProperty.call(data, role)) {
-                    const rolePermissions = data[role as Role];
-                    const decodedRolePermissions: Permissions = {};
-                    for (const encodedKey in rolePermissions) {
-                        if (Object.prototype.hasOwnProperty.call(rolePermissions, encodedKey)) {
-                           decodedRolePermissions[decodeKey(encodedKey)] = rolePermissions[encodedKey];
-                        }
-                    }
-                    decodedPermissions[role as Role] = decodedRolePermissions;
-                }
-            }
-            setPermissions(decodedPermissions as RolePermissions);
-        } else {
-            setPermissions(null);
-        }
-        setLoading(false);
-    }, (error) => {
-        console.error("Firebase roles error:", error);
-        setPermissions(null);
-        setLoading(false);
-    });
-
-    return () => {
-      unsubRoles();
-    };
-
-  }, [user]);
-
   const hasPermission = (href: string) => {
-    if (loading || !user) return false;
-    if (user.username === 'admin') return true;
-    if (!permissions) return false; 
-
-    const userRole = (user as Employee).role;
-    if (!userRole) return false;
-    
-    const userPermissions = permissions[userRole];
-    if (!userPermissions) return false;
+    if (loading || !permissions) return false;
 
     // Allow access to details pages if the main page is accessible
     const detailPaths = [
@@ -283,12 +211,12 @@ function SidebarItems() {
     ];
     
     for (const path of detailPaths) {
-        if (pathname.startsWith(path.main) && userPermissions[path.main]) {
+        if (pathname.startsWith(path.main) && permissions[path.main]) {
             return true;
         }
     }
     
-    return !!userPermissions[href];
+    return !!permissions[href];
   };
 
   const isActive = (path: string) => {
