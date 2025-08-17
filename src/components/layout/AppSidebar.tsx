@@ -49,6 +49,7 @@ import {
   Archive,
   Receipt,
   Phone,
+  UserCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -189,6 +190,15 @@ function SidebarItems() {
       return;
     }
     
+    if (user.username === 'admin') {
+      const adminPermissions: Permissions = {};
+      allMenuItems.forEach(item => {
+        adminPermissions[item.href] = true;
+      });
+      setPermissions({ 'مشرف': adminPermissions, 'كاشير': adminPermissions, 'مدير فرع': adminPermissions });
+      return;
+    }
+    
     const rolesRef = ref(db, 'roles');
     const unsubRoles = onValue(rolesRef, (snapshot) => {
         const data = snapshot.val();
@@ -224,6 +234,8 @@ function SidebarItems() {
     if (!permissions) return false;
 
     const userRole = (user as Employee).role;
+    if (!userRole) return false;
+    
     const userPermissions = permissions[userRole];
     
     if (!userPermissions) return false;
@@ -274,6 +286,8 @@ function SidebarItems() {
         ) : null
     )
   }
+  
+  const currentUserName = user ? ('name' in user ? user.name : 'Admin') : 'Guest';
 
   return (
     <>
@@ -293,6 +307,19 @@ function SidebarItems() {
             </div>
         </div>
       </SidebarHeader>
+      
+      <div className="p-2">
+        <div className="flex items-center gap-2 p-2 rounded-md bg-sidebar-accent">
+          <UserCircle2 className="h-8 w-8 text-sidebar-accent-foreground" />
+          <div className={cn(
+                "duration-200 text-sidebar-accent-foreground group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8"
+            )}>
+            <p className="font-semibold text-sm">{currentUserName}</p>
+            {'role' in user! && <p className="text-xs text-sidebar-foreground/70">{(user as Employee).role}</p>}
+          </div>
+        </div>
+      </div>
+
       <SidebarContent className="p-2">
         <SidebarMenu>
             {renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
