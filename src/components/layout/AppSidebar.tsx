@@ -66,6 +66,7 @@ import type { Employee } from '@/lib/types';
 import { usePermissions } from '@/context/PermissionsContext';
 import { onValue, ref } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const mainItems = [
@@ -255,7 +256,7 @@ function SidebarItems() {
 
   if (loading) {
       return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-y-auto">
           <SidebarHeader className="justify-between">
               <Skeleton className="h-8 w-32" />
           </SidebarHeader>
