@@ -539,6 +539,10 @@ function CheckInDialog({
           const newCustomerRef = push(customersRef);
           const finalData = { ...newCustomerData, createdAt: new Date().toISOString() };
           await set(newCustomerRef, finalData);
+          toast({
+                title: "تمت الإضافة بنجاح",
+                description: `تمت إضافة العميل "${newCustomerData.parentName}".`,
+          });
       } catch(e) {
           console.error(e);
       }
