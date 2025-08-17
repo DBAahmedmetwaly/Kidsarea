@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2 } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem } from '@/lib/types';
@@ -38,6 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { CustomerFormDialog } from '../customers/page';
+import SubscriptionFormDialog from '../subscriptions/_components/SubscriptionFormDialog';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -680,6 +681,7 @@ function PosTrackingContent() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { printReceipt } = usePosPrint();
+  const { customers } = useCustomers();
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   
@@ -690,6 +692,10 @@ function PosTrackingContent() {
   const [childToCheckout, setChildToCheckout] = useState<Child | null>(null);
 
   const [activeSearch, setActiveSearch] = useState('');
+  
+  // Dialog control
+  const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
+  const [isSubscriptionFormOpen, setSubscriptionFormOpen] = useState(false);
   
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -904,6 +910,27 @@ function PosTrackingContent() {
         toast({ title: 'خطأ في تسجيل الدخول', variant: 'destructive'})
     }
   };
+
+  const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
+      try {
+          const existingCustomer = customers.find(c => (c.phoneNumbers || []).some(p => newCustomerData.phoneNumbers.includes(p)));
+          if (existingCustomer) {
+                toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
+                return;
+          }
+          const customersRef = ref(db, 'customers');
+          const newCustomerRef = push(customersRef);
+          const finalData = { ...newCustomerData, createdAt: new Date().toISOString() };
+          await set(newCustomerRef, finalData);
+          toast({
+                title: "تمت الإضافة بنجاح",
+                description: `تمت إضافة العميل "${newCustomerData.parentName}".`,
+          });
+          setCustomerFormOpen(false); // Close dialog on success
+      } catch(e) {
+          console.error(e);
+      }
+    };
   
   const handleAddToCart = (item: InventoryItem | PrepaidGameCartItem) => {
       setCart(prevCart => {
@@ -1145,7 +1172,15 @@ function PosTrackingContent() {
                     <h1 className="text-2xl font-bold">يلا نلعب</h1>
                     <span className="text-lg text-muted-foreground font-semibold">({selectedBranchName})</span>
                 </div>
-                <div className="ms-auto w-full sm:w-auto">
+                <div className="ms-auto flex items-center gap-2">
+                     <Button size="sm" variant="outline" onClick={() => setCustomerFormOpen(true)}>
+                        <UserPlus className="me-2 h-4 w-4" />
+                        إضافة عميل
+                    </Button>
+                     <Button size="sm" variant="outline" onClick={() => setSubscriptionFormOpen(true)}>
+                       <StarIcon className="me-2 h-4 w-4" />
+                       إضافة اشتراك
+                    </Button>
                     <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
                         <SelectTrigger className="w-full sm:w-[200px]">
                             <SelectValue placeholder="اختر الفرع" />
@@ -1427,6 +1462,17 @@ function PosTrackingContent() {
                 onOpenChange={setCheckoutDialogOpen}
                 child={childToCheckout}
                 onConfirm={handleCheckOut}
+            />
+            <CustomerFormDialog 
+                open={isCustomerFormOpen} 
+                onOpenChange={setCustomerFormOpen} 
+                onSubmit={handleAddCustomer}
+                isEditMode={false}
+                initialData={null}
+            />
+             <SubscriptionFormDialog
+                open={isSubscriptionFormOpen}
+                onOpenChange={setSubscriptionFormOpen}
             />
         </div>
         {/* Cart Section */}
