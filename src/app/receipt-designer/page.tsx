@@ -54,7 +54,7 @@ const receiptSettingsSchema = z.object({
     showEntryFee: z.boolean(),
     showDiscount: z.boolean(),
     showTotalCost: z.boolean(),
-    showCashierName: zboolean(),
+    showCashierName: z.boolean(),
     showReceiptId: z.boolean(),
     showTimestamp: z.boolean(),
     customFooter: z.string().optional(),
