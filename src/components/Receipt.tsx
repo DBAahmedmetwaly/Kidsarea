@@ -73,7 +73,6 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
 }, ref) => {
   
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
-  const layout = settings?.layout || 'two-columns';
   const receiptWidth = settings?.receiptWidth || 72;
 
   const renderPaymentDetails = () => {
@@ -90,7 +89,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
              <div className="space-y-1 py-1 my-1">
                 <PaymentDetailRow show={show('showTotalCost')} label="تكلفة الباقة" value={packagePrice} />
                  {show('showTotalCost') && (
-                    <div className="flex justify-between items-center text-md font-bold pt-1 mt-1 border-t border-dashed border-gray-400">
+                    <div className="flex justify-between items-center text-md font-bold pt-1 mt-1 bg-gray-200 p-1 rounded-md">
                         <span>الإجمالي</span>
                         <span className="font-mono">{`ج.م ${totalCost.toFixed(2)}`}</span>
                     </div>
@@ -107,7 +106,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
           <PaymentDetailRow show={show('showDiscount')} label="الخصم" value={discount} />
           
           {show('showTotalCost') && (
-              <div className="flex justify-between items-center text-md font-bold pt-1 mt-1 border-t border-dashed border-gray-400">
+              <div className="flex justify-between items-center text-md font-bold pt-1 mt-1 bg-gray-200 p-1 rounded-md">
                   <span>الإجمالي</span>
                   <span className='font-mono'>{`ج.م ${totalCost.toFixed(2)}`}</span>
               </div>
@@ -127,7 +126,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
       </div>
 
       {show('showCustomTitle') && (
-        <div className="text-center my-1 py-0.5 bg-black text-white text-sm font-bold">
+        <div className="text-center my-1 py-0.5 text-sm font-bold">
             {settings?.customTitle || 'فاتورة جلسة لعب'}
         </div>
       )}
@@ -145,7 +144,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
       {/* Session Details */}
        <div className="text-xs my-1 py-1 border-b border-dashed border-gray-400">
         <h2 className="font-bold text-center text-sm mb-1">بيانات الجلسة</h2>
-        <div className={cn(layout === 'two-columns' ? 'grid grid-cols-2 gap-x-2' : 'flex flex-col')}>
+        <div className='flex flex-col'>
             <ReceiptRow show={show('showParentName')} label="ولي الأمر" value={parentName} />
             <ReceiptRow show={show('showChildName')} label="الطفل" value={children.map(c => c.name).join(', ')} />
             <ReceiptRow show={show('showGameName')} label="اللعبة" value={gameName} />
