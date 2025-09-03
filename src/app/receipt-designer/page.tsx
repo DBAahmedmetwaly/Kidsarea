@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -34,9 +35,11 @@ import { FileText, Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ReceiptSettings } from '@/lib/types';
 import { PosReceipt } from '@/components/Receipt';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 const receiptSettingsSchema = z.object({
+    layout: z.enum(['single-column', 'two-column']).optional(),
     showLogo: z.boolean(),
     showAppName: z.boolean(),
     showThankYouMessage: z.boolean(),
@@ -59,7 +62,8 @@ const receiptSettingsSchema = z.object({
 
 type ReceiptSettingsValues = z.infer<typeof receiptSettingsSchema>;
 
-const labelsMap: { [key in keyof ReceiptSettings]: string } = {
+const labelsMap: { [key in keyof ReceiptSettings]?: string } = {
+    layout: 'تخطيط الإيصال',
     showLogo: 'إظهار الشعار',
     showAppName: 'إظهار اسم التطبيق',
     showThankYouMessage: 'إظهار رسالة الشكر',
@@ -88,6 +92,7 @@ function ReceiptDesignerContent() {
   const form = useForm<ReceiptSettingsValues>({
     resolver: zodResolver(receiptSettingsSchema),
     defaultValues: {
+        layout: 'two-column',
         showLogo: true,
         showAppName: true,
         showThankYouMessage: true,
@@ -187,6 +192,45 @@ function ReceiptDesignerContent() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid md:grid-cols-3 gap-8 items-start">
           <div className="md:col-span-2 space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>تخطيط الإيصال</CardTitle>
+                    <CardDescription>
+                        اختر شكل التخطيط العام للإيصال.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FormField
+                        control={form.control}
+                        name="layout"
+                        render={({ field }) => (
+                            <FormItem className="space-y-3">
+                            <FormControl>
+                                <RadioGroup
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                className="flex flex-col space-y-1"
+                                >
+                                <FormItem className="flex items-center space-x-3 space-y-0">
+                                    <FormControl>
+                                    <RadioGroupItem value="two-column" />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">عمودين (أكثر كثافة)</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-3 space-y-0">
+                                    <FormControl>
+                                    <RadioGroupItem value="single-column" />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">عمود واحد (أبسط وأطول)</FormLabel>
+                                </FormItem>
+                                </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>محتوى الإيصال</CardTitle>

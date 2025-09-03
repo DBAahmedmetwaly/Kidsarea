@@ -184,6 +184,7 @@ export interface GameCategory {
 }
 
 export interface ReceiptSettings {
+    layout?: 'single-column' | 'two-column';
     showLogo: boolean;
     showAppName: boolean;
     showThankYouMessage: boolean;
