@@ -144,7 +144,7 @@ export interface Policies {
     entryFeeApplication: 'all' | 'hourly' | 'package' | 'none';
     packagePricingModel: 'per_session' | 'per_child';
     toastDuration?: number;
-    enableBuyOneHourGetHalfFree?: boolean;
+    buyOneHourGetXFreeMinutes?: number; // 0 for disabled, or 15, 30, 60 etc.
 }
 
 export interface Customer {

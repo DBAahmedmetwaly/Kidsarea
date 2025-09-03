@@ -131,21 +131,25 @@ function calculateCost(durationMs: number, hourlyRate: number, policies: Policie
     let durationHours = durationMs / (1000 * 60 * 60);
     const durationMinutes = durationMs / (1000 * 60);
 
-    // Special promo: Buy 1 hour, get 30 mins free
-    if (policies?.enableBuyOneHourGetHalfFree && durationMinutes > 60 && durationMinutes <= 90) {
+    // New promotion logic
+    const freeMinutes = policies?.buyOneHourGetXFreeMinutes || 0;
+    if (freeMinutes > 0 && durationMinutes > 60 && durationMinutes <= 60 + freeMinutes) {
         durationHours = 1; // Charge for exactly 1 hour
-    } else if (policies?.roundingPolicy && policies.roundingPolicy !== 'none') {
-        const minutes = durationHours * 60;
-        switch(policies.roundingPolicy) {
-            case 'quarter-hour':
-                durationHours = Math.ceil(minutes / 15) * 15 / 60;
-                break;
-            case 'half-hour':
-                durationHours = Math.ceil(minutes / 30) * 30 / 60;
-                break;
-            case 'hour':
-                durationHours = Math.ceil(minutes / 60);
-                break;
+    } else {
+        // Apply rounding policy only if the promotion doesn't apply or is exceeded
+        if (policies?.roundingPolicy && policies.roundingPolicy !== 'none') {
+            const minutes = durationHours * 60;
+            let roundingMinutes: number;
+            switch(policies.roundingPolicy) {
+                case 'quarter-hour': roundingMinutes = 15; break;
+                case 'half-hour': roundingMinutes = 30; break;
+                case 'hour': roundingMinutes = 60; break;
+                default: roundingMinutes = 1;
+            }
+             // We only round up if the time is not exactly on the hour/half-hour etc.
+             if (minutes > 0) {
+                 durationHours = Math.ceil(minutes / roundingMinutes) * roundingMinutes / 60;
+             }
         }
     }
     

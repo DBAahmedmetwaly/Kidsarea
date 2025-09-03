@@ -92,7 +92,7 @@ const policiesSchema = z.object({
   entryFeeApplication: z.enum(['all', 'hourly', 'package', 'none']),
   packagePricingModel: z.enum(['per_session', 'per_child']),
   toastDuration: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
-  enableBuyOneHourGetHalfFree: z.boolean().optional(),
+  buyOneHourGetXFreeMinutes: z.coerce.number().optional(),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -138,7 +138,7 @@ const defaultPolicies: PoliciesFormValues = {
       entryFeeApplication: 'hourly',
       packagePricingModel: 'per_session',
       toastDuration: 5,
-      enableBuyOneHourGetHalfFree: false,
+      buyOneHourGetXFreeMinutes: 0,
 }
 
 function PoliciesContent() {
@@ -606,28 +606,32 @@ function PoliciesContent() {
                 <Separator />
                 
                 <h3 className="text-lg font-medium">سياسات الألعاب بالساعة</h3>
-                 <FormField
+                <FormField
                     control={form.control}
-                    name="enableBuyOneHourGetHalfFree"
+                    name="buyOneHourGetXFreeMinutes"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">
-                            تفعيل عرض (ساعة + نصف ساعة مجانًا) للألعاب بالساعة
-                          </FormLabel>
-                          <CardDescription>
-                            عند تفعيله، أي جلسة تستمر بين 60 و 90 دقيقة سيتم محاسبتها كساعة واحدة فقط.
-                          </CardDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
+                        <FormItem className="max-w-sm">
+                            <FormLabel>عرض (ساعة + وقت مجاني)</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 0)}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="اختر العرض..." />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="0">بدون عرض</SelectItem>
+                                    <SelectItem value="15">ساعة + 15 دقيقة مجانًا</SelectItem>
+                                    <SelectItem value="30">ساعة + 30 دقيقة مجانًا</SelectItem>
+                                    <SelectItem value="60">ساعة + 60 دقيقة مجانًا</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>
+                                سيتم محاسبة الجلسة كساعة واحدة فقط إذا انتهت خلال مدة العرض.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
                     )}
-                  />
+                />
                 <div className="space-y-4">
                   <h3 className="text-md font-medium">تحديد أيام نهاية الأسبوع</h3>
                   <div className="flex flex-wrap gap-4">
