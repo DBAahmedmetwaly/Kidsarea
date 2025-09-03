@@ -128,26 +128,29 @@ function formatDuration(durationMs: number) {
 }
 
 function calculateCost(durationMs: number, hourlyRate: number, policies: Policies | null, numberOfChildren: number) {
-    const durationHours = durationMs / (1000 * 60 * 60);
-    let roundedHours = durationHours;
+    let durationHours = durationMs / (1000 * 60 * 60);
+    const durationMinutes = durationMs / (1000 * 60);
 
-    if (policies?.roundingPolicy && policies.roundingPolicy !== 'none') {
+    // Special promo: Buy 1 hour, get 30 mins free
+    if (policies?.enableBuyOneHourGetHalfFree && durationMinutes > 60 && durationMinutes <= 90) {
+        durationHours = 1; // Charge for exactly 1 hour
+    } else if (policies?.roundingPolicy && policies.roundingPolicy !== 'none') {
         const minutes = durationHours * 60;
         switch(policies.roundingPolicy) {
             case 'quarter-hour':
-                roundedHours = Math.ceil(minutes / 15) * 15 / 60;
+                durationHours = Math.ceil(minutes / 15) * 15 / 60;
                 break;
             case 'half-hour':
-                roundedHours = Math.ceil(minutes / 30) * 30 / 60;
+                durationHours = Math.ceil(minutes / 30) * 30 / 60;
                 break;
             case 'hour':
-                roundedHours = Math.ceil(minutes / 60);
+                durationHours = Math.ceil(minutes / 60);
                 break;
         }
     }
     
     // Cost is per child
-    const durationCost = (roundedHours * hourlyRate) * numberOfChildren;
+    const durationCost = (durationHours * hourlyRate) * numberOfChildren;
 
     return { durationCost };
 }

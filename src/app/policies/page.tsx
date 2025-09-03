@@ -92,6 +92,7 @@ const policiesSchema = z.object({
   entryFeeApplication: z.enum(['all', 'hourly', 'package', 'none']),
   packagePricingModel: z.enum(['per_session', 'per_child']),
   toastDuration: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
+  enableBuyOneHourGetHalfFree: z.boolean().optional(),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -137,6 +138,7 @@ const defaultPolicies: PoliciesFormValues = {
       entryFeeApplication: 'hourly',
       packagePricingModel: 'per_session',
       toastDuration: 5,
+      enableBuyOneHourGetHalfFree: false,
 }
 
 function PoliciesContent() {
@@ -604,6 +606,28 @@ function PoliciesContent() {
                 <Separator />
                 
                 <h3 className="text-lg font-medium">سياسات الألعاب بالساعة</h3>
+                 <FormField
+                    control={form.control}
+                    name="enableBuyOneHourGetHalfFree"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            تفعيل عرض (ساعة + نصف ساعة مجانًا) للألعاب بالساعة
+                          </FormLabel>
+                          <CardDescription>
+                            عند تفعيله، أي جلسة تستمر بين 60 و 90 دقيقة سيتم محاسبتها كساعة واحدة فقط.
+                          </CardDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 <div className="space-y-4">
                   <h3 className="text-md font-medium">تحديد أيام نهاية الأسبوع</h3>
                   <div className="flex flex-wrap gap-4">

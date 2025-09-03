@@ -144,6 +144,7 @@ export interface Policies {
     entryFeeApplication: 'all' | 'hourly' | 'package' | 'none';
     packagePricingModel: 'per_session' | 'per_child';
     toastDuration?: number;
+    enableBuyOneHourGetHalfFree?: boolean;
 }
 
 export interface Customer {
