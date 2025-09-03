@@ -6,25 +6,24 @@ import type { ReceiptSettings, CustomerChild } from '@/lib/types';
 import { Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ReceiptRow = ({ label, value, show, isTwoColumn = false }: { label: string; value: React.ReactNode; show?: boolean; isTwoColumn?: boolean }) => {
-  if (show === false || value === null || value === undefined) return null;
-  return (
-    <div className={cn("flex justify-between items-baseline text-xs", !isTwoColumn && "border-b border-dashed border-gray-400 py-0.5")}>
+
+const ReceiptRow = ({ label, value }: { label: string; value: React.ReactNode; }) => (
+    <div className="flex justify-between items-baseline text-xs py-0.5">
       <span className="font-semibold">{label}:</span>
       <span className="font-normal text-left">{value}</span>
     </div>
-  );
-};
+);
 
-const PaymentDetailRow = ({ label, value, show }: { label: string; value: number | undefined; show?: boolean }) => {
-  if (show === false || !value || value === 0) return null;
+const PaymentDetailRow = ({ label, value }: { label: string; value: number | undefined }) => {
+  if (!value || value === 0) return null;
   return (
-    <div className="flex justify-between items-center text-sm border-b border-dashed border-gray-400 py-0.5">
+    <div className="flex justify-between items-center text-sm py-0.5">
       <span>{label}</span>
       <span className="font-mono">{`ج.م ${value.toFixed(2)}`}</span>
     </div>
   );
 };
+
 
 export interface PosReceiptProps {
   receiptId?: string;
@@ -83,33 +82,18 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
       );
     }
     
-    if (packagePrice && duration === '0 ساعة و 0 دقيقة') {
-         return (
-             <div className="space-y-1 py-1 my-1">
-                <PaymentDetailRow show={show('showTotalCost')} label="تكلفة الباقة" value={packagePrice} />
-                 {show('showTotalCost') && (
-                    <div className="flex justify-between items-center text-md font-bold pt-1 mt-1 bg-gray-200 p-1 rounded-md">
-                        <span>الإجمالي</span>
-                        <span className="font-mono">{`ج.م ${totalCost.toFixed(2)}`}</span>
-                    </div>
-                )}
-             </div>
-         )
-    }
-
     return (
       <div className="space-y-1 py-1 my-1">
-          <PaymentDetailRow show={show('showDurationCost')} label="تكلفة اللعب" value={durationCost} />
-          <PaymentDetailRow show={show('showEntryFee')} label="رسوم دخول" value={entryFee} />
-          <PaymentDetailRow show={true} label="وقت إضافي" value={overtimeCost} />
-          <PaymentDetailRow show={show('showDiscount')} label="الخصم" value={discount} />
-          
-          {show('showTotalCost') && (
-              <div className="flex justify-between items-center text-md font-bold pt-1 mt-1 bg-gray-200 p-1 rounded-md">
-                  <span>الإجمالي</span>
-                  <span className='font-mono'>{`ج.م ${totalCost.toFixed(2)}`}</span>
-              </div>
-          )}
+          <div className='border-y border-dashed border-gray-400 py-1 space-y-1'>
+            <PaymentDetailRow label="تكلفة اللعب" value={durationCost} />
+            <PaymentDetailRow label="رسوم دخول" value={entryFee} />
+            <PaymentDetailRow label="وقت إضافي" value={overtimeCost} />
+            <PaymentDetailRow label="الخصم" value={discount} />
+          </div>
+          <div className="flex justify-between items-center text-md font-bold pt-1 mt-1 bg-gray-200 p-1 rounded-md">
+              <span>الإجمالي</span>
+              <span className='font-mono'>{`ج.م ${totalCost.toFixed(2)}`}</span>
+          </div>
       </div>
     );
   }
@@ -121,44 +105,38 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         {show('showLogo') && <Gamepad2 className="mx-auto h-8 w-8 text-black" />}
         {show('showAppName') && <h1 className="text-lg font-bold">{appName}</h1>}
         {show('showAddress') && <p className="text-xs">{settings?.address}</p>}
-        {show('showPhone') && <p className="text-xs">{settings?.phone}</p>}
+        {show('showPhone') && <p className="text-xs font-mono">{settings?.phone}</p>}
       </div>
 
-      {show('showCustomTitle') && (
-        <div className="text-center my-1 py-0.5 text-sm font-bold border-y border-dashed border-gray-400">
-            {settings?.customTitle || 'فاتورة جلسة لعب'}
-        </div>
-      )}
+      <div className="text-center my-1 py-0.5 text-sm font-bold border-y border-dashed border-gray-400">
+        {show('showCustomTitle') ? (settings?.customTitle || 'فاتورة جلسة لعب') : 'فاتورة جلسة لعب'}
+      </div>
 
       {/* Invoice Info */}
-       <div className="text-xs my-1 py-1">
-        <div className='grid grid-cols-2 gap-x-2'>
-            <ReceiptRow show={show('showReceiptId')} label="رقم الفاتورة" value={receiptId} isTwoColumn />
-            <ReceiptRow show={show('showTimestamp')} label="التاريخ" value={new Date().toLocaleDateString('ar-EG')} isTwoColumn/>
-            <ReceiptRow show={show('showCashierName')} label="الكاشير" value={cashierName} isTwoColumn/>
-            <ReceiptRow show={show('showTimestamp')} label="الوقت" value={new Date().toLocaleTimeString('ar-EG')} isTwoColumn/>
-        </div>
+       <div className="text-xs my-1 py-1 space-y-0.5">
+          <p>رقم الفاتورة: {receiptId}</p>
+          <p>التاريخ: {new Date().toLocaleDateString('ar-EG')}</p>
+          <p>الكاشير: {cashierName}</p>
+          <p>الوقت: {new Date().toLocaleTimeString('ar-EG')}</p>
        </div>
-
-      {/* Session Details */}
-       <div className="text-xs my-1 py-1 border-t border-dashed border-gray-400">
-        <div className='flex flex-col'>
-            <ReceiptRow show={show('showParentName')} label="ولي الأمر" value={parentName} />
-            <ReceiptRow show={show('showChildName')} label="الطفل" value={children.map(c => c.name).join(', ')} />
-            <ReceiptRow show={show('showGameName')} label="اللعبة" value={gameName} />
-            <ReceiptRow show={show('showCheckInTime')} label="وقت الدخول" value={checkInTime.toLocaleTimeString('ar-EG')} />
-            <ReceiptRow show={show('showCheckOutTime')} label="وقت الخروج" value={checkOutTime.toLocaleTimeString('ar-EG')} />
-            <ReceiptRow show={show('showDuration')} label="المدة" value={duration} />
+       
+       <div className="text-xs my-1 py-1 border-t border-dashed border-gray-400 space-y-1">
+        <div className="flex justify-between"><span>ولي الأمر: {parentName}</span><span>الطفل: {children.map(c => c.name).join(', ')}</span></div>
+        <div>اللعبة: {gameName}</div>
+        <div className="flex justify-between">
+            <span>الدخول: {checkInTime.toLocaleTimeString('ar-EG')}</span>
+            <span>الخروج: {checkOutTime.toLocaleTimeString('ar-EG')}</span>
+            <span>المدة: {duration}</span>
         </div>
       </div>
       
        {/* Payment Details */}
-       <div className="my-1 py-1">
+       <div className="my-1">
           {renderPaymentDetails()}
        </div>
 
        {/* Footer */}
-       <div className="mt-2 text-center text-xs text-gray-600 space-y-0.5 border-t border-dashed border-gray-400 pt-1">
+       <div className="mt-2 text-center text-xs text-gray-600 space-y-0.5 pt-1">
             {show('showThankYouMessage') && <p className="font-semibold">{settings?.thankYouMessage}</p>}
             {settings?.customFooter && <p>{settings.customFooter}</p>}
        </div>
