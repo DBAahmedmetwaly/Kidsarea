@@ -7,8 +7,8 @@ import type { ReceiptSettings, CustomerChild } from '@/lib/types';
 const ReceiptRow = ({ label, value, show, boldValue = true }: { label: string; value: React.ReactNode; show?: boolean; boldValue?: boolean }) => {
   if (show === false || value === null || value === undefined) return null;
   return (
-    <div className="flex justify-between items-center text-xs py-0.5">
-      <span className="text-gray-600">{label}</span>
+    <div className="flex justify-between items-baseline gap-1">
+      <span className="text-gray-600 whitespace-nowrap">{label}</span>
       <span className={boldValue ? "font-bold text-right" : "text-right"}>{value}</span>
     </div>
   );
@@ -118,13 +118,19 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         <p className="text-xs">{branchName}</p>
       </div>
 
-      <div className="space-y-1 py-2 border-y border-dashed border-gray-400">
-        <ReceiptRow show={show('showParentName')} label="ولي الأمر:" value={parentName} />
-        <ReceiptRow show={show('showChildName')} label="الطفل:" value={children.map(c => c.name).join(', ')} />
-        <ReceiptRow show={show('showGameName')} label="اللعبة:" value={gameName} />
-        <ReceiptRow show={show('showCheckInTime')} label="وقت الدخول:" value={checkInTime.toLocaleTimeString('ar-EG')} />
-        <ReceiptRow show={show('showCheckOutTime')} label="وقت الخروج:" value={checkOutTime.toLocaleTimeString('ar-EG')} />
-        <ReceiptRow show={show('showDuration')} label="مدة اللعب:" value={duration} />
+      <div className="grid grid-cols-2 gap-x-2 py-2 border-y border-dashed border-gray-400 text-xs">
+        {/* Right Column */}
+        <div className="space-y-1">
+            <ReceiptRow show={show('showParentName')} label="ولي الأمر:" value={parentName} />
+            <ReceiptRow show={show('showChildName')} label="الطفل:" value={children.map(c => c.name).join(', ')} />
+            <ReceiptRow show={show('showGameName')} label="اللعبة:" value={gameName} />
+        </div>
+         {/* Left Column */}
+        <div className="space-y-1">
+            <ReceiptRow show={show('showCheckInTime')} label="دخول:" value={checkInTime.toLocaleTimeString('ar-EG')} />
+            <ReceiptRow show={show('showCheckOutTime')} label="خروج:" value={checkOutTime.toLocaleTimeString('ar-EG')} />
+            <ReceiptRow show={show('showDuration')} label="المدة:" value={duration} />
+        </div>
       </div>
 
        {renderPaymentDetails()}
