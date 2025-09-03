@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React from 'react';
@@ -7,10 +6,10 @@ import type { ReceiptSettings, CustomerChild } from '@/lib/types';
 import { Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ReceiptRow = ({ label, value, show }: { label: string; value: React.ReactNode; show?: boolean; }) => {
+const ReceiptRow = ({ label, value, show, isTwoColumn = false }: { label: string; value: React.ReactNode; show?: boolean; isTwoColumn?: boolean }) => {
   if (show === false || value === null || value === undefined) return null;
   return (
-    <div className="flex justify-between items-baseline text-xs">
+    <div className={cn("flex justify-between items-baseline text-xs", !isTwoColumn && "border-b border-dashed border-gray-400 py-0.5")}>
       <span className="font-semibold">{label}:</span>
       <span className="font-normal text-left">{value}</span>
     </div>
@@ -20,7 +19,7 @@ const ReceiptRow = ({ label, value, show }: { label: string; value: React.ReactN
 const PaymentDetailRow = ({ label, value, show }: { label: string; value: number | undefined; show?: boolean }) => {
   if (show === false || !value || value === 0) return null;
   return (
-    <div className="flex justify-between items-center text-sm">
+    <div className="flex justify-between items-center text-sm border-b border-dashed border-gray-400 py-0.5">
       <span>{label}</span>
       <span className="font-mono">{`ج.م ${value.toFixed(2)}`}</span>
     </div>
@@ -126,24 +125,23 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
       </div>
 
       {show('showCustomTitle') && (
-        <div className="text-center my-1 py-0.5 text-sm font-bold">
+        <div className="text-center my-1 py-0.5 text-sm font-bold border-y border-dashed border-gray-400">
             {settings?.customTitle || 'فاتورة جلسة لعب'}
         </div>
       )}
 
       {/* Invoice Info */}
-       <div className="text-xs my-1 py-1 border-y border-dashed border-gray-400">
+       <div className="text-xs my-1 py-1">
         <div className='grid grid-cols-2 gap-x-2'>
-            <ReceiptRow show={show('showReceiptId')} label="رقم الفاتورة" value={receiptId} />
-            <ReceiptRow show={show('showTimestamp')} label="التاريخ" value={new Date().toLocaleDateString('ar-EG')} />
-            <ReceiptRow show={show('showCashierName')} label="الكاشير" value={cashierName} />
-            <ReceiptRow show={show('showTimestamp')} label="الوقت" value={new Date().toLocaleTimeString('ar-EG')} />
+            <ReceiptRow show={show('showReceiptId')} label="رقم الفاتورة" value={receiptId} isTwoColumn />
+            <ReceiptRow show={show('showTimestamp')} label="التاريخ" value={new Date().toLocaleDateString('ar-EG')} isTwoColumn/>
+            <ReceiptRow show={show('showCashierName')} label="الكاشير" value={cashierName} isTwoColumn/>
+            <ReceiptRow show={show('showTimestamp')} label="الوقت" value={new Date().toLocaleTimeString('ar-EG')} isTwoColumn/>
         </div>
        </div>
 
       {/* Session Details */}
-       <div className="text-xs my-1 py-1 border-b border-dashed border-gray-400">
-        <h2 className="font-bold text-center text-sm mb-1">بيانات الجلسة</h2>
+       <div className="text-xs my-1 py-1 border-t border-dashed border-gray-400">
         <div className='flex flex-col'>
             <ReceiptRow show={show('showParentName')} label="ولي الأمر" value={parentName} />
             <ReceiptRow show={show('showChildName')} label="الطفل" value={children.map(c => c.name).join(', ')} />
@@ -155,13 +153,12 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
       </div>
       
        {/* Payment Details */}
-       <div className="my-1 py-1 border-b border-dashed border-gray-400">
-          <h2 className="font-bold text-center text-sm mb-1">تفاصيل الحساب</h2>
+       <div className="my-1 py-1">
           {renderPaymentDetails()}
        </div>
 
        {/* Footer */}
-       <div className="mt-2 text-center text-xs text-gray-600 space-y-0.5">
+       <div className="mt-2 text-center text-xs text-gray-600 space-y-0.5 border-t border-dashed border-gray-400 pt-1">
             {show('showThankYouMessage') && <p className="font-semibold">{settings?.thankYouMessage}</p>}
             {settings?.customFooter && <p>{settings.customFooter}</p>}
        </div>

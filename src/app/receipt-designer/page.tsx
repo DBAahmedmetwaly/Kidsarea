@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
+import { ref, onValue, set, update } from 'firebase/database';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -284,48 +284,6 @@ function ReceiptDesignerContent() {
               </CardContent>
             </Card>
 
-             <Card>
-                <CardHeader>
-                    <CardTitle>التصميم والتخطيط</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <FormField
-                        control={form.control}
-                        name="layout"
-                        render={({ field }) => (
-                            <FormItem className="space-y-3">
-                            <FormLabel>{labelsMap.layout}</FormLabel>
-                            <FormControl>
-                                <RadioGroup
-                                onValueChange={field.onChange}
-                                value={field.value}
-                                className="flex space-x-4"
-                                >
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                    <FormControl>
-                                    <RadioGroupItem value="one-column" />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">
-                                    عمود واحد
-                                    </FormLabel>
-                                </FormItem>
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                    <FormControl>
-                                    <RadioGroupItem value="two-columns" />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">
-                                    عمودان
-                                    </FormLabel>
-                                </FormItem>
-                                </RadioGroup>
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                </CardContent>
-             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle>محتوى الإيصال</CardTitle>
@@ -334,6 +292,7 @@ function ReceiptDesignerContent() {
               <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                  {Object.keys(defaultValues).filter(k => typeof (defaultValues as any)[k] === 'boolean').map((key) => {
                      const fieldKey = key as keyof ReceiptSettingsValues;
+                     if (fieldKey === 'layout') return null; // We handle layout with radio buttons
                      return (
                         <FormField
                             key={fieldKey}
