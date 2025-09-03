@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { Gamepad2, Smile, User, Calendar, Star, Tag } from 'lucide-react';
 import React from 'react';
 import { cn } from '@/lib/utils';
-import type { Policies } from '@/lib/types';
+import type { Policies, ReceiptSettings } from '@/lib/types';
 
 export interface SubscriptionReceiptProps {
   appName: string;
@@ -15,6 +16,7 @@ export interface SubscriptionReceiptProps {
   endDate: Date;
   price: number;
   cashierName: string;
+  settings: ReceiptSettings | null;
 }
 
 const ReceiptRow = ({ label, value, valueClass = '' }: { label: React.ReactNode, value: React.ReactNode, valueClass?: string }) => (
@@ -34,11 +36,14 @@ export const SubscriptionReceipt = React.forwardRef<HTMLDivElement, Subscription
   endDate,
   price,
   cashierName,
+  settings
 }, ref) => {
   const receiptId = `SUB-${new Date().getTime().toString().slice(-6)}`;
+  const receiptWidth = settings?.receiptWidth || 72;
+
 
   return (
-    <div ref={ref} className="bg-white p-1 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white p-1 text-black" style={{ width: `${receiptWidth}mm`, boxSizing: 'border-box' }}>
       <div className="text-center mb-1">
         <h1 className="text-xl font-bold">{appName}</h1>
         <p className="text-xs font-semibold">إيصال اشتراك</p>

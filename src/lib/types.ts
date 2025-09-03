@@ -208,6 +208,9 @@ export interface ReceiptSettings {
     showThankYouMessage: boolean;
     thankYouMessage?: string;
     customFooter?: string;
+    layout?: 'one-column' | 'two-columns';
+    receiptWidth?: number;
+    showTimestamp?: boolean;
 }
 
 export interface ExpenseType {

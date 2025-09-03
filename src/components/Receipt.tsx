@@ -5,6 +5,7 @@
 import React from 'react';
 import type { ReceiptSettings, CustomerChild } from '@/lib/types';
 import { Gamepad2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const ReceiptRow = ({ label, value, show }: { label: string; value: React.ReactNode; show?: boolean; }) => {
   if (show === false || value === null || value === undefined) return null;
@@ -72,6 +73,8 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
 }, ref) => {
   
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
+  const layout = settings?.layout || 'two-columns';
+  const receiptWidth = settings?.receiptWidth || 72;
 
   const renderPaymentDetails = () => {
     if (isSubscription) {
@@ -114,7 +117,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   }
 
   return (
-    <div ref={ref} className="bg-white p-1 text-black" style={{ width: '100%', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white p-1 text-black" style={{ width: `${receiptWidth}mm`, boxSizing: 'border-box' }}>
       {/* Header */}
       <div className="text-center mb-1">
         {show('showLogo') && <Gamepad2 className="mx-auto h-8 w-8 text-black" />}
@@ -133,21 +136,21 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
        <div className="text-xs my-1 py-1 border-y border-dashed border-gray-400">
         <div className='grid grid-cols-2 gap-x-2'>
             <ReceiptRow show={show('showReceiptId')} label="رقم الفاتورة" value={receiptId} />
-            <ReceiptRow show={true} label="التاريخ" value={new Date().toLocaleDateString('ar-EG')} />
+            <ReceiptRow show={show('showTimestamp')} label="التاريخ" value={new Date().toLocaleDateString('ar-EG')} />
             <ReceiptRow show={show('showCashierName')} label="الكاشير" value={cashierName} />
-            <ReceiptRow show={true} label="الوقت" value={new Date().toLocaleTimeString('ar-EG')} />
+            <ReceiptRow show={show('showTimestamp')} label="الوقت" value={new Date().toLocaleTimeString('ar-EG')} />
         </div>
        </div>
 
       {/* Session Details */}
        <div className="text-xs my-1 py-1 border-b border-dashed border-gray-400">
         <h2 className="font-bold text-center text-sm mb-1">بيانات الجلسة</h2>
-        <div className='grid grid-cols-2 gap-x-2'>
+        <div className={cn(layout === 'two-columns' ? 'grid grid-cols-2 gap-x-2' : 'flex flex-col')}>
             <ReceiptRow show={show('showParentName')} label="ولي الأمر" value={parentName} />
             <ReceiptRow show={show('showChildName')} label="الطفل" value={children.map(c => c.name).join(', ')} />
+            <ReceiptRow show={show('showGameName')} label="اللعبة" value={gameName} />
             <ReceiptRow show={show('showCheckInTime')} label="وقت الدخول" value={checkInTime.toLocaleTimeString('ar-EG')} />
             <ReceiptRow show={show('showCheckOutTime')} label="وقت الخروج" value={checkOutTime.toLocaleTimeString('ar-EG')} />
-            <ReceiptRow show={show('showGameName')} label="اللعبة" value={gameName} />
             <ReceiptRow show={show('showDuration')} label="المدة" value={duration} />
         </div>
       </div>

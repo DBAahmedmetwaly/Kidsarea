@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -32,9 +33,10 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
 }, ref) => {
   
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
+  const receiptWidth = settings?.receiptWidth || 72;
 
   return (
-    <div ref={ref} className="bg-white p-1 text-black" style={{ width: '80mm', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white p-1 text-black" style={{ width: `${receiptWidth}mm`, boxSizing: 'border-box' }}>
       <div className="text-center mb-1">
         {show('showAppName') && <h1 className="text-xl font-bold">{appName}</h1>}
         <p className="text-xs">{branchName}</p>

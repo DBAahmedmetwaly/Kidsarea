@@ -35,6 +35,7 @@ import { FileText, Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ReceiptSettings } from '@/lib/types';
 import { PosReceipt } from '@/components/Receipt';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 const receiptSettingsSchema = z.object({
@@ -67,6 +68,9 @@ const receiptSettingsSchema = z.object({
     showThankYouMessage: z.boolean(),
     thankYouMessage: z.string().optional(),
     customFooter: z.string().optional(),
+    layout: z.enum(['one-column', 'two-columns']).optional(),
+    receiptWidth: z.coerce.number().int().min(10).optional(),
+    showTimestamp: z.boolean(),
 });
 
 
@@ -96,6 +100,9 @@ const defaultValues: ReceiptSettingsValues = {
     showThankYouMessage: true,
     thankYouMessage: 'شكراً لزيارتكم!',
     customFooter: 'نتمنى لكم يوماً سعيداً ونتمنى عودتكم',
+    layout: 'two-columns',
+    receiptWidth: 72,
+    showTimestamp: true,
 };
 
 
@@ -123,6 +130,9 @@ const labelsMap: { [key: string]: string } = {
     showThankYouMessage: 'إظهار رسالة الشكر',
     thankYouMessage: 'نص رسالة الشكر',
     customFooter: 'نص التذييل الإضافي',
+    layout: 'تخطيط الإيصال',
+    receiptWidth: 'عرض الإيصال (mm)',
+    showTimestamp: 'إظهار تاريخ ووقت الطباعة',
 };
 
 function ReceiptDesignerContent() {
@@ -141,6 +151,15 @@ function ReceiptDesignerContent() {
     const unsubscribe = onValue(settingsRef, (snapshot) => {
       const data = snapshot.val();
       const settingsToReset = { ...defaultValues, ...(data || {}) };
+      
+      // Ensure layout has a default value if it's missing from DB
+      if (!settingsToReset.layout) {
+          settingsToReset.layout = 'two-columns';
+      }
+       if (!settingsToReset.receiptWidth) {
+          settingsToReset.receiptWidth = 72;
+      }
+
       form.reset(settingsToReset);
       setLoading(false);
     });
@@ -151,7 +170,7 @@ function ReceiptDesignerContent() {
   async function onSubmit(values: ReceiptSettingsValues) {
     try {
       const settingsRef = ref(db, 'receiptSettings');
-      await update(settingsRef, values);
+      await set(settingsRef, values);
       toast({
         title: 'تم الحفظ بنجاح',
         description: 'تم تحديث إعدادات تصميم الإيصال.',
@@ -251,8 +270,61 @@ function ReceiptDesignerContent() {
                     </FormItem>
                     )}
                 />
+                 <FormField
+                    control={form.control}
+                    name="receiptWidth"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>{labelsMap.receiptWidth}</FormLabel>
+                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
               </CardContent>
             </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle>التصميم والتخطيط</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <FormField
+                        control={form.control}
+                        name="layout"
+                        render={({ field }) => (
+                            <FormItem className="space-y-3">
+                            <FormLabel>{labelsMap.layout}</FormLabel>
+                            <FormControl>
+                                <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex space-x-4"
+                                >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl>
+                                    <RadioGroupItem value="one-column" />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">
+                                    عمود واحد
+                                    </FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl>
+                                    <RadioGroupItem value="two-columns" />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">
+                                    عمودان
+                                    </FormLabel>
+                                </FormItem>
+                                </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                </CardContent>
+             </Card>
 
             <Card>
               <CardHeader>
@@ -328,7 +400,7 @@ function ReceiptDesignerContent() {
                     <CardTitle>معاينة حية</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="bg-white p-1 rounded-md border w-full max-w-[302px] mx-auto">
+                    <div className="bg-white p-1 rounded-md border w-full mx-auto" style={{maxWidth: `${watchedSettings.receiptWidth || 72}mm`}}>
                         <PosReceipt {...dummyReceiptProps} />
                     </div>
                 </CardContent>
