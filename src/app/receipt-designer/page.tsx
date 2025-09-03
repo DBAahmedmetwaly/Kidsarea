@@ -54,7 +54,7 @@ const receiptSettingsSchema = z.object({
     showEntryFee: z.boolean(),
     showDiscount: z.boolean(),
     showTotalCost: z.boolean(),
-    showCashierName: z.boolean(),
+    showCashierName: zboolean(),
     showReceiptId: z.boolean(),
     showTimestamp: z.boolean(),
     customFooter: z.string().optional(),
@@ -89,29 +89,31 @@ function ReceiptDesignerContent() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
 
+  const defaultValues: ReceiptSettingsValues = {
+    layout: 'two-column',
+    showLogo: true,
+    showAppName: true,
+    showThankYouMessage: true,
+    thankYouMessage: 'شكراً لزيارتكم!',
+    showChildName: true,
+    showParentName: true,
+    showGameName: true,
+    showCheckInTime: true,
+    showCheckOutTime: true,
+    showDuration: true,
+    showDurationCost: true,
+    showEntryFee: true,
+    showDiscount: true,
+    showTotalCost: true,
+    showCashierName: true,
+    showReceiptId: true,
+    showTimestamp: true,
+    customFooter: 'نتمنى لكم يوماً سعيداً ونتمنى عودتكم',
+  };
+
   const form = useForm<ReceiptSettingsValues>({
     resolver: zodResolver(receiptSettingsSchema),
-    defaultValues: {
-        layout: 'two-column',
-        showLogo: true,
-        showAppName: true,
-        showThankYouMessage: true,
-        thankYouMessage: 'شكراً لزيارتكم!',
-        showChildName: true,
-        showParentName: true,
-        showGameName: true,
-        showCheckInTime: true,
-        showCheckOutTime: true,
-        showDuration: true,
-        showDurationCost: true,
-        showEntryFee: true,
-        showDiscount: true,
-        showTotalCost: true,
-        showCashierName: true,
-        showReceiptId: true,
-        showTimestamp: true,
-        customFooter: 'نتمنى لكم يوماً سعيداً ونتمنى عودتكم',
-    },
+    defaultValues: defaultValues,
   });
 
   const watchedSettings = form.watch();
@@ -121,7 +123,11 @@ function ReceiptDesignerContent() {
     const unsubscribe = onValue(settingsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        form.reset(data);
+        // Ensure layout has a default value if it's missing from db
+        const settingsToReset = { ...defaultValues, ...data };
+        form.reset(settingsToReset);
+      } else {
+        form.reset(defaultValues);
       }
       setLoading(false);
     });
@@ -208,7 +214,7 @@ function ReceiptDesignerContent() {
                             <FormControl>
                                 <RadioGroup
                                 onValueChange={field.onChange}
-                                defaultValue={field.value}
+                                value={field.value}
                                 className="flex flex-col space-y-1"
                                 >
                                 <FormItem className="flex items-center space-x-3 space-y-0">
