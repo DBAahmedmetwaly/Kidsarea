@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, set } from 'firebase/database';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -243,7 +243,7 @@ function ReceiptDesignerContent() {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>{labelsMap.address}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input {...field} value={field.value || ''} /></FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -254,7 +254,7 @@ function ReceiptDesignerContent() {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>{labelsMap.phone}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input {...field} value={field.value || ''} /></FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -265,7 +265,7 @@ function ReceiptDesignerContent() {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>{labelsMap.customTitle}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input {...field} value={field.value || ''} /></FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -276,7 +276,7 @@ function ReceiptDesignerContent() {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>{labelsMap.receiptWidth}</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl><Input type="number" {...field} value={field.value || 72} /></FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -369,7 +369,7 @@ function ReceiptDesignerContent() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>{labelsMap.thankYouMessage}</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
+                            <FormControl><Input {...field} value={field.value || ''}/></FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -380,7 +380,7 @@ function ReceiptDesignerContent() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>{labelsMap.customFooter}</FormLabel>
-                            <FormControl><Textarea {...field} /></FormControl>
+                            <FormControl><Textarea {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -419,9 +419,17 @@ export default function ReceiptDesignerPage() {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-          <ReceiptDesignerContent />
+          <ReceiptDesignerPageContent />
         </main>
       </div>
     </SidebarProvider>
   );
+}
+
+const ReceiptDesignerPageContent = () => {
+  return (
+    <div className="h-full w-full">
+      <ReceiptDesignerContent />
+    </div>
+  )
 }
