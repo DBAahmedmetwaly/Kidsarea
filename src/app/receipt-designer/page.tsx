@@ -35,81 +35,99 @@ import { FileText, Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ReceiptSettings } from '@/lib/types';
 import { PosReceipt } from '@/components/Receipt';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 const receiptSettingsSchema = z.object({
-    layout: z.enum(['single-column', 'two-column']).optional(),
+    // Header
     showLogo: z.boolean(),
     showAppName: z.boolean(),
-    showThankYouMessage: z.boolean(),
-    thankYouMessage: z.string().optional(),
-    showChildName: z.boolean(),
-    showParentName: z.boolean(),
-    showGameName: z.boolean(),
+    showAddress: z.boolean(),
+    address: z.string().optional(),
+    showPhone: z.boolean(),
+    phone: z.string().optional(),
+    showCustomTitle: z.boolean(),
+    customTitle: z.string().optional(),
+    // Invoice Info
+    showReceiptId: z.boolean(),
+    showCashierName: z.boolean(),
     showCheckInTime: z.boolean(),
     showCheckOutTime: z.boolean(),
+    // Customer Info
+    showParentName: z.boolean(),
+    showChildName: z.boolean(),
+    // Details
+    showGameName: z.boolean(),
     showDuration: z.boolean(),
+    // Totals
     showDurationCost: z.boolean(),
     showEntryFee: z.boolean(),
     showDiscount: z.boolean(),
     showTotalCost: z.boolean(),
-    showCashierName: z.boolean(),
-    showReceiptId: z.boolean(),
-    showTimestamp: z.boolean(),
+    // Footer
+    showThankYouMessage: z.boolean(),
+    thankYouMessage: z.string().optional(),
     customFooter: z.string().optional(),
 });
 
+
 type ReceiptSettingsValues = z.infer<typeof receiptSettingsSchema>;
 
-const labelsMap: { [key in keyof ReceiptSettings]?: string } = {
-    layout: 'تخطيط الإيصال',
-    showLogo: 'إظهار الشعار',
-    showAppName: 'إظهار اسم التطبيق',
-    showThankYouMessage: 'إظهار رسالة الشكر',
-    thankYouMessage: 'رسالة الشكر',
-    showChildName: 'إظهار اسم الطفل',
-    showParentName: 'إظهار اسم ولي الأمر',
-    showGameName: 'إظهار اسم اللعبة',
-    showCheckInTime: 'إظهار وقت الدخول',
-    showCheckOutTime: 'إظهار وقت الخروج',
-    showDuration: 'إظهار المدة',
-    showDurationCost: 'إظهار تكلفة اللعب',
-    showEntryFee: 'إظهار رسوم الدخول',
-    showDiscount: 'إظهار الخصم',
-    showTotalCost: 'إظهار التكلفة الإجمالية',
-    showCashierName: 'إظهار اسم الكاشير',
-    showReceiptId: 'إظهار رقم الإيصال',
-    showTimestamp: 'إظهار التاريخ والوقت',
-    customFooter: 'تذييل الإيصال',
-};
-
-
-function ReceiptDesignerContent() {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-
-  const defaultValues: ReceiptSettingsValues = {
-    layout: 'two-column',
+const defaultValues: ReceiptSettingsValues = {
     showLogo: true,
     showAppName: true,
-    showThankYouMessage: true,
-    thankYouMessage: 'شكراً لزيارتكم!',
-    showChildName: true,
-    showParentName: true,
-    showGameName: true,
+    showAddress: true,
+    address: 'العنوان هنا',
+    showPhone: true,
+    phone: '0123456789',
+    showCustomTitle: true,
+    customTitle: 'فاتورة جلسة لعب',
+    showReceiptId: true,
+    showCashierName: true,
     showCheckInTime: true,
     showCheckOutTime: true,
+    showParentName: true,
+    showChildName: true,
+    showGameName: true,
     showDuration: true,
     showDurationCost: true,
     showEntryFee: true,
     showDiscount: true,
     showTotalCost: true,
-    showCashierName: true,
-    showReceiptId: true,
-    showTimestamp: true,
+    showThankYouMessage: true,
+    thankYouMessage: 'شكراً لزيارتكم!',
     customFooter: 'نتمنى لكم يوماً سعيداً ونتمنى عودتكم',
-  };
+};
+
+
+const labelsMap: { [key: string]: string } = {
+    showLogo: 'إظهار الشعار',
+    showAppName: 'إظهار اسم النشاط',
+    showAddress: 'إظهار العنوان',
+    address: 'العنوان',
+    showPhone: 'إظهار رقم الهاتف',
+    phone: 'رقم الهاتف',
+    showCustomTitle: 'إظهار عنوان مخصص',
+    customTitle: 'العنوان المخصص',
+    showReceiptId: 'إظهار رقم الفاتورة',
+    showCashierName: 'إظهار اسم الكاشير',
+    showCheckInTime: 'إظهار وقت الدخول',
+    showCheckOutTime: 'إظهار وقت الخروج',
+    showParentName: 'إظهار اسم ولي الأمر',
+    showChildName: 'إظهار اسم الطفل',
+    showGameName: 'إظهار اسم اللعبة',
+    showDuration: 'إظهار مدة اللعب',
+    showDurationCost: 'إظهار تكلفة المدة',
+    showEntryFee: 'إظهار رسوم الدخول',
+    showDiscount: 'إظهار الخصم',
+    showTotalCost: 'إظهار الإجمالي',
+    showThankYouMessage: 'إظهار رسالة الشكر',
+    thankYouMessage: 'نص رسالة الشكر',
+    customFooter: 'نص التذييل الإضافي',
+};
+
+function ReceiptDesignerContent() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
 
   const form = useForm<ReceiptSettingsValues>({
     resolver: zodResolver(receiptSettingsSchema),
@@ -122,13 +140,8 @@ function ReceiptDesignerContent() {
     const settingsRef = ref(db, 'receiptSettings');
     const unsubscribe = onValue(settingsRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) {
-        // Ensure layout has a default value if it's missing from db
-        const settingsToReset = { ...defaultValues, ...data };
-        form.reset(settingsToReset);
-      } else {
-        form.reset(defaultValues);
-      }
+      const settingsToReset = { ...defaultValues, ...(data || {}) };
+      form.reset(settingsToReset);
       setLoading(false);
     });
 
@@ -172,6 +185,7 @@ function ReceiptDesignerContent() {
     branchName: "الفرع الرئيسي",
     children: [{id: '1', name: 'اسم الطفل', age: 5, birthdate: ''}],
     parentName: 'اسم ولي الأمر',
+    phoneNumbers: ['01001234567'],
     gameName: 'لعبة افتراضية',
     checkInTime: new Date(Date.now() - 3600 * 1000),
     checkOutTime: new Date(),
@@ -198,54 +212,55 @@ function ReceiptDesignerContent() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid md:grid-cols-3 gap-8 items-start">
           <div className="md:col-span-2 space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>تخطيط الإيصال</CardTitle>
-                    <CardDescription>
-                        اختر شكل التخطيط العام للإيصال.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <FormField
-                        control={form.control}
-                        name="layout"
-                        render={({ field }) => (
-                            <FormItem className="space-y-3">
-                            <FormControl>
-                                <RadioGroup
-                                onValueChange={field.onChange}
-                                value={field.value}
-                                className="flex flex-col space-y-1"
-                                >
-                                <FormItem className="flex items-center space-x-3 space-y-0">
-                                    <FormControl>
-                                    <RadioGroupItem value="two-column" />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">عمودين (أكثر كثافة)</FormLabel>
-                                </FormItem>
-                                <FormItem className="flex items-center space-x-3 space-y-0">
-                                    <FormControl>
-                                    <RadioGroupItem value="single-column" />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">عمود واحد (أبسط وأطول)</FormLabel>
-                                </FormItem>
-                                </RadioGroup>
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                </CardContent>
+             <Card>
+              <CardHeader>
+                <CardTitle>البيانات الأساسية</CardTitle>
+                <CardDescription>أدخل بيانات نشاطك التجاري التي ستظهر في رأس الإيصال.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid sm:grid-cols-2 gap-6">
+                <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>{labelsMap.address}</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>{labelsMap.phone}</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="customTitle"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>{labelsMap.customTitle}</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </CardContent>
             </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>محتوى الإيصال</CardTitle>
-                <CardDescription>
-                  اختر العناصر التي ترغب في إظهارها أو إخفائها في الإيصال.
-                </CardDescription>
+                <CardDescription>اختر العناصر التي ترغب في إظهارها أو إخفائها.</CardDescription>
               </CardHeader>
-              <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {Object.keys(form.getValues()).filter(k => typeof form.getValues(k as keyof ReceiptSettingsValues) === 'boolean').map((key) => {
+              <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {Object.keys(defaultValues).filter(k => typeof (defaultValues as any)[k] === 'boolean').map((key) => {
                      const fieldKey = key as keyof ReceiptSettingsValues;
                      return (
                         <FormField
@@ -282,9 +297,7 @@ function ReceiptDesignerContent() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>{labelsMap.thankYouMessage}</FormLabel>
-                            <FormControl>
-                                <Input {...field} />
-                            </FormControl>
+                            <FormControl><Input {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -295,9 +308,7 @@ function ReceiptDesignerContent() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>{labelsMap.customFooter}</FormLabel>
-                            <FormControl>
-                                <Textarea {...field} />
-                            </FormControl>
+                            <FormControl><Textarea {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -317,7 +328,7 @@ function ReceiptDesignerContent() {
                     <CardTitle>معاينة حية</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="bg-white p-2 rounded-md border">
+                    <div className="bg-white p-1 rounded-md border w-full max-w-[302px] mx-auto">
                         <PosReceipt {...dummyReceiptProps} />
                     </div>
                 </CardContent>

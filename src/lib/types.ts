@@ -185,24 +185,28 @@ export interface GameCategory {
 }
 
 export interface ReceiptSettings {
-    layout?: 'single-column' | 'two-column';
     showLogo: boolean;
     showAppName: boolean;
-    showThankYouMessage: boolean;
-    thankYouMessage?: string;
-    showChildName: boolean;
-    showParentName: boolean;
-    showGameName: boolean;
+    showAddress: boolean;
+    address?: string;
+    showPhone: boolean;
+    phone?: string;
+    showCustomTitle: boolean;
+    customTitle?: string;
+    showReceiptId: boolean;
+    showCashierName: boolean;
     showCheckInTime: boolean;
     showCheckOutTime: boolean;
+    showParentName: boolean;
+    showChildName: boolean;
+    showGameName: boolean;
     showDuration: boolean;
     showDurationCost: boolean;
     showEntryFee: boolean;
     showDiscount: boolean;
     showTotalCost: boolean;
-    showCashierName: boolean;
-    showReceiptId: boolean;
-    showTimestamp: boolean;
+    showThankYouMessage: boolean;
+    thankYouMessage?: string;
     customFooter?: string;
 }
 
