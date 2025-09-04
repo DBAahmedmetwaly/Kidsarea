@@ -452,6 +452,11 @@ function CheckOutDialog({
   )
 }
 
+type SelectedPackageType = {
+    duration: number;
+    price: number;
+    label: string;
+};
 
 function CheckInDialog({
     open,
@@ -467,12 +472,11 @@ function CheckInDialog({
     onConfirmPrepaid: (cartItem: PrepaidGameCartItem) => void,
 }) {
     const { customers } = useCustomers();
-    const { subscriptions, subscriptionPlans } = useFirebase();
     const { toast } = useToast();
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
-    const [selectedPackage, setSelectedPackage] = useState<SubscriptionPlan | null>(null);
+    const [selectedPackage, setSelectedPackage] = useState<SelectedPackageType | null>(null);
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
     
@@ -514,18 +518,15 @@ function CheckInDialog({
                 toast({ title: "يرجى اختيار باقة وقت", variant: "destructive" });
                 return;
             }
-            const pricePerHour = selectedGame.price || 0;
-            const pricePerMinute = pricePerHour / 60;
-            const packagePrice = pricePerMinute * selectedPackage.duration;
             
             sessionDetails.packageDuration = selectedPackage.duration;
-            sessionDetails.packagePrice = packagePrice;
+            sessionDetails.packagePrice = selectedPackage.price;
             
             const cartItem: PrepaidGameCartItem = {
                 type: 'prepaid-game',
                 id: `prepaid-${Date.now()}-${Math.random()}`,
                 sessionDetails: sessionDetails,
-                price: packagePrice,
+                price: selectedPackage.price,
             };
             onConfirmPrepaid(cartItem);
 
@@ -641,16 +642,16 @@ function CheckInDialog({
                              <div className="space-y-2">
                                 <Label>اختر باقة الوقت</Label>
                                 <Select onValueChange={(value) => {
-                                    const pkg = subscriptionPlans?.find(p => p.id === value);
+                                    const pkg = selectedGame?.fixedTimePackages?.find(p => p.label === value);
                                     setSelectedPackage(pkg || null);
-                                }} defaultValue={selectedPackage?.id}>
+                                }}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="اختر باقة..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {subscriptionPlans?.map(pkg => (
-                                            <SelectItem key={pkg.id} value={pkg.id}>
-                                                {pkg.name} ({pkg.duration} دقيقة)
+                                        {selectedGame?.fixedTimePackages?.map(pkg => (
+                                            <SelectItem key={pkg.label} value={pkg.label}>
+                                                {pkg.label} ({pkg.price} ج.م / {pkg.duration} دقيقة)
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1544,3 +1545,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
