@@ -170,7 +170,7 @@ function GamesContent() {
                   نموذج الدفع
                 </TableHead>
                 <TableHead className="hidden md:table-cell text-right">
-                  السعر
+                  السعر/الباقات
                 </TableHead>
                 <TableHead className="text-center">
                   <span>الإجراءات</span>
@@ -197,7 +197,7 @@ function GamesContent() {
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-right font-semibold">
-                     {`ج.م ${game.price?.toFixed(2) || '0.00'}`}
+                     {game.paymentModel === 'postpaid' ? `ج.م ${game.price?.toFixed(2) || '0.00'}` : `${game.fixedTimePackages?.length || 0} باقات`}
                   </TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>

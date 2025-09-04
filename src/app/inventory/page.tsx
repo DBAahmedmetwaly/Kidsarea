@@ -56,6 +56,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/components/AuthProvider';
+import { Input } from '@/components/ui/input';
 
 const InventoryFormDialog = dynamic(() => import('./_components/InventoryFormDialog'), {
     loading: () => <Skeleton className="w-full h-96" />,
@@ -69,10 +70,11 @@ function InventoryContent() {
     const [isFormOpen, setFormOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const currentUser = useMemo(() => employees.find(e => e.username === user?.username), [employees, user]);
     
-    const [selectedBranch, setSelectedBranch] = useState(currentUser?.branch === 'كل الفروع' ? branches[0]?.id || '' : currentUser?.branch || '');
+    const [selectedBranch, setSelectedBranch] = useState(currentUser?.branch === 'كل الفروع' ? branches[0]?.name || '' : currentUser?.branch || '');
 
      const handleFormSubmit = async (itemData: Omit<InventoryItem, 'id'> | InventoryItem) => {
         try {
@@ -116,8 +118,18 @@ function InventoryContent() {
     const branchInventory = useMemo(() => {
         const selectedBranchDetails = branches.find(b => b.name === selectedBranch);
         if (!selectedBranchDetails) return [];
-        return inventory.filter(item => item.branchId === selectedBranchDetails.id);
-    }, [inventory, selectedBranch, branches]);
+        
+        let filteredInventory = inventory.filter(item => item.branchId === selectedBranchDetails.id);
+
+        if (searchQuery) {
+            filteredInventory = filteredInventory.filter(item => 
+                item.productName.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+        
+        return filteredInventory;
+
+    }, [inventory, selectedBranch, branches, searchQuery]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -146,8 +158,19 @@ function InventoryContent() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>مخزون فرع: {selectedBranch || 'N/A'}</CardTitle>
-          <CardDescription>عرض وإدارة المنتجات المتوفرة، أسعارها، وكمياتها في الفرع المحدد.</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>مخزون فرع: {selectedBranch || 'N/A'}</CardTitle>
+              <CardDescription>عرض وإدارة المنتجات المتوفرة، أسعارها، وكمياتها في الفرع المحدد.</CardDescription>
+            </div>
+            <div className="w-1/3">
+                <Input 
+                    placeholder='ابحث بالاسم...'
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>

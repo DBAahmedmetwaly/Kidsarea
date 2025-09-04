@@ -34,12 +34,20 @@ import { useAuth } from '@/components/AuthProvider';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 
 const CategoryFormDialog = dynamic(() => import('../../game-categories/_components/CategoryFormDialog'), {
     loading: () => <Skeleton className="w-full h-96" />,
 });
 
 import { CategoryFormValues } from '../../game-categories/page';
+
+type FixedTimePackage = {
+    id: number;
+    label: string;
+    duration: number;
+    price: string;
+}
 
 export default function GameFormDialog({ 
     open, 
@@ -66,6 +74,7 @@ export default function GameFormDialog({
     const [categoryId, setCategoryId] = useState('');
     const [paymentModel, setPaymentModel] = useState<'postpaid' | 'prepaid'>('postpaid');
     const [price, setPrice] = useState('');
+    const [fixedTimePackages, setFixedTimePackages] = useState<FixedTimePackage[]>([]);
 
     // UI State
     const [openCategoryCombobox, setOpenCategoryCombobox] = useState(false);
@@ -80,6 +89,9 @@ export default function GameFormDialog({
                 setCategoryId(initialData.categoryId || '');
                 setPaymentModel(initialData.paymentModel || 'postpaid');
                 setPrice(String(initialData.price || ''));
+                setFixedTimePackages(
+                    (initialData.fixedTimePackages || []).map((p, i) => ({...p, id: i, price: String(p.price) }))
+                );
             } else {
                 setName('');
                 setPrice('');
@@ -91,6 +103,7 @@ export default function GameFormDialog({
                 setStatus('Available');
                 setCategoryId('');
                 setPaymentModel('postpaid');
+                setFixedTimePackages([]);
             }
         }
     }, [initialData, isEditMode, open, currentUser]);
@@ -116,8 +129,8 @@ export default function GameFormDialog({
     };
     
     const handleSubmit = () => {
-        if (!name || !branch || !status || !categoryId || !price || parseFloat(price) <= 0) {
-            toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية وإدخال سعر صالح.", variant: "destructive" });
+        if (!name || !branch || !status || !categoryId) {
+            toast({ title: "خطأ في الإدخال", description: "يرجى تعبئة جميع الحقول الأساسية.", variant: "destructive" });
             return;
         }
 
@@ -130,7 +143,10 @@ export default function GameFormDialog({
             categoryId,
             categoryName: category?.name || '',
             paymentModel,
-            price: parseFloat(price)
+            price: paymentModel === 'postpaid' ? parseFloat(price) : undefined,
+            fixedTimePackages: paymentModel === 'prepaid' 
+                ? fixedTimePackages.map(({id, ...p}) => ({...p, price: parseFloat(p.price)})) 
+                : undefined,
         }
         
         const finalData = isEditMode && initialData ? { ...gameData, id: initialData.id } : gameData;
@@ -141,15 +157,24 @@ export default function GameFormDialog({
 
     const selectedCategoryName = gameCategories.find(c => c.id === categoryId)?.name;
 
+    const handlePackageChange = (id: number, field: 'label' | 'duration' | 'price', value: string) => {
+        setFixedTimePackages(prev => prev.map(p => p.id === id ? {...p, [field]: value} : p));
+    }
+    
+    const addPackage = () => {
+        setFixedTimePackages(prev => [...prev, { id: Date.now(), label: '', duration: 30, price: ''}])
+    }
+    
+    const removePackage = (id: number) => {
+        setFixedTimePackages(prev => prev.filter(p => p.id !== id));
+    }
+
     return (
         <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{isEditMode ? 'تعديل بيانات اللعبة' : 'إضافة لعبة جديدة'}</DialogTitle>
-                    <DialogDescription>
-                        أدخل تفاصيل اللعبة الجديدة هنا. انقر على "حفظ" عند الانتهاء.
-                    </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-2">
                     <div className="grid grid-cols-4 items-center gap-4">
@@ -225,8 +250,10 @@ export default function GameFormDialog({
                             </SelectContent>
                         </Select>
                     </div>
+                    
+                    <Separator className="my-4" />
 
-                    <div className="grid grid-cols-1 items-center gap-4 border-t pt-4 mt-2">
+                    <div className="grid grid-cols-1 items-center gap-4">
                         <Label>نموذج الدفع</Label>
                         <RadioGroup
                             value={paymentModel}
@@ -239,16 +266,40 @@ export default function GameFormDialog({
                             </div>
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="prepaid" id="prepaid" />
-                                <Label htmlFor="prepaid">دفع مسبق (للألعاب بالباقة/السلة)</Label>
+                                <Label htmlFor="prepaid">دفع مسبق (للألعاب بالباقة)</Label>
                             </div>
                         </RadioGroup>
                     </div>
                     
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="price" className="text-right">السعر (ج.م)</Label>
-                        <Input id="price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="col-span-3" placeholder={paymentModel === 'postpaid' ? "سعر الساعة" : "سعر الباقة"} />
-                    </div>
+                    {paymentModel === 'postpaid' && (
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="price" className="text-right">سعر الساعة (ج.م)</Label>
+                            <Input id="price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
+                        </div>
+                    )}
 
+                    {paymentModel === 'prepaid' && (
+                        <div className="space-y-4">
+                            <Label>باقات الوقت المحددة</Label>
+                             <div className="space-y-2 border p-2 rounded-md max-h-48 overflow-y-auto">
+                                {fixedTimePackages.map((pkg) => (
+                                     <div key={pkg.id} className="grid grid-cols-12 gap-2 items-center">
+                                        <Input className="col-span-4" placeholder="اسم الباقة (ساعة)" value={pkg.label} onChange={(e) => handlePackageChange(pkg.id, 'label', e.target.value)} />
+                                        <Input className="col-span-3" type="number" placeholder="المدة (دقائق)" value={String(pkg.duration)} onChange={(e) => handlePackageChange(pkg.id, 'duration', e.target.value)} />
+                                        <Input className="col-span-3" type="number" placeholder="السعر" value={pkg.price} onChange={(e) => handlePackageChange(pkg.id, 'price', e.target.value)} />
+                                        <Button className="col-span-2" variant="destructive" size="icon" onClick={() => removePackage(pkg.id)}>
+                                            <Trash className="h-4 w-4" />
+                                        </Button>
+                                     </div>
+                                ))}
+                                {fixedTimePackages.length === 0 && <p className="text-center text-muted-foreground text-sm py-4">لا توجد باقات. أضف واحدة.</p>}
+                            </div>
+                             <Button type="button" variant="outline" size="sm" onClick={addPackage}>
+                                <PlusCircle className="me-2 h-4 w-4" />
+                                إضافة باقة جديدة
+                            </Button>
+                        </div>
+                    )}
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button type="button" variant="secondary">إلغاء</Button></DialogClose>

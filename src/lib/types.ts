@@ -43,7 +43,8 @@ export interface Game {
     categoryId: string;
     categoryName: string;
     paymentModel: 'prepaid' | 'postpaid'; // prepaid (cart), postpaid (play then pay)
-    price: number; // hourly rate for postpaid, base price for prepaid packages
+    price?: number; // hourly rate for postpaid
+    fixedTimePackages?: { duration: number; price: number; label: string }[];
 }
 
 export interface Employee {
@@ -174,7 +175,8 @@ export interface Subscription {
 export interface SubscriptionPlan {
     id: string;
     name: string;
-    duration: number; // in minutes
+    price: number;
+    duration: number; // in days
     description?: string;
 }
 
@@ -256,6 +258,7 @@ export interface Product {
 
 // Represents an item in a specific branch's inventory
 export interface InventoryItem {
+    type?: 'product'; // To distinguish from game items in cart
     id: string; // The ID of this specific inventory entry
     productId: string;
     productName: string;
@@ -270,7 +273,7 @@ export interface InventoryItem {
 export interface ProductSale {
     id: string;
     receiptNumber?: number;
-    items: (Omit<InventoryItem, 'quantity'> & { cartQuantity: number })[];
+    items: (Omit<InventoryItem, 'quantity' | 'type'> & { cartQuantity: number })[];
     totalAmount: number;
     branchName: string;
     cashierName: string;

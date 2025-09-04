@@ -21,7 +21,8 @@ import { Button } from '@/components/ui/button';
 
 const planSchema = z.object({
   name: z.string().min(3, 'اسم الباقة مطلوب'),
-  duration: z.coerce.number().int().min(1, 'المدة (بالدقائق) مطلوبة'),
+  price: z.coerce.number().min(0, 'السعر مطلوب'),
+  duration: z.coerce.number().int().min(1, 'المدة (بالأيام) مطلوبة'),
   description: z.string().optional(),
 });
 
@@ -53,7 +54,7 @@ export default function PlanFormDialog({
     if (isEditMode && initialData) {
       reset(initialData);
     } else {
-      reset({ name: '', duration: 30, description: '' });
+      reset({ name: '', price: 0, duration: 30, description: '' });
     }
   }, [initialData, isEditMode, open, reset]);
 
@@ -71,11 +72,16 @@ export default function PlanFormDialog({
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
           <div>
             <Label htmlFor="name">اسم الباقة</Label>
-            <Input id="name" {...register('name')} placeholder="مثال: باقة نصف ساعة" />
+            <Input id="name" {...register('name')} placeholder="مثال: باقة شهرية" />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
           </div>
+           <div>
+            <Label htmlFor="price">السعر (ج.م)</Label>
+            <Input id="price" type="number" {...register('price')} placeholder="300" />
+            {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
+          </div>
           <div>
-            <Label htmlFor="duration">المدة (بالدقائق)</Label>
+            <Label htmlFor="duration">المدة (بالأيام)</Label>
             <Input id="duration" type="number" {...register('duration')} placeholder="30" />
             {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration.message}</p>}
           </div>

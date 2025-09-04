@@ -74,7 +74,7 @@ function GameDetailsContent() {
                         <span className="text-muted-foreground">{`السعر: ج.م${game.price}/ساعة`}</span>
                      )}
                        {game.paymentModel === 'prepaid' && (
-                        <span className="text-muted-foreground">{`السعر: ج.م${game.price} للباقة`}</span>
+                        <span className="text-muted-foreground">{`${game.fixedTimePackages?.length || 0} باقات`}</span>
                      )}
                  </div>
             </div>
