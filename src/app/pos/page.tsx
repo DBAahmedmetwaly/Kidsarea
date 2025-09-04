@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -1015,6 +1014,25 @@ function PosTrackingContent() {
                 costBeforeDiscount: gameItem.price,
                 receiptNumber: receiptNumber,
             };
+            
+            const receiptDetails: PosReceiptProps = {
+                receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
+                settings: receiptSettings,
+                appName: policies?.appName || 'FunTrack',
+                branchName: gameItem.sessionDetails.branchName,
+                children: gameItem.sessionDetails.children,
+                parentName: gameItem.sessionDetails.parentName,
+                phoneNumbers: gameItem.sessionDetails.phoneNumbers,
+                gameName: gameItem.sessionDetails.game,
+                checkInTime: new Date(now),
+                checkOutTime: new Date(now),
+                duration: "0",
+                totalCost: gameItem.price,
+                packagePrice: gameItem.price,
+                cashierName: currentUser.name,
+            };
+
+            printReceipt(<PosReceipt {...receiptDetails} />);
             await set(completedSessionRef, completedSessionData);
 
 
@@ -1543,4 +1561,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
