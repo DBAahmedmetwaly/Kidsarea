@@ -82,7 +82,7 @@ function SubscriptionPlansContent() {
         // Add mode
         const plansRef = ref(db, 'subscriptionPlans');
         const newPlanRef = push(plansRef);
-        await set(newPlanRef, planData);
+        await set(newPlanRef, data);
         toast({ title: 'تمت الإضافة بنجاح', description: `تمت إضافة باقة "${planData.name}".` });
       }
     } catch (e) {
@@ -146,7 +146,7 @@ function SubscriptionPlansContent() {
                 <TableRow key={plan.id}>
                   <TableCell className="font-medium">{plan.name}</TableCell>
                   <TableCell className="text-muted-foreground">{plan.description || '-'}</TableCell>
-                  <TableCell className="text-center font-semibold">{`ج.م ${plan.price.toFixed(2)}`}</TableCell>
+                  <TableCell className="text-center font-semibold">{`ج.م ${(plan.price || 0).toFixed(2)}`}</TableCell>
                   <TableCell className="text-center">{plan.duration} يوم</TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>
