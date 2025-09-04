@@ -113,11 +113,15 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
       </div>
 
       {/* Invoice Info */}
-       <div className="text-xs my-1 py-1 space-y-0.5">
-          <p>رقم الفاتورة: {receiptId}</p>
-          <p>التاريخ: {new Date().toLocaleDateString('ar-EG')}</p>
-          <p>الكاشير: {cashierName}</p>
-          <p>الوقت: {new Date().toLocaleTimeString('ar-EG')}</p>
+       <div className="grid grid-cols-2 gap-x-2 text-xs my-1 py-1">
+          <div className="space-y-0.5">
+            {show('showReceiptId') && <div className="flex justify-between"><span>رقم الفاتورة:</span><span>{receiptId}</span></div>}
+            {show('showCashierName') && <div className="flex justify-between"><span>الكاشير:</span><span>{cashierName}</span></div>}
+          </div>
+          <div className="space-y-0.5 text-left">
+             <div className="flex justify-between"><span>التاريخ:</span><span>{new Date().toLocaleDateString('ar-EG')}</span></div>
+             <div className="flex justify-between"><span>الوقت:</span><span>{new Date().toLocaleTimeString('ar-EG')}</span></div>
+          </div>
        </div>
        
        <div className="text-xs my-1 py-1 border-t border-dashed border-gray-400 space-y-1">
