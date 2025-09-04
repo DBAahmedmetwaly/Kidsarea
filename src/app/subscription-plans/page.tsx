@@ -82,7 +82,7 @@ function SubscriptionPlansContent() {
         // Add mode
         const plansRef = ref(db, 'subscriptionPlans');
         const newPlanRef = push(plansRef);
-        await set(newPlanRef, data);
+        await set(newPlanRef, planData);
         toast({ title: 'تمت الإضافة بنجاح', description: `تمت إضافة باقة "${planData.name}".` });
       }
     } catch (e) {
