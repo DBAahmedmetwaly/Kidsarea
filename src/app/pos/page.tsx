@@ -222,16 +222,14 @@ function CheckOutDialog({
                 let overtimeMinutes = overtimeMs / (1000 * 60);
 
                 if (policies.packageOvertimeRounding && policies.packageOvertimeRounding !== 'none') {
+                    let roundingMinutes = 1;
                     switch(policies.packageOvertimeRounding) {
-                        case 'quarter-hour':
-                            overtimeMinutes = Math.ceil(overtimeMinutes / 15) * 15;
-                            break;
-                        case 'half-hour':
-                            overtimeMinutes = Math.ceil(overtimeMinutes / 30) * 30;
-                            break;
-                        case 'hour':
-                            overtimeMinutes = Math.ceil(overtimeMinutes / 60) * 60;
-                            break;
+                        case 'quarter-hour': roundingMinutes = 15; break;
+                        case 'half-hour': roundingMinutes = 30; break;
+                        case 'hour': roundingMinutes = 60; break;
+                    }
+                     if (overtimeMinutes > 0) {
+                        overtimeMinutes = Math.ceil(overtimeMinutes / roundingMinutes) * roundingMinutes;
                     }
                 }
                 overtimeCost = overtimeMinutes * (policies.packageOvertimeRatePerMinute || 0);
@@ -1436,8 +1434,8 @@ function PosTrackingContent() {
                                                         <TableCell className="font-bold text-center">
                                                             {session.subscriptionId ? (
                                                                 <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
-                                                            ) : session.packagePrice ? (
-                                                                <span className="flex items-center justify-center gap-1 text-blue-600"><PackageCheck className="h-4 w-4"/> باقة</span>
+                                                            ) : session.packagePrice && session.durationMs > 0 ? (
+                                                               <span className="flex items-center justify-center gap-1 text-blue-600"><PackageCheck className="h-4 w-4"/> باقة</span>
                                                             ) : `ج.م ${session.cost.toFixed(2)}`}
                                                         </TableCell>
                                                     </TableRow>
