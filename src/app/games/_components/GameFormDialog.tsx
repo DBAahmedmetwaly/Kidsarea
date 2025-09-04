@@ -136,17 +136,20 @@ export default function GameFormDialog({
 
         const category = gameCategories.find(c => c.id === categoryId);
         
-        const gameData: Omit<Game, 'id'> = {
+        let gameData: Omit<Game, 'id'> = {
             name,
             branch,
             status,
             categoryId,
             categoryName: category?.name || '',
             paymentModel,
-            price: paymentModel === 'postpaid' ? parseFloat(price) : undefined,
-            fixedTimePackages: paymentModel === 'prepaid' 
-                ? fixedTimePackages.map(({id, ...p}) => ({...p, price: parseFloat(p.price)})) 
-                : undefined,
+        };
+
+        if (paymentModel === 'postpaid') {
+            gameData.price = parseFloat(price);
+        } else {
+            gameData.fixedTimePackages = fixedTimePackages.map(({id, ...p}) => ({...p, price: parseFloat(p.price)}));
+            delete gameData.price;
         }
         
         const finalData = isEditMode && initialData ? { ...gameData, id: initialData.id } : gameData;

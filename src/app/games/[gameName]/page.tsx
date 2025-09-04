@@ -70,7 +70,7 @@ function GameDetailsContent() {
                     <Badge variant={game.status === 'Available' ? 'default' : 'destructive'} className={game.status === 'Available' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}>
                         {game.status === 'Available' ? 'متاح' : 'صيانة'}
                     </Badge>
-                     {game.paymentModel === 'postpaid' && (
+                     {game.paymentModel === 'postpaid' && game.price && (
                         <span className="text-muted-foreground">{`السعر: ج.م${game.price}/ساعة`}</span>
                      )}
                        {game.paymentModel === 'prepaid' && (
