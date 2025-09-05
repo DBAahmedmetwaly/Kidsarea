@@ -31,17 +31,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Receipt, Calendar as CalendarIcon, FilterX, ShoppingCart, CircleDollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ProductSale, InventoryItem } from '@/lib/types';
+import type { ProductSale, ProductSaleItem } from '@/lib/types';
 import { StatCard } from '@/components/StatCard';
 
 
-type FlattenedSaleItem = {
+type FlattenedSaleItem = ProductSaleItem & {
     saleId: string;
     receiptNumber?: number;
-    productName: string;
-    categoryId: string;
-    cartQuantity: number;
-    price: number;
     createdAt: string;
     branchName: string;
     cashierName: string;
@@ -72,12 +68,9 @@ function ProductSalesContent() {
     const flattenedSales = useMemo(() => {
         return productSales.flatMap(sale => 
             sale.items.map(item => ({
+                ...item,
                 saleId: sale.id,
                 receiptNumber: sale.receiptNumber,
-                productName: item.productName,
-                categoryId: item.categoryId,
-                cartQuantity: item.cartQuantity,
-                price: item.price,
                 createdAt: sale.createdAt,
                 branchName: sale.branchName,
                 cashierName: sale.cashierName,
@@ -308,3 +301,4 @@ export default function ProductSalesPage() {
         </SidebarProvider>
     );
 }
+

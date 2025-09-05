@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ExtendSessionCartItem } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ExtendSessionCartItem, ProductSaleItem } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -1325,6 +1325,14 @@ function PosTrackingContent() {
         return;
     }
     
+    // Filter out non-product items for the productSales record
+    const productItemsInCart = cart.filter(item => item.type === 'product') as (InventoryItem & { cartQuantity: number })[];
+
+    if (productItemsInCart.length === 0) {
+        toast({ title: "لا توجد منتجات للبيع", description: "يجب إضافة منتجات فعلية لإتمام عملية البيع.", variant: 'destructive' });
+        return;
+    }
+    
     const saleRecordRef = push(ref(db, 'productSales'));
     const saleId = saleRecordRef.key!;
 
@@ -1332,50 +1340,26 @@ function PosTrackingContent() {
     const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
     const receiptNumber = (committed && snapshot.val()) ? snapshot.val() : 0;
 
-    const productItems = cart.filter(item => item.type === 'product') as (InventoryItem & { cartQuantity: number })[];
     const gameItems = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & { cartQuantity: number })[];
     const extendItems = cart.filter(item => item.type === 'extend-session') as (ExtendSessionCartItem & { cartQuantity: number })[];
     
     let sessionInfoForReceipt: ProductReceiptProps['sessionInfo'] | undefined;
     
+    const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        price: item.price,
+        cartQuantity: item.cartQuantity,
+        categoryId: item.categoryId,
+        categoryName: item.categoryName,
+    }));
+    
     const saleRecord: ProductSale = {
         id: saleId,
         receiptNumber: receiptNumber,
-        items: cart.map(item => {
-            if (item.type === 'prepaid-game') {
-                return {
-                    id: item.id,
-                    productId: item.sessionDetails.game,
-                    productName: `باقة: ${item.sessionDetails.game} - ${item.sessionDetails.children.map(c=>c.name).join(', ')}`,
-                    price: item.price,
-                    cartQuantity: item.cartQuantity,
-                    categoryId: '',
-                    categoryName: 'ألعاب',
-                }
-            }
-            if (item.type === 'extend-session') {
-                 return {
-                    id: item.id,
-                    productId: item.gameName,
-                    productName: `تمديد: ${item.gameName} - ${item.childName}`,
-                    price: item.price,
-                    cartQuantity: item.cartQuantity,
-                    categoryId: '',
-                    categoryName: 'ألعاب',
-                }
-            }
-             const productItem = item as (InventoryItem & {cartQuantity: number});
-             return {
-                id: productItem.id,
-                productId: productItem.productId,
-                productName: productItem.productName,
-                price: productItem.price,
-                cartQuantity: productItem.cartQuantity,
-                categoryId: productItem.categoryId,
-                categoryName: productItem.categoryName,
-             }
-        }),
-        totalAmount: cartTotal,
+        items: saleRecordItems,
+        totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0),
         branchName: currentUser.branch,
         cashierUsername: user.username,
         cashierName: currentUser.name,
@@ -1383,7 +1367,9 @@ function PosTrackingContent() {
     };
     
     try {
-        await set(saleRecordRef, saleRecord);
+        if (saleRecord.items.length > 0) {
+            await set(saleRecordRef, saleRecord);
+        }
         
         // Start active sessions for new game items
         for (const gameItem of gameItems) {
@@ -1427,14 +1413,20 @@ function PosTrackingContent() {
             appName: policies?.appName || 'FunTrack',
             branchName: currentUser.branch,
             cashierName: currentUser.name,
-            items: saleRecord.items.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
+            items: cart.map(item => {
+                 let name = '';
+                 if (item.type === 'product') name = item.productName;
+                 if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`;
+                 if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`;
+                 return { name, quantity: item.cartQuantity, price: item.price };
+            }),
             totalAmount: cartTotal,
             sessionInfo: sessionInfoForReceipt,
         }
         printReceipt(<ProductReceipt {...receiptProps} />);
         
         // Update inventory for product items
-        for (const item of productItems) {
+        for (const item of productItemsInCart) {
             const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
             await runTransaction(inventoryItemRef, (currentQuantity) => (currentQuantity || 0) - item.cartQuantity);
         }
