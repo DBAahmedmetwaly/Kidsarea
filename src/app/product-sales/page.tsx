@@ -39,6 +39,7 @@ type FlattenedSaleItem = {
     saleId: string;
     receiptNumber?: number;
     productName: string;
+    categoryId: string;
     cartQuantity: number;
     price: number;
     createdAt: string;
@@ -47,11 +48,12 @@ type FlattenedSaleItem = {
 };
 
 function ProductSalesContent() {
-    const { productSales, employees, branches, loading } = useFirebase();
+    const { productSales, employees, branches, productCategories, loading } = useFirebase();
     const { user } = useAuth();
 
     const [productFilter, setProductFilter] = useState('');
     const [branchFilter, setBranchFilter] = useState('all');
+    const [categoryFilter, setCategoryFilter] = useState('all');
     const [fromDate, setFromDate] = useState<Date | undefined>();
     const [toDate, setToDate] = useState<Date | undefined>();
 
@@ -73,6 +75,7 @@ function ProductSalesContent() {
                 saleId: sale.id,
                 receiptNumber: sale.receiptNumber,
                 productName: item.productName,
+                categoryId: item.categoryId,
                 cartQuantity: item.cartQuantity,
                 price: item.price,
                 createdAt: sale.createdAt,
@@ -86,12 +89,13 @@ function ProductSalesContent() {
         return flattenedSales.filter(item => {
             const productMatch = productFilter === '' || item.productName.toLowerCase().includes(productFilter.toLowerCase());
             const branchMatch = branchFilter === 'all' || item.branchName === branchFilter;
+            const categoryMatch = categoryFilter === 'all' || item.categoryId === categoryFilter;
             const dateMatch = fromDate && toDate 
                 ? isWithinInterval(new Date(item.createdAt), { start: startOfDay(fromDate), end: endOfDay(toDate) })
                 : true;
-            return productMatch && branchMatch && dateMatch;
+            return productMatch && branchMatch && categoryMatch && dateMatch;
         });
-    }, [flattenedSales, productFilter, branchFilter, fromDate, toDate]);
+    }, [flattenedSales, productFilter, branchFilter, categoryFilter, fromDate, toDate]);
     
     const summaryStats = useMemo(() => {
         const totalRevenue = filteredSales.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
@@ -107,6 +111,7 @@ function ProductSalesContent() {
             setBranchFilter('all');
         }
         setProductFilter('');
+        setCategoryFilter('all');
         setFromDate(undefined);
         setToDate(undefined);
     }
@@ -133,7 +138,7 @@ function ProductSalesContent() {
                 </Button>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">بحث بالصنف</label>
                          <Input 
@@ -152,6 +157,20 @@ function ProductSalesContent() {
                                 <SelectItem value="all">كل الفروع</SelectItem>
                                 {branches.map(branch => (
                                     <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-2">
+                        <label className="text-sm font-medium">التصنيف</label>
+                        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر التصنيف" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل التصنيفات</SelectItem>
+                                {productCategories.map(cat => (
+                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
