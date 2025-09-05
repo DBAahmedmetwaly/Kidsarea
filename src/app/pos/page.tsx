@@ -1288,13 +1288,18 @@ function PosTrackingContent() {
              const sessionRef = ref(db, `sessions/active/${extendItem.activeSessionId}`);
              await runTransaction(sessionRef, (currentSession: Child) => {
                 if (currentSession && currentSession.packageDuration) {
-                    const elapsedMs = Date.now() - currentSession.checkInTime;
-                    const remainingMs = Math.max(0, (currentSession.packageDuration * 60 * 1000) - elapsedMs);
-                    const newDurationMs = remainingMs + (extendItem.packageDuration * 60 * 1000 * extendItem.cartQuantity);
+                    const now = Date.now();
+                    const elapsedMs = now - currentSession.checkInTime;
+                    const originalDurationMs = currentSession.packageDuration * 60 * 1000;
                     
-                    // Reset checkInTime and set new total duration
-                    currentSession.checkInTime = Date.now();
-                    currentSession.packageDuration = newDurationMs / (60 * 1000);
+                    // This is the overtime that has already passed.
+                    const overtimeMs = Math.max(0, elapsedMs - originalDurationMs);
+                    
+                    // The new package duration minus the overtime already consumed.
+                    const newPackageDurationMs = (extendItem.packageDuration * 60 * 1000 * extendItem.cartQuantity) - overtimeMs;
+
+                    currentSession.checkInTime = now;
+                    currentSession.packageDuration = Math.max(0, newPackageDurationMs / (60 * 1000)); // ensure it's not negative
                 }
                 return currentSession;
              });
@@ -1814,6 +1819,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
