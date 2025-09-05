@@ -295,10 +295,20 @@ export interface InventoryItem {
     price: number;
 }
 
+export interface ProductSaleItem {
+    id: string;
+    productId: string;
+    productName: string;
+    categoryId: string;
+    categoryName: string;
+    price: number;
+    cartQuantity: number;
+}
+
 export interface ProductSale {
     id: string;
     receiptNumber?: number;
-    items: (Omit<InventoryItem, 'quantity' | 'branchId' | 'branchName' | 'type'> & { cartQuantity: number })[];
+    items: ProductSaleItem[];
     totalAmount: number;
     branchName: string;
     cashierName: string;

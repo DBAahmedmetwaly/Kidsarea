@@ -1067,114 +1067,115 @@ function PosTrackingContent() {
         return;
     }
     
-    for (const item of cart) {
-      if (item.type === 'prepaid-game') {
-        const gameItem = item as PrepaidGameCartItem;
+    // Create one consolidated sale record
+    const saleRecordRef = push(ref(db, 'productSales'));
+    const saleId = saleRecordRef.key!;
+
+    const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
+    const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
+    const receiptNumber = (committed && snapshot.val()) ? snapshot.val() : 0;
+
+    const productItems = cart.filter(item => item.type !== 'prepaid-game') as (InventoryItem & { cartQuantity: number })[];
+    const gameItems = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & { cartQuantity: number })[];
+    
+    const productTotal = productItems.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
+    const gameTotal = gameItems.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
+
+
+    const saleRecord: ProductSale = {
+        id: saleId,
+        receiptNumber: receiptNumber,
+        items: cart.map(({ type, ...item}) => {
+            if (type === 'prepaid-game') {
+                const gameItem = item as (PrepaidGameCartItem & {cartQuantity: number});
+                return {
+                    id: gameItem.id,
+                    productId: gameItem.sessionDetails.game,
+                    productName: `باقة: ${gameItem.sessionDetails.game} - ${gameItem.sessionDetails.children.map(c=>c.name).join(', ')}`,
+                    price: gameItem.price,
+                    cartQuantity: gameItem.cartQuantity,
+                    categoryId: '',
+                    categoryName: 'ألعاب',
+                }
+            }
+             const productItem = item as (InventoryItem & {cartQuantity: number});
+             return {
+                id: productItem.id,
+                productId: productItem.productId,
+                productName: productItem.productName,
+                price: productItem.price,
+                cartQuantity: productItem.cartQuantity,
+                categoryId: productItem.categoryId,
+                categoryName: productItem.categoryName,
+             }
+        }),
+        totalAmount: cartTotal,
+        branchName: currentUser.branch,
+        cashierUsername: user.username,
+        cashierName: currentUser.name,
+        createdAt: new Date().toISOString()
+    };
+    
+    try {
+        // Save the consolidated sale record
+        await set(saleRecordRef, saleRecord);
         
-        for (let i = 0; i < gameItem.cartQuantity; i++) {
-          // 1. Create a CompletedSession to log the revenue immediately for each unit
-          const completedSessionRef = push(ref(db, 'sessions/completed'));
-          const completedSessionId = completedSessionRef.key!;
-          const now = Date.now();
-          const receiptNumber = (await runTransaction(ref(db, `branches/${branch.id}/nextReceiptNumber`), (current) => (current || 0) + 1)).snapshot.val() || 0;
-
-          const completedSessionData: CompletedSession = {
-            ...gameItem.sessionDetails,
-            id: completedSessionId,
-            cashierUsername: user.username,
-            checkInTime: now,
-            checkOutTime: now,
-            durationMs: 0,
-            cost: gameItem.price,
-            costBeforeDiscount: gameItem.price,
-            receiptNumber: receiptNumber,
-          };
-          
-          await set(completedSessionRef, completedSessionData);
-
-          const receiptDetails: PosReceiptProps = {
-            receiptId: `${branch.name.substring(0, 3).toUpperCase() || 'DEF'}-${receiptNumber}`,
+        // Print one consolidated receipt
+        const receiptProps: ProductReceiptProps = {
+            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
             settings: receiptSettings,
             appName: policies?.appName || 'FunTrack',
-            branchName: gameItem.sessionDetails.branchName,
-            children: gameItem.sessionDetails.children,
-            parentName: gameItem.sessionDetails.parentName,
-            phoneNumbers: gameItem.sessionDetails.phoneNumbers,
-            gameName: gameItem.sessionDetails.game,
-            checkInTime: new Date(now),
-            checkOutTime: new Date(now),
-            duration: "0",
-            totalCost: gameItem.price,
-            packagePrice: gameItem.price,
-            packageDuration: gameItem.sessionDetails.packageDuration,
-            cashierName: currentUser.name,
-          };
-          printReceipt(<PosReceipt {...receiptDetails} />);
-
-          // 2. Start the actual active session
-          const activeSessionData: Omit<Child, 'id'> = {
-            ...gameItem.sessionDetails,
-            prepaidSessionId: completedSessionId 
-          };
-          await handleStartSession(activeSessionData);
-        }
-      }
-    }
-
-
-    // Process product sales
-    const productItems = cart.filter(item => item.type !== 'prepaid-game') as (InventoryItem & { cartQuantity: number })[];
-    if (productItems.length > 0) {
-        const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
-        const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => {
-            return (currentValue || 0) + 1;
-        });
-        const receiptNumber = (committed && snapshot.val()) ? snapshot.val() : 0;
-        const productTotal = productItems.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
-
-        const saleRecord: ProductSale = {
-            id: push(ref(db, 'productSales')).key!,
-            receiptNumber: receiptNumber,
-            items: productItems.map(({ quantity, type, ...item}) => item),
-            totalAmount: productTotal,
             branchName: currentUser.branch,
-            cashierUsername: user.username,
             cashierName: currentUser.name,
-            createdAt: new Date().toISOString()
+            items: saleRecord.items.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
+            totalAmount: cartTotal,
+        }
+        printReceipt(<ProductReceipt {...receiptProps} />);
+        
+        // Update inventory for product items
+        for (const item of productItems) {
+            const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
+            await runTransaction(inventoryItemRef, (currentQuantity) => (currentQuantity || 0) - item.cartQuantity);
         }
 
-        try {
-            await set(ref(db, `productSales/${saleRecord.id}`), saleRecord);
-            const updates: { [key: string]: any } = {};
-            for (const item of productItems) {
-                const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
-                await runTransaction(inventoryItemRef, (currentQuantity) => {
-                    return (currentQuantity || 0) - item.cartQuantity;
-                });
-            }
+        // Start active sessions for game items
+        for (const gameItem of gameItems) {
+            for (let i = 0; i < gameItem.cartQuantity; i++) {
+                // Create a completed session to log revenue immediately
+                const completedSessionRef = push(ref(db, 'sessions/completed'));
+                const completedSessionId = completedSessionRef.key!;
+                const now = Date.now();
 
-            const receiptProps: ProductReceiptProps = {
-                receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
-                settings: receiptSettings,
-                appName: policies?.appName || 'FunTrack',
-                branchName: currentUser.branch,
-                cashierName: currentUser.name,
-                items: productItems.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
-                totalAmount: productTotal,
-            }
-            if(productItems.length > 0) {
-              printReceipt(<ProductReceipt {...receiptProps} />);
-            }
+                const completedSessionData: CompletedSession = {
+                    ...gameItem.sessionDetails,
+                    id: completedSessionId,
+                    cashierUsername: user.username,
+                    checkInTime: now,
+                    checkOutTime: now,
+                    durationMs: 0,
+                    cost: gameItem.price, // Cost per unit
+                    costBeforeDiscount: gameItem.price,
+                    receiptNumber: receiptNumber,
+                };
+                await set(completedSessionRef, completedSessionData);
 
-            toast({ title: "تم بيع المنتجات بنجاح", description: "تم تسجيل عملية البيع وتحديث المخزون." });
-        } catch (error) {
-            console.error("Sale confirmation error:", error);
-            toast({ title: "خطأ", description: "فشل تسجيل عملية بيع المنتجات.", variant: "destructive"});
+                // Start the active session
+                const activeSessionData: Omit<Child, 'id'> = {
+                    ...gameItem.sessionDetails,
+                    prepaidSessionId: completedSessionId,
+                };
+                await handleStartSession(activeSessionData);
+            }
         }
+        
+        toast({ title: "تمت عملية البيع بنجاح", description: "تم تسجيل الفاتورة وتحديث البيانات." });
+        setCart([]);
+        setSaleCheckoutOpen(false);
+
+    } catch (error) {
+        console.error("Sale confirmation error:", error);
+        toast({ title: "خطأ", description: "فشل تسجيل عملية البيع.", variant: "destructive"});
     }
-    
-    setCart([]);
-    setSaleCheckoutOpen(false);
   };
 
   const handleTimeEnd = (session: Child) => {
