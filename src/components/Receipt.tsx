@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React from 'react';
@@ -111,16 +110,17 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
             {show('showCheckInTime') && <span>وقت الدخول:</span>}
             {show('showCheckInTime') && <span className='text-left font-mono'>{checkInTime.toLocaleTimeString('ar-EG')}</span>}
           </div>
-           <div className="grid grid-cols-2">
+          <div className="grid grid-cols-2">
               {show('showCheckOutTime') && !expectedCheckOutTime && <><span>وقت الخروج:</span><span className='text-left font-mono'>{checkOutTime.toLocaleTimeString('ar-EG')}</span></>}
-              {show('showDuration') && !expectedCheckOutTime && <><span>المدة:</span><span className='text-left'>{duration}</span></>}
           </div>
-          {expectedCheckOutTime && (
+          {expectedCheckOutTime ? (
             <div className="grid grid-cols-2 font-bold text-red-600">
                 <span>الخروج المتوقع:</span>
                 <span className='text-left font-mono'>{expectedCheckOutTime.toLocaleTimeString('ar-EG')}</span>
             </div>
-        )}
+           ) : (
+            show('showDuration') && <div className="grid grid-cols-2"><span>المدة:</span><span className='text-left'>{duration}</span></div>
+           )}
       </div>
       
        {/* Payment Details */}
