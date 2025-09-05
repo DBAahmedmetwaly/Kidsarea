@@ -53,6 +53,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 
 const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onTimeEnd }: { startTime: number, packageDuration?: number, gracePeriodInMinutes?: number, onTimeEnd?: () => void }) => {
@@ -956,6 +957,7 @@ function PosTrackingContent() {
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSaleCheckoutOpen, setSaleCheckoutOpen] = useState(false);
+  const [cartNotes, setCartNotes] = useState('');
 
   const notificationIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map()).current;
 
@@ -1344,7 +1346,7 @@ function PosTrackingContent() {
             const saleRecordRef = push(ref(db, 'productSales'));
             const saleId = saleRecordRef.key!;
             const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({ id: item.id, productId: item.productId, productName: item.productName, price: item.price, cartQuantity: item.cartQuantity, categoryId: item.categoryId, categoryName: item.categoryName }));
-            const saleRecord: ProductSale = { id: saleId, receiptNumber, items: saleRecordItems, totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0), branchName: currentUser.branch, cashierUsername: user.username, cashierName: currentUser.name, createdAt: new Date().toISOString() };
+            const saleRecord: ProductSale = { id: saleId, receiptNumber, items: saleRecordItems, totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0), branchName: currentUser.branch, cashierUsername: user.username, cashierName: currentUser.name, createdAt: new Date().toISOString(), notes: cartNotes };
             await set(saleRecordRef, saleRecord);
         }
         
@@ -1362,6 +1364,7 @@ function PosTrackingContent() {
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
                 cashierUsername: user.username,
+                notes: cartNotes,
             };
             await set(completedSessionRef, completedSession);
             await handleStartSession(gameItem.sessionDetails, completedSessionId);
@@ -1393,17 +1396,18 @@ function PosTrackingContent() {
              const extendRecordRef = push(ref(db, 'sessions/completed'));
              const originalSession = firebaseActiveChildren.find(s => s.id === extendItem.activeSessionId);
              if (originalSession) {
-                const extendRecordData: Partial<CompletedSession> = { ...originalSession, id: extendRecordRef.key!, checkOutTime: Date.now(), durationMs: 0, cost: extendItem.price * extendItem.cartQuantity, costBeforeDiscount: extendItem.price * extendItem.cartQuantity, receiptNumber, packageName: `تمديد: ${extendItem.packageName}` };
+                const extendRecordData: Partial<CompletedSession> = { ...originalSession, id: extendRecordRef.key!, checkOutTime: Date.now(), durationMs: 0, cost: extendItem.price * extendItem.cartQuantity, costBeforeDiscount: extendItem.price * extendItem.cartQuantity, receiptNumber, packageName: `تمديد: ${extendItem.packageName}`, notes: cartNotes };
                 delete extendRecordData.prepaidSessionId;
                 await set(extendRecordRef, extendRecordData);
              }
         }
         
-        const receiptProps: ProductReceiptProps = { receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, settings: receiptSettings, appName: policies?.appName || 'FunTrack', branchName: currentUser.branch, cashierName: currentUser.name, items: cart.map(item => { let name = ''; if ('type' in item && item.type === 'product') name = item.productName; if ('type' in item && item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`; if ('type' in item && item.type === 'extend-session') name = `تمديد: ${item.gameName}`; return { name, quantity: item.cartQuantity, price: item.price }; }), totalAmount: cartTotal, sessionInfo: sessionInfoForReceipt };
+        const receiptProps: ProductReceiptProps = { receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, settings: receiptSettings, appName: policies?.appName || 'FunTrack', branchName: currentUser.branch, cashierName: currentUser.name, items: cart.map(item => { let name = ''; if ('type' in item && item.type === 'product') name = item.productName; if ('type' in item && item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`; if ('type' in item && item.type === 'extend-session') name = `تمديد: ${item.gameName}`; return { name, quantity: item.cartQuantity, price: item.price }; }), totalAmount: cartTotal, sessionInfo: sessionInfoForReceipt, notes: cartNotes };
         printReceipt(<ProductReceipt {...receiptProps} />);
         
         toast({ title: "تمت عملية البيع بنجاح", description: "تم تسجيل الفاتورة وتحديث البيانات." });
         setCart([]);
+        setCartNotes('');
         setSaleCheckoutOpen(false);
 
     } catch (error) {
@@ -1896,6 +1900,15 @@ function PosTrackingContent() {
                         </div>
                     )}
                     <Separator />
+                     <div className="space-y-2">
+                        <Label htmlFor="cart-notes">ملاحظات الفاتورة</Label>
+                        <Textarea 
+                            id="cart-notes"
+                            placeholder="أضف ملاحظات (اختياري)..."
+                            value={cartNotes}
+                            onChange={(e) => setCartNotes(e.target.value)}
+                        />
+                    </div>
                     <div className="flex justify-between font-bold text-lg">
                         <span>الإجمالي:</span>
                         <span>{`ج.م ${cartTotal.toFixed(2)}`}</span>
@@ -1925,5 +1938,6 @@ export default function PosTrackingPage() {
 }
 
     
+
 
 

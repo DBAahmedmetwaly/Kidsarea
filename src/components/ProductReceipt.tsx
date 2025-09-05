@@ -23,6 +23,7 @@ export interface ProductReceiptProps {
     checkInTime: Date;
     expectedCheckOutTime: Date;
   }
+  notes?: string;
 }
 
 export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptProps>(({
@@ -33,7 +34,8 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
   items,
   totalAmount,
   cashierName,
-  sessionInfo
+  sessionInfo,
+  notes
 }, ref) => {
   
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
@@ -84,6 +86,13 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
             <span>{`ج.م ${totalAmount.toFixed(2)}`}</span>
         </div>
       
+      {notes && (
+          <div className="mt-2 text-xs border-t border-dashed pt-1">
+              <p className="font-bold">ملاحظات:</p>
+              <p>{notes}</p>
+          </div>
+      )}
+
        <div className="mt-2 text-center text-xs text-gray-600 space-y-0">
             {show('showThankYouMessage') && <p className="font-bold text-sm">{settings?.thankYouMessage}</p>}
             {show('showCashierName') && <p>الكاشير: {cashierName}</p>}

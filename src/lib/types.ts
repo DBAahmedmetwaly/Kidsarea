@@ -4,6 +4,7 @@
 
 
 
+
 export interface CustomerChild {
     id: string; // Unique identifier for the child
     name: string;
@@ -38,6 +39,7 @@ export interface CompletedSession extends Child {
     discount?: number;
     subscriptionId?: string; // To link to a subscription if applicable
     overtimeCost?: number;
+    notes?: string;
 }
 
 export interface Game {
@@ -244,6 +246,7 @@ export interface PosReceiptProps {
   packageName?: string;
   packageDuration?: number;
   overtimeCost?: number;
+  notes?: string;
 }
 
 export interface ProductReceiptProps {
@@ -259,6 +262,7 @@ export interface ProductReceiptProps {
     checkInTime: Date;
     expectedCheckOutTime: Date;
   }
+  notes?: string;
 }
 
 
@@ -336,6 +340,7 @@ export interface ProductSale {
     cashierName: string;
     cashierUsername: string;
     createdAt: string; // ISO String
+    notes?: string;
 }
 
 // Represents a prepaid game session ready to be added to the cart

@@ -47,6 +47,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   packageName,
   packageDuration,
   overtimeCost,
+  notes,
 }, ref) => {
   
   const show = (key: keyof PosReceiptProps['settings']) => !settings || settings[key];
@@ -127,6 +128,13 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
        <div className="my-1">
           {renderPaymentDetails()}
        </div>
+
+      {notes && (
+          <div className="mt-2 text-xs border-t border-dashed pt-1">
+              <p className="font-bold">ملاحظات:</p>
+              <p>{notes}</p>
+          </div>
+      )}
 
        {/* Footer */}
        <div className="mt-2 text-center text-xs text-gray-600 space-y-0.5 pt-1">
