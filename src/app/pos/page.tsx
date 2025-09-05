@@ -1009,10 +1009,10 @@ function PosTrackingContent() {
         durationMs: durationMs,
         cost: cost,
         costBeforeDiscount: finalCostBeforeDiscount,
-        durationCost: receiptDetails?.durationCost ?? 0,
-        entryFee: receiptDetails?.entryFee ?? 0,
-        discount: receiptDetails?.discount ?? 0,
-        overtimeCost: receiptDetails?.overtimeCost ?? 0,
+        durationCost: receiptDetails?.durationCost || 0,
+        entryFee: receiptDetails?.entryFee || 0,
+        discount: receiptDetails?.discount || 0,
+        overtimeCost: receiptDetails?.overtimeCost || 0,
         receiptNumber: Number(receiptDetails?.receiptId?.split('-')[1]) || 0,
         packageName: child.packageName,
     };
@@ -1277,10 +1277,16 @@ function PosTrackingContent() {
         for (const extendItem of extendItems) {
              const sessionRef = ref(db, `sessions/active/${extendItem.activeSessionId}`);
              await runTransaction(sessionRef, (currentSession: Child) => {
-                 if (currentSession && currentSession.packageDuration) {
-                     currentSession.packageDuration += (extendItem.packageDuration * extendItem.cartQuantity);
-                 }
-                 return currentSession;
+                if (currentSession && currentSession.packageDuration) {
+                    const elapsedMs = Date.now() - currentSession.checkInTime;
+                    const remainingMs = Math.max(0, (currentSession.packageDuration * 60 * 1000) - elapsedMs);
+                    const newDurationMs = remainingMs + (extendItem.packageDuration * 60 * 1000 * extendItem.cartQuantity);
+                    
+                    // Reset checkInTime and set new total duration
+                    currentSession.checkInTime = Date.now();
+                    currentSession.packageDuration = newDurationMs / (60 * 1000);
+                }
+                return currentSession;
              });
         }
         
@@ -1798,6 +1804,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
