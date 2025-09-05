@@ -3,7 +3,6 @@
 
 import React from 'react';
 import type { ReceiptSettings } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface ReceiptItem {
     name: string;
@@ -43,20 +42,26 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
       </div>
 
       <div className="space-y-0.5 border-t border-b border-dashed border-gray-400 py-1 my-1">
-        <div className="grid grid-cols-12 text-xs font-bold">
-            <span className="col-span-6 text-right">الصنف</span>
-            <span className="col-span-2 text-center">الكمية</span>
-            <span className="col-span-2 text-center">السعر</span>
-            <span className="col-span-2 text-left">الإجمالي</span>
-        </div>
-         {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-12 text-xs">
-                <span className="col-span-6 text-right">{item.name}</span>
-                <span className="col-span-2 text-center">{item.quantity}</span>
-                <span className="col-span-2 text-center font-mono">{item.price.toFixed(2)}</span>
-                <span className="col-span-2 text-left font-mono">{(item.price * item.quantity).toFixed(2)}</span>
-            </div>
-         ))}
+        <table className="w-full text-xs">
+            <thead>
+                <tr>
+                    <th className="w-[50%] text-right font-bold">الصنف</th>
+                    <th className="w-[15%] text-center font-bold">الكمية</th>
+                    <th className="w-[15%] text-center font-bold">السعر</th>
+                    <th className="w-[20%] text-left font-bold">الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {items.map((item, index) => (
+                    <tr key={index}>
+                        <td className="text-right">{item.name}</td>
+                        <td className="text-center font-mono">{item.quantity}</td>
+                        <td className="text-center font-mono">{item.price.toFixed(2)}</td>
+                        <td className="text-left font-mono">{(item.price * item.quantity).toFixed(2)}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
       </div>
       
        <div className="flex justify-between items-center text-lg font-bold p-1 mt-1 bg-gray-200 rounded-md">
