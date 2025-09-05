@@ -45,6 +45,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   cashierName,
   isSubscription,
   packagePrice,
+  packageName,
   packageDuration,
   overtimeCost,
 }, ref) => {
@@ -109,6 +110,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
        <div className="text-xs my-1 py-1 border-t border-dashed border-gray-400 space-y-1">
         <div className="flex justify-between"><span>ولي الأمر: {parentName}</span><span>الطفل: {children.map(c => c.name).join(', ')}</span></div>
         <div>اللعبة: {gameName}</div>
+         {packageName && <div>الباقة: {packageName}</div>}
         <div className="flex justify-between">
             {show('showCheckInTime') && <span>الدخول: {checkInTime.toLocaleTimeString('ar-EG')}</span>}
             {show('showCheckOutTime') && !expectedCheckOutTime && <span>الخروج: {checkOutTime.toLocaleTimeString('ar-EG')}</span>}

@@ -17,13 +17,13 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { useCustomers } from '@/context/CustomerContext';
 import { useMemo, useState, useEffect } from 'react';
 import { getHours, format, startOfDay, endOfDay, isWithinInterval, parseISO, getMonth, getDate, addMonths } from 'date-fns';
-import { Subscription, CustomerChild, CompletedSession, ShiftRecord } from '@/lib/types';
+import { Subscription, CustomerChild, CompletedSession, ShiftRecord, Game } from '@/lib/types';
 import { ar } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon, Cake, Percent, TrendingDown, Users, FilterX, TrendingUp } from 'lucide-react';
+import { Calendar as CalendarIcon, Cake, Percent, TrendingDown, Users, FilterX, TrendingUp, Star } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard } from '@/components/StatCard';
 import {
@@ -78,6 +78,103 @@ const expenseByCategoryChartConfig = {
     },
 } satisfies ChartConfig;
 
+function GamePackageReport({ sessions, games, selectedBranch, fromDate, toDate }: { sessions: CompletedSession[], games: Game[], selectedBranch: string, fromDate?: Date, toDate?: Date }) {
+    
+    const reportData = useMemo(() => {
+        const packageGames = games.filter(g => 
+            g.paymentModel === 'prepaid' && 
+            g.fixedTimePackages && 
+            g.fixedTimePackages.length > 0 &&
+            (selectedBranch === 'all' || g.branch === selectedBranch || g.branch === 'كل الفروع')
+        );
+        
+        const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
+
+        const filteredSessions = sessions.filter(s => {
+            const isPackageSession = !!s.packageName;
+            const dateMatch = range ? isWithinInterval(new Date(s.checkOutTime), range) : true;
+            return isPackageSession && dateMatch;
+        });
+
+        const gameStats: { [gameName: string]: { totalUsage: number, packages: { [packageName: string]: number } } } = {};
+
+        packageGames.forEach(game => {
+            gameStats[game.name] = { totalUsage: 0, packages: {} };
+            game.fixedTimePackages?.forEach(pkg => {
+                gameStats[game.name].packages[pkg.label] = 0;
+            });
+        });
+
+        filteredSessions.forEach(session => {
+            if (gameStats[session.game] && session.packageName) {
+                if (gameStats[session.game].packages[session.packageName] !== undefined) {
+                    gameStats[session.game].packages[session.packageName]++;
+                    gameStats[session.game].totalUsage++;
+                }
+            }
+        });
+
+        return Object.entries(gameStats)
+            .map(([gameName, stats]) => {
+                const packageDetails = Object.entries(stats.packages).map(([name, count]) => ({ name, count }));
+                const mostUsedPackage = packageDetails.reduce((max, pkg) => pkg.count > max.count ? pkg : max, { name: '', count: -1 });
+                return {
+                    gameName,
+                    totalUsage: stats.totalUsage,
+                    packageDetails,
+                    mostUsedPackageName: mostUsedPackage.count > 0 ? mostUsedPackage.name : null,
+                };
+            })
+            .filter(game => game.totalUsage > 0);
+
+    }, [sessions, games, selectedBranch, fromDate, toDate]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>تقرير استخدام باقات الألعاب</CardTitle>
+                <CardDescription>تحليل شامل لعدد مرات استخدام كل باقة لكل لعبة، مع تحديد الباقة الأكثر استخدامًا.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="text-right">اسم اللعبة</TableHead>
+                            <TableHead className="text-right">الباقة</TableHead>
+                            <TableHead className="text-center">عدد مرات الاستخدام</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {reportData.length > 0 ? reportData.map((game, gameIndex) => (
+                            game.packageDetails.map((pkg, pkgIndex) => (
+                                <TableRow key={`${game.gameName}-${pkg.name}`}>
+                                    {pkgIndex === 0 && (
+                                        <TableCell rowSpan={game.packageDetails.length} className="font-bold align-top text-right">
+                                            {game.gameName}
+                                        </TableCell>
+                                    )}
+                                    <TableCell className="text-right">{pkg.name}</TableCell>
+                                    <TableCell className="text-center font-semibold">
+                                        {pkg.count}
+                                        {game.mostUsedPackageName === pkg.name && (
+                                            <Star className="inline-block ms-2 h-4 w-4 text-yellow-500" />
+                                        )}
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="text-center h-24">
+                                    لا توجد بيانات استخدام للباقات في الفترة المحددة.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+}
 
 function CashierPerformanceReport({ sessions, subscriptions, shiftRecords, selectedBranch, fromDate, toDate } : { sessions: CompletedSession[], subscriptions: Subscription[], shiftRecords: ShiftRecord[], selectedBranch: string, fromDate?: Date, toDate?: Date }) {
     const { employees } = useFirebase();
@@ -88,7 +185,7 @@ function CashierPerformanceReport({ sessions, subscriptions, shiftRecords, selec
             if (!isCashierRole) return false;
 
             const isBranchMatch = selectedBranch === 'all' || emp.branch === selectedBranch || emp.branch === 'كل الفروع';
-            return isBranchMatch;
+            return isCashierRole && isBranchMatch;
         });
 
         const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
@@ -517,6 +614,8 @@ function ReportsContent() {
       </div>
 
       <CashierPerformanceReport sessions={filteredData.sessions} subscriptions={filteredData.subscriptions} shiftRecords={filteredData.shiftRecords} selectedBranch={selectedBranch} fromDate={fromDate} toDate={toDate} />
+
+      <GamePackageReport sessions={completedSessions} games={games} selectedBranch={selectedBranch} fromDate={fromDate} toDate={toDate} />
       
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

@@ -162,6 +162,7 @@ function SessionsContent() {
         cashierName: cashierName,
         isSubscription: !!session.subscriptionId,
         packagePrice: session.packagePrice,
+        packageName: session.packageName,
         packageDuration: session.packageDuration,
         overtimeCost: session.overtimeCost,
     };

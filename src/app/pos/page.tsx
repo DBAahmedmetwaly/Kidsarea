@@ -391,6 +391,7 @@ function CheckOutDialog({
         cashierName: cashierName,
         isSubscription: isFullySubscribed,
         packagePrice: child.packagePrice,
+        packageName: child.packageName,
         packageDuration: child.packageDuration,
         overtimeCost: checkoutData.overtimeCost,
     };
@@ -558,6 +559,7 @@ function CheckInDialog({
             
             sessionDetails.packageDuration = selectedPackage.duration;
             sessionDetails.packagePrice = selectedPackage.price;
+            sessionDetails.packageName = selectedPackage.label;
             
             let finalPrice = selectedPackage.price;
             if (policies?.packagePricingModel === 'per_child') {

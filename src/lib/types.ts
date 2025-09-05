@@ -17,6 +17,7 @@ export interface Child {
   checkInTime: number;
   cashierUsername: string; // Added to track who checked the child in
   // For package based games
+  packageName?: string;
   packageDuration?: number; // in minutes
   packagePrice?: number;
   prepaidSessionId?: string; // Links active session to the completed session that paid for it
@@ -235,6 +236,7 @@ export interface PosReceiptProps {
   cashierName: string;
   isSubscription?: boolean;
   packagePrice?: number;
+  packageName?: string;
   packageDuration?: number;
   overtimeCost?: number;
 }
