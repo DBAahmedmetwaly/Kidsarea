@@ -1165,10 +1165,14 @@ function PosTrackingContent() {
         packageName: child.packageName,
     };
     
-    delete (completedSession as Partial<CompletedSession>).id;
+    // Use the existing child.id to ensure we are updating/replacing the correct record
+    const completedSessionWithId: CompletedSession = {
+      ...completedSession,
+      id: child.id,
+    };
 
     try {
-        await set(ref(db, `sessions/completed/${child.id}`), completedSession);
+        await set(ref(db, `sessions/completed/${child.id}`), completedSessionWithId);
         await set(ref(db, `sessions/active/${child.id}`), null);
         
     } catch(err) {
@@ -1952,6 +1956,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
