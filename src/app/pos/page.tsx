@@ -644,7 +644,7 @@ function CheckInDialog({
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent>
+                <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>تسجيل دخول: {selectedGame?.name}</DialogTitle>
                         <DialogDescription>
@@ -883,6 +883,64 @@ function ExtendSessionDialog({
 type CartItem = (InventoryItem | PrepaidGameCartItem | ExtendSessionCartItem) & { cartQuantity: number };
 
 
+function EarlyCheckoutDialog({
+  open,
+  onOpenChange,
+  session,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: Child | null;
+  onConfirm: (discount: number) => void;
+}) {
+  const [discount, setDiscount] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setDiscount('');
+    }
+  }, [open]);
+
+  if (!session) return null;
+
+  const handleConfirm = () => {
+    onConfirm(parseFloat(discount) || 0);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>خصم الخروج المبكر</DialogTitle>
+          <DialogDescription>
+            الطفل يغادر مبكراً. يمكنك تسجيل خصم أو استرداد نقدي للوقت المتبقي.
+            التكلفة الأصلية للباقة كانت {session.packagePrice?.toFixed(2) || '0.00'} ج.م.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Label htmlFor="early-discount">قيمة الخصم/الاسترداد (ج.م)</Label>
+          <Input
+            id="early-discount"
+            type="number"
+            value={discount}
+            onChange={(e) => setDiscount(e.target.value)}
+            placeholder="0.00"
+          />
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="secondary">إلغاء</Button>
+          </DialogClose>
+          <Button onClick={handleConfirm}>تأكيد الخصم والخروج</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 function PosTrackingContent() {
   const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
   const { user } = useAuth();
@@ -904,7 +962,6 @@ function PosTrackingContent() {
   const [childToExtend, setChildToExtend] = useState<Child | null>(null);
   
   const [isEarlyCheckoutDiscountOpen, setEarlyCheckoutDiscountOpen] = useState(false);
-  const [earlyCheckoutDiscount, setEarlyCheckoutDiscount] = useState('');
 
   const [activeSearch, setActiveSearch] = useState('');
   
@@ -1058,17 +1115,32 @@ function PosTrackingContent() {
     setCheckoutDialogOpen(true);
   };
   
-  const handleEarlyCheckout = (applyDiscount: boolean) => {
-    setEarlyCheckoutDiscountOpen(false);
-    if (applyDiscount) {
-        setEarlyCheckoutDiscount('');
-        // Open the full checkout dialog to enter discount
-        setCheckoutDialogOpen(true);
-    } else {
-        // Checkout with zero cost if no discount is applied
-        setZeroCostCheckoutOpen(true);
-    }
-  }
+  const handleEarlyCheckoutConfirm = (discount: number) => {
+    if (!childToCheckout) return;
+    
+    const receiptDetails: PosReceiptProps = {
+        settings: receiptSettings,
+        appName: policies?.appName || 'FunTrack',
+        branchName: childToCheckout.branchName,
+        children: childToCheckout.children,
+        parentName: childToCheckout.parentName,
+        phoneNumbers: childToCheckout.phoneNumbers,
+        gameName: childToCheckout.game,
+        checkInTime: new Date(childToCheckout.checkInTime),
+        checkOutTime: new Date(),
+        duration: formatDuration(Date.now() - childToCheckout.checkInTime),
+        totalCost: 0, // Cost is 0, only discount is recorded
+        discount: discount,
+        cashierName: currentUser?.name || user?.username || 'Admin',
+        isSubscription: false,
+        packagePrice: childToCheckout.packagePrice,
+        packageName: childToCheckout.packageName,
+        packageDuration: childToCheckout.packageDuration,
+    };
+    
+    handleCheckOut(childToCheckout, receiptDetails, childToCheckout.packagePrice || 0);
+  };
+
 
   const handleCheckOut = async (child: Child, receiptDetails?: PosReceiptProps, costBeforeDiscount?: number) => {
     setCheckoutDialogOpen(false);
@@ -1388,7 +1460,8 @@ function PosTrackingContent() {
                     const newNetDurationMs = addedDurationMs - overtimeConsumedMs;
 
                     currentSession.packageDuration += (extendItem.packageDuration * extendItem.cartQuantity);
-                    currentSession.checkInTime = now - newNetDurationMs;
+                    // This logic is complex, simpler to just add duration
+                    // currentSession.checkInTime = now - newNetDurationMs;
                 }
                 return currentSession;
              });
@@ -1773,7 +1846,7 @@ function PosTrackingContent() {
                                                         <TableCell className="font-bold text-center">
                                                             {session.subscriptionId ? (
                                                                 <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
-                                                            ) : session.packagePrice && session.durationMs > 0 ? (
+                                                            ) : (session.packagePrice !== undefined && session.packagePrice > 0) || session.packageName ? (
                                                                <span className="flex items-center justify-center gap-1 text-blue-600"><PackageCheck className="h-4 w-4"/> باقة</span>
                                                             ) : `ج.م ${session.cost.toFixed(2)}`}
                                                         </TableCell>
@@ -1816,6 +1889,12 @@ function PosTrackingContent() {
                 session={childToExtend}
                 onConfirm={handleAddToCart}
             />
+            <EarlyCheckoutDialog
+                open={isEarlyCheckoutDiscountOpen}
+                onOpenChange={setEarlyCheckoutDiscountOpen}
+                session={childToCheckout}
+                onConfirm={handleEarlyCheckoutConfirm}
+            />
              <AlertDialog open={isZeroCostCheckoutOpen} onOpenChange={setZeroCostCheckoutOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -1827,20 +1906,6 @@ function PosTrackingContent() {
                     <AlertDialogFooter>
                         <AlertDialogCancel>إلغاء</AlertDialogCancel>
                         <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!)}>تأكيد الخروج</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            <AlertDialog open={isEarlyCheckoutDiscountOpen} onOpenChange={setEarlyCheckoutDiscountOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>خروج مبكر</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          الطفل يغادر قبل انتهاء وقت الباقة. هل تريد تطبيق خصم على الفاتورة؟
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => handleEarlyCheckout(true)}>نعم، تطبيق خصم</AlertDialogAction>
-                        <AlertDialogCancel onClick={() => handleEarlyCheckout(false)}>لا، خروج بدون خصم</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -1923,6 +1988,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
