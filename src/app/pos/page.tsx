@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -1391,7 +1390,7 @@ function PosTrackingContent() {
               }
               
               if (item.type === 'prepaid-game' && policies?.packagePricingModel === 'per_child') {
-                  const basePrice = item.sessionDetails.packagePrice! / item.cartQuantity;
+                  const basePrice = item.price / item.cartQuantity;
                   const newPrice = basePrice * newQuantity;
                   return { ...item, cartQuantity: newQuantity, price: newPrice };
               }
@@ -2051,10 +2050,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
-
-    
-
-
-

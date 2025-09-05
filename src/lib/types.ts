@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 export interface CustomerChild {
     id: string; // Unique identifier for the child
     name: string;
