@@ -141,11 +141,12 @@ export interface Policies {
     enablePackageOvertime: boolean;
     packageOvertimeRatePerMinute: number;
     packageOvertimeRounding: 'hour' | 'half-hour' | 'quarter-hour' | 'none';
-    packageOvertimeNotificationInterval?: number; // in seconds
+    packageOvertimeNotificationInterval: number; // in seconds
+    packageOvertimeGracePeriod: number; // in minutes
     entryFeeApplication: 'all' | 'hourly' | 'package' | 'none';
     packagePricingModel: 'per_session' | 'per_child';
-    toastDuration?: number;
-    buyOneHourGetXFreeMinutes?: number; // 0 for disabled, or 15, 30, 60 etc.
+    toastDuration: number;
+    buyOneHourGetXFreeMinutes: number; // 0 for disabled, or 15, 30, 60 etc.
 }
 
 export interface Customer {

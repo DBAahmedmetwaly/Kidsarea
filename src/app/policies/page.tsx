@@ -89,6 +89,7 @@ const policiesSchema = z.object({
   packageOvertimeRatePerMinute: z.coerce.number().min(0, 'السعر يجب أن يكون رقمًا موجبًا'),
   packageOvertimeRounding: z.enum(['none', 'quarter-hour', 'half-hour', 'hour']),
   packageOvertimeNotificationInterval: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
+  packageOvertimeGracePeriod: z.coerce.number().int().min(0, 'يجب أن يكون رقمًا موجبًا'),
   entryFeeApplication: z.enum(['all', 'hourly', 'package', 'none']),
   packagePricingModel: z.enum(['per_session', 'per_child']),
   toastDuration: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
@@ -135,6 +136,7 @@ const defaultPolicies: PoliciesFormValues = {
       packageOvertimeRatePerMinute: 1,
       packageOvertimeRounding: 'quarter-hour',
       packageOvertimeNotificationInterval: 60,
+      packageOvertimeGracePeriod: 0,
       entryFeeApplication: 'hourly',
       packagePricingModel: 'per_session',
       toastDuration: 5,
@@ -595,6 +597,22 @@ function PoliciesContent() {
                             </FormControl>
                             <FormDescription>
                                 الفاصل الزمني لتكرار الإشعار.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="packageOvertimeGracePeriod"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>فترة السماح بعد الباقة (بالدقائق)</FormLabel>
+                            <FormControl>
+                            <Input type="number" placeholder="0" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                                لن يتم احتساب وقت إضافي قبل انتهاء هذه المدة.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>

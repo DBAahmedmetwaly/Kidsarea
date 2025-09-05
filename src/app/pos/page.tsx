@@ -53,9 +53,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 
-const TimeCounter = ({ startTime, packageDuration, onTimeEnd }: { startTime: number, packageDuration?: number, onTimeEnd?: () => void }) => {
+const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onTimeEnd }: { startTime: number, packageDuration?: number, gracePeriodInMinutes?: number, onTimeEnd?: () => void }) => {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
+  const [status, setStatus] = useState<'playing' | 'grace_period' | 'overtime'>('playing');
   const timeEnded = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -68,10 +69,19 @@ const TimeCounter = ({ startTime, packageDuration, onTimeEnd }: { startTime: num
 
         if (packageDuration) {
             const totalDurationMs = packageDuration * 60 * 1000;
+            const gracePeriodMs = gracePeriodInMinutes * 60 * 1000;
             const newRemaining = Math.max(0, totalDurationMs - elapsedMs);
             setRemaining(newRemaining);
             
-            if(newRemaining === 0 && !timeEnded.current) {
+            if (elapsedMs > totalDurationMs + gracePeriodMs) {
+                setStatus('overtime');
+            } else if (elapsedMs > totalDurationMs) {
+                setStatus('grace_period');
+            } else {
+                setStatus('playing');
+            }
+            
+            if (newRemaining === 0 && !timeEnded.current) {
                 timeEnded.current = true;
                 onTimeEnd?.();
             }
@@ -82,7 +92,7 @@ const TimeCounter = ({ startTime, packageDuration, onTimeEnd }: { startTime: num
         if (timerRef.current) clearInterval(timerRef.current);
         if (notificationIntervalRef.current) clearInterval(notificationIntervalRef.current);
     };
-  }, [startTime, packageDuration, onTimeEnd]);
+  }, [startTime, packageDuration, gracePeriodInMinutes, onTimeEnd]);
   
   const formatTime = (ms: number) => {
     if (ms < 0) ms = 0;
@@ -95,22 +105,42 @@ const TimeCounter = ({ startTime, packageDuration, onTimeEnd }: { startTime: num
         .toString()
         .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
+  
+  const getOvertime = () => {
+      if (!packageDuration || !elapsed) return 0;
+      const packageDurationMs = packageDuration * 60 * 1000;
+      const gracePeriodMs = gracePeriodInMinutes * 60 * 1000;
+      return Math.max(0, elapsed - packageDurationMs - gracePeriodMs);
+  };
 
   if (packageDuration) {
       if (remaining === null) return <span>...</span>;
-      const isEndingSoon = remaining <= 5 * 60 * 1000; // 5 minutes
-      const isEnded = remaining === 0;
+
+      let displayText = formatTime(remaining);
+      let textColor = "";
+
+      switch (status) {
+          case 'grace_period':
+              textColor = "text-orange-500";
+              displayText = `00:00:00`;
+              break;
+          case 'overtime':
+              textColor = "text-red-500 animate-pulse";
+              displayText = `+${formatTime(getOvertime())}`;
+              break;
+          default:
+              if (remaining <= 5 * 60 * 1000) {
+                  textColor = "text-orange-500";
+              }
+              break;
+      }
       
       return (
         <span 
-          className={cn(
-            "font-mono font-bold",
-            isEnded ? "text-red-500 animate-pulse" :
-            isEndingSoon ? "text-orange-500" : ""
-          )}
+          className={cn("font-mono font-bold", textColor)}
           dir="ltr"
         >
-          {formatTime(remaining)}
+          {displayText}
         </span>
       );
   }
@@ -217,9 +247,11 @@ function CheckOutDialog({
         
         if (policies?.enablePackageOvertime && child.packageDuration) {
             const packageDurationMs = child.packageDuration * 60 * 1000;
-            if (durationMs > packageDurationMs) {
-                const overtimeMs = durationMs - packageDurationMs;
-                let overtimeMinutes = overtimeMs / (1000 * 60);
+            const gracePeriodMs = (policies.packageOvertimeGracePeriod || 0) * 60 * 1000;
+            const chargeableOvertimeMs = Math.max(0, durationMs - packageDurationMs - gracePeriodMs);
+
+            if (chargeableOvertimeMs > 0) {
+                let overtimeMinutes = chargeableOvertimeMs / (1000 * 60);
 
                 if (policies.packageOvertimeRounding && policies.packageOvertimeRounding !== 'none') {
                     let roundingMinutes = 1;
@@ -1378,7 +1410,7 @@ function PosTrackingContent() {
                             <TableBody>
                                 {searchedActiveChildren.length > 0 ? (
                                 searchedActiveChildren.map((session) => (
-                                    <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-red-100 dark:bg-red-900/30")}>
+                                    <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
                                     <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
                                     <TableCell className="text-right">{session.game}</TableCell>
@@ -1386,6 +1418,7 @@ function PosTrackingContent() {
                                         <TimeCounter 
                                             startTime={session.checkInTime} 
                                             packageDuration={session.packageDuration}
+                                            gracePeriodInMinutes={policies?.packageOvertimeGracePeriod}
                                             onTimeEnd={() => handleTimeEnd(session)} 
                                         />
                                     </TableCell>
