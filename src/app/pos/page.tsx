@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -23,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -44,7 +45,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { startOfDay, isToday } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { PosReceipt, type PosReceiptProps } from '@/components/Receipt';
+import { PosReceipt } from '@/components/Receipt';
 import { usePosPrint } from '@/hooks/use-pos-print';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatCard } from '@/components/StatCard';
@@ -343,6 +344,7 @@ function CheckOutDialog({
         branchName: child.branchName,
         children: child.children,
         parentName: child.parentName,
+        phoneNumbers: child.phoneNumbers,
         gameName: child.game,
         checkInTime: new Date(child.checkInTime),
         checkOutTime: new Date(),
@@ -354,6 +356,7 @@ function CheckOutDialog({
         cashierName: cashierName,
         isSubscription: isFullySubscribed,
         packagePrice: child.packagePrice,
+        packageDuration: child.packageDuration,
         overtimeCost: checkoutData.overtimeCost,
     };
     
@@ -640,7 +643,9 @@ function CheckInDialog({
                                 <Label>اختر باقة الوقت</Label>
                                 <Select onValueChange={(value) => {
                                     const pkg = selectedGame?.fixedTimePackages?.find(p => p.label === value);
-                                    setSelectedPackage(pkg || null);
+                                    if(pkg) {
+                                      setSelectedPackage(pkg);
+                                    }
                                 }}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="اختر باقة..." />
@@ -1029,6 +1034,7 @@ function PosTrackingContent() {
                 duration: "0",
                 totalCost: gameItem.price,
                 packagePrice: gameItem.price,
+                packageDuration: gameItem.sessionDetails.packageDuration,
                 cashierName: currentUser.name,
             };
 

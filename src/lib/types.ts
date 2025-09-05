@@ -215,6 +215,30 @@ export interface ReceiptSettings {
     showTimestamp?: boolean;
 }
 
+export interface PosReceiptProps {
+  receiptId?: string;
+  settings: ReceiptSettings | null;
+  appName: string;
+  branchName: string;
+  children: CustomerChild[];
+  parentName: string;
+  phoneNumbers: string[];
+  gameName: string;
+  checkInTime: Date;
+  checkOutTime: Date;
+  duration: string;
+  totalCost: number;
+  durationCost?: number;
+  entryFee?: number;
+  discount?: number;
+  cashierName: string;
+  isSubscription?: boolean;
+  packagePrice?: number;
+  packageDuration?: number;
+  overtimeCost?: number;
+}
+
+
 export interface ExpenseType {
     id: string;
     name: string;

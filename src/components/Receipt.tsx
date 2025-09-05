@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React from 'react';
-import type { ReceiptSettings, CustomerChild } from '@/lib/types';
+import type { PosReceiptProps } from '@/lib/types';
 import { Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,29 +26,6 @@ const PaymentDetailRow = ({ label, value }: { label: string; value: number | und
 };
 
 
-export interface PosReceiptProps {
-  receiptId?: string;
-  settings: ReceiptSettings | null;
-  appName: string;
-  branchName: string;
-  children: CustomerChild[];
-  parentName: string;
-  phoneNumbers: string[];
-  gameName: string;
-  checkInTime: Date;
-  checkOutTime: Date;
-  duration: string;
-  totalCost: number;
-  durationCost?: number;
-  entryFee?: number;
-  discount?: number;
-  cashierName: string;
-  isSubscription?: boolean;
-  packagePrice?: number;
-  overtimeCost?: number;
-}
-
-
 export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   receiptId,
   settings,
@@ -67,11 +45,14 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   cashierName,
   isSubscription,
   packagePrice,
+  packageDuration,
   overtimeCost,
 }, ref) => {
   
-  const show = (key: keyof ReceiptSettings) => !settings || settings[key];
+  const show = (key: keyof PosReceiptProps['settings']) => !settings || settings[key];
   const receiptWidth = settings?.receiptWidth || 72;
+
+  const expectedCheckOutTime = packageDuration ? new Date(checkInTime.getTime() + packageDuration * 60 * 1000) : null;
 
   const renderPaymentDetails = () => {
     if (isSubscription) {
@@ -85,6 +66,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
     return (
       <div className="space-y-1 py-1 my-1">
           <div className='border-y border-dashed border-gray-400 py-1 space-y-1'>
+            <PaymentDetailRow label="تكلفة الباقة" value={packagePrice} />
             <PaymentDetailRow label="تكلفة اللعب" value={durationCost} />
             <PaymentDetailRow label="رسوم دخول" value={entryFee} />
             <PaymentDetailRow label="وقت إضافي" value={overtimeCost} />
@@ -128,10 +110,16 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         <div className="flex justify-between"><span>ولي الأمر: {parentName}</span><span>الطفل: {children.map(c => c.name).join(', ')}</span></div>
         <div>اللعبة: {gameName}</div>
         <div className="flex justify-between">
-            <span>الدخول: {checkInTime.toLocaleTimeString('ar-EG')}</span>
-            <span>الخروج: {checkOutTime.toLocaleTimeString('ar-EG')}</span>
-            <span>المدة: {duration}</span>
+            {show('showCheckInTime') && <span>الدخول: {checkInTime.toLocaleTimeString('ar-EG')}</span>}
+            {show('showCheckOutTime') && !expectedCheckOutTime && <span>الخروج: {checkOutTime.toLocaleTimeString('ar-EG')}</span>}
+            {show('showDuration') && !expectedCheckOutTime && <span>المدة: {duration}</span>}
         </div>
+         {expectedCheckOutTime && (
+            <div className="flex justify-between font-bold text-red-600">
+                <span>الخروج المتوقع:</span>
+                <span>{expectedCheckOutTime.toLocaleTimeString('ar-EG')}</span>
+            </div>
+        )}
       </div>
       
        {/* Payment Details */}

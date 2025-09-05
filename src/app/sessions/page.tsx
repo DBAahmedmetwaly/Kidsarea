@@ -36,7 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { History, Calendar as CalendarIcon, FilterX, Printer, Star, Loader2, PackageCheck } from 'lucide-react';
 import { useFirebase } from '@/context/FirebaseContext';
-import type { CompletedSession } from '@/lib/types';
+import type { CompletedSession, PosReceiptProps } from '@/lib/types';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -44,7 +44,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/context/SessionContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/AuthProvider';
-import { PosReceipt, type PosReceiptProps } from '@/components/Receipt';
+import { PosReceipt } from '@/components/Receipt';
 import { usePosPrint } from '@/hooks/use-pos-print';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
@@ -145,10 +145,12 @@ function SessionsContent() {
         : cashier?.name || session.cashierUsername || 'N/A';
 
     const receiptDetails: PosReceiptProps = {
+        receiptId: `${session.branchName.substring(0,3).toUpperCase() || 'DEF'}-${session.receiptNumber}`,
         settings: receiptSettings,
         appName: policies?.find(p => p.id === 'default')?.appName || 'FunTrack',
         children: session.children,
         parentName: session.parentName,
+        phoneNumbers: session.phoneNumbers,
         gameName: session.game,
         checkInTime: new Date(session.checkInTime),
         checkOutTime: new Date(session.checkOutTime),
@@ -160,6 +162,7 @@ function SessionsContent() {
         cashierName: cashierName,
         isSubscription: !!session.subscriptionId,
         packagePrice: session.packagePrice,
+        packageDuration: session.packageDuration,
         overtimeCost: session.overtimeCost,
     };
     printReceipt(<PosReceipt {...receiptDetails} />);
