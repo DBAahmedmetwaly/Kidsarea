@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -494,8 +495,8 @@ function CheckInDialog({
     open,
     onOpenChange,
     selectedGame,
-    onConfirmPostpaid, // For postpaid games
-    onConfirmPrepaid,  // For prepaid games
+    onConfirmPostpaid,
+    onConfirmPrepaid,
     policies,
 } : {
     open: boolean,
@@ -572,14 +573,7 @@ function CheckInDialog({
         if (!selectedCustomer || selectedChildren.length === 0 || !selectedGame) return;
         
         const isPrepaid = selectedGame.paymentModel === 'prepaid';
-        const sessionDetails: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> = {
-            children: selectedChildren,
-            game: selectedGame.name,
-            branchName: selectedGame.branch,
-            parentName: selectedCustomer.parentName,
-            phoneNumbers: selectedCustomer.phoneNumbers,
-        };
-
+        
         if (isPrepaid) {
             if (Object.keys(selectedPackages).length === 0) {
                 toast({ title: "يرجى اختيار باقة وقت واحدة على الأقل", variant: "destructive" });
@@ -588,10 +582,6 @@ function CheckInDialog({
             
             const totalPackagePrice = Object.values(selectedPackages).reduce((sum, {package: pkg, quantity}) => sum + (pkg.price * quantity), 0);
             const totalPackageDuration = Object.values(selectedPackages).reduce((sum, {package: pkg, quantity}) => sum + (pkg.duration * quantity), 0);
-
-            sessionDetails.packageDuration = totalPackageDuration;
-            sessionDetails.packagePrice = totalPackagePrice;
-            sessionDetails.packageName = Object.values(selectedPackages).map(item => `${item.quantity}x ${item.package.label}`).join(', ');
 
             let finalPrice = totalPackagePrice;
             if (policies?.packagePricingModel === 'per_child') {
@@ -606,12 +596,28 @@ function CheckInDialog({
             const cartItem: PrepaidGameCartItem = {
                 type: 'prepaid-game',
                 id: `prepaid-${selectedGame.id}-${selectedCustomer.id}-${Date.now()}`,
-                sessionDetails: sessionDetails,
+                sessionDetails: {
+                    children: selectedChildren,
+                    game: selectedGame.name,
+                    branchName: selectedGame.branch,
+                    parentName: selectedCustomer.parentName,
+                    phoneNumbers: selectedCustomer.phoneNumbers,
+                    packageDuration: totalPackageDuration,
+                    packagePrice: finalPrice, // Store the final total price here
+                    packageName: Object.values(selectedPackages).map(item => `${item.quantity}x ${item.package.label}`).join(', '),
+                },
                 price: finalPrice,
             };
             onConfirmPrepaid(cartItem);
 
         } else {
+            const sessionDetails: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> = {
+                children: selectedChildren,
+                game: selectedGame.name,
+                branchName: selectedGame.branch,
+                parentName: selectedCustomer.parentName,
+                phoneNumbers: selectedCustomer.phoneNumbers,
+            };
             onConfirmPostpaid(sessionDetails);
         }
 
@@ -1285,6 +1291,12 @@ function PosTrackingContent() {
           }
       });
   };
+  
+    const handleConfirmPrepaid = (cartItem: PrepaidGameCartItem) => {
+        // This function now correctly passes the total price to be stored.
+        handleStartSession(cartItem.sessionDetails);
+        handleAddToCart(cartItem);
+    };
 
   const handleRemoveFromCart = (itemId: string) => {
       setCart(prev => prev.filter(item => item.id !== itemId));
@@ -1356,7 +1368,8 @@ function PosTrackingContent() {
             await set(saleRecordRef, saleRecord);
         }
         
-        // Start active sessions for new game items
+        // Start active sessions for new game items - THIS IS NOW HANDLED BY `onConfirmPrepaid`
+        // We only create the receipt info here
         for (const gameItem of gameItems) {
              const checkInTime = new Date();
              const expectedCheckOutTime = new Date(checkInTime.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
@@ -1365,12 +1378,6 @@ function PosTrackingContent() {
                 checkInTime: checkInTime,
                 expectedCheckOutTime: expectedCheckOutTime,
              };
-            for (let i = 0; i < gameItem.cartQuantity; i++) {
-                const activeSessionData: Omit<Child, 'id'> = {
-                    ...gameItem.sessionDetails,
-                };
-                await handleStartSession(activeSessionData);
-            }
         }
         
         // Update inventory for product items
@@ -1840,7 +1847,7 @@ function PosTrackingContent() {
                 onOpenChange={setCheckInDialogOpen}
                 selectedGame={selectedGame}
                 onConfirmPostpaid={handleStartSession}
-                onConfirmPrepaid={handleAddToCart}
+                onConfirmPrepaid={handleConfirmPrepaid}
                 policies={policies}
             />
             <CheckOutDialog 
