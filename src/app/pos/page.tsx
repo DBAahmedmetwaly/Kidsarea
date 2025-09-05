@@ -1165,7 +1165,6 @@ function PosTrackingContent() {
         packageName: child.packageName,
     };
     
-    // Use the existing child.id to ensure we are updating/replacing the correct record
     const completedSessionWithId: CompletedSession = {
       ...completedSession,
       id: child.id,
@@ -1264,7 +1263,7 @@ function PosTrackingContent() {
       setCart(prevCart => {
           const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
           if (existingItem) {
-               if (item.type === 'product' && 'quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
+               if ('type' in item && item.type === 'product' && 'quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
                     toast({ title: "الكمية غير كافية", variant: "destructive" });
                     return prevCart;
                 }
@@ -1274,7 +1273,7 @@ function PosTrackingContent() {
                         : cartItem
                 );
           } else {
-               if (item.type === 'product' && 'quantity' in item && item.quantity <= 0) {
+               if ('type' in item && item.type === 'product' && 'quantity' in item && item.quantity <= 0) {
                    toast({ title: "نفدت الكمية", variant: "destructive" });
                    return prevCart;
                }
@@ -1291,7 +1290,7 @@ function PosTrackingContent() {
       setCart(prev => prev.map(item => {
           if (item.id === itemId) {
               if (newQuantity <= 0) return null;
-               if (item.type === 'product' && 'quantity' in item && newQuantity > item.quantity) {
+               if ('type' in item && item.type === 'product' && 'quantity' in item && newQuantity > item.quantity) {
                   toast({ title: "الكمية غير كافية", description: `الكمية المتاحة هي ${item.quantity} فقط.`, variant: 'destructive' });
                   return { ...item, cartQuantity: item.quantity };
               }
@@ -1316,9 +1315,9 @@ function PosTrackingContent() {
     }
     
     // Separate items by type
-    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => item.type === 'product');
-    const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => item.type === 'prepaid-game');
-    const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => item.type === 'extend-session');
+    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => 'type' in item && item.type === 'product');
+    const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => 'type' in item && item.type === 'prepaid-game');
+    const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => 'type' in item && item.type === 'extend-session');
     
     const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
     const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
@@ -1425,9 +1424,9 @@ function PosTrackingContent() {
             cashierName: currentUser.name,
             items: cart.map(item => {
                  let name = '';
-                 if (item.type === 'product') name = item.productName;
-                 if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`;
-                 if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`;
+                 if ('type' in item && item.type === 'product') name = item.productName;
+                 if ('type' in item && item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`;
+                 if ('type' in item && item.type === 'extend-session') name = `تمديد: ${item.gameName}`;
                  return { name, quantity: item.cartQuantity, price: item.price };
             }),
             totalAmount: cartTotal,
@@ -1725,7 +1724,7 @@ function PosTrackingContent() {
                                 {searchedActiveChildren.length > 0 ? (
                                 searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
-                                    <TableCell className="font-medium text-right">{session.children.map(c => c.name).join(', ')}</TableCell>
+                                    <TableCell className="font-medium text-right">{session.children.map(c=>c.name).join(', ')}</TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
                                     <TableCell className="text-right">{session.game}</TableCell>
                                     <TableCell className="text-center">
@@ -1904,14 +1903,14 @@ function PosTrackingContent() {
                                 <div key={item.id} className="flex items-center gap-2 p-2 border-b">
                                     <div className="flex-grow">
                                         <p className="text-sm font-medium">
-                                            {item.type === 'prepaid-game' ? `لعبة: ${item.sessionDetails.game}` : item.type === 'extend-session' ? `تمديد: ${item.gameName}` : item.productName}
+                                            {'type' in item && item.type === 'prepaid-game' ? `لعبة: ${item.sessionDetails.game}` : 'type' in item && item.type === 'extend-session' ? `تمديد: ${item.gameName}` : 'productName' in item ? item.productName : 'פריט לא ידוע'}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                           {item.type === 'prepaid-game' 
+                                           {'type' in item && item.type === 'prepaid-game' 
                                                 ? `${item.sessionDetails.children.map(c => c.name).join(', ')} - ${item.price.toFixed(2)} ج.م`
-                                                : item.type === 'extend-session' 
+                                                : 'type' in item && item.type === 'extend-session' 
                                                     ? `${item.childName} - ${item.price.toFixed(2)} ج.م`
-                                                    : `${item.price.toFixed(2)} ج.م`
+                                                    : 'price' in item ? `${item.price.toFixed(2)} ج.م` : ''
                                             }
                                         </p>
                                     </div>
@@ -1956,6 +1955,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
