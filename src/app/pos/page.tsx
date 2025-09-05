@@ -1180,6 +1180,8 @@ function PosTrackingContent() {
     const gameItems = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & { cartQuantity: number })[];
     const extendItems = cart.filter(item => item.type === 'extend-session') as (ExtendSessionCartItem & { cartQuantity: number })[];
     
+    let sessionInfoForReceipt: ProductReceiptProps['sessionInfo'] | undefined;
+    
     const saleRecord: ProductSale = {
         id: saleId,
         receiptNumber: receiptNumber,
@@ -1227,25 +1229,15 @@ function PosTrackingContent() {
     try {
         await set(saleRecordRef, saleRecord);
         
-        const receiptProps: ProductReceiptProps = {
-            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
-            settings: receiptSettings,
-            appName: policies?.appName || 'FunTrack',
-            branchName: currentUser.branch,
-            cashierName: currentUser.name,
-            items: saleRecord.items.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
-            totalAmount: cartTotal,
-        }
-        printReceipt(<ProductReceipt {...receiptProps} />);
-        
-        // Update inventory for product items
-        for (const item of productItems) {
-            const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
-            await runTransaction(inventoryItemRef, (currentQuantity) => (currentQuantity || 0) - item.cartQuantity);
-        }
-
         // Start active sessions for new game items
         for (const gameItem of gameItems) {
+             const checkInTime = new Date();
+             const expectedCheckOutTime = new Date(checkInTime.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
+             sessionInfoForReceipt = {
+                children: gameItem.sessionDetails.children,
+                checkInTime: checkInTime,
+                expectedCheckOutTime: expectedCheckOutTime,
+             };
             for (let i = 0; i < gameItem.cartQuantity; i++) {
                 const completedSessionRef = push(ref(db, 'sessions/completed'));
                 const completedSessionId = completedSessionRef.key!;
@@ -1271,6 +1263,24 @@ function PosTrackingContent() {
                 };
                 await handleStartSession(activeSessionData);
             }
+        }
+        
+        const receiptProps: ProductReceiptProps = {
+            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
+            settings: receiptSettings,
+            appName: policies?.appName || 'FunTrack',
+            branchName: currentUser.branch,
+            cashierName: currentUser.name,
+            items: saleRecord.items.map(item => ({ name: item.productName, quantity: item.cartQuantity, price: item.price })),
+            totalAmount: cartTotal,
+            sessionInfo: sessionInfoForReceipt,
+        }
+        printReceipt(<ProductReceipt {...receiptProps} />);
+        
+        // Update inventory for product items
+        for (const item of productItems) {
+            const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
+            await runTransaction(inventoryItemRef, (currentQuantity) => (currentQuantity || 0) - item.cartQuantity);
         }
         
         // Extend active sessions for extend items
@@ -1804,6 +1814,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 

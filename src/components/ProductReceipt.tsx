@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import type { ReceiptSettings } from '@/lib/types';
+import type { PosReceiptProps, ReceiptSettings } from '@/lib/types';
 
 interface ReceiptItem {
     name: string;
@@ -18,6 +18,11 @@ export interface ProductReceiptProps {
   items: ReceiptItem[];
   totalAmount: number;
   cashierName: string;
+  sessionInfo?: {
+    children: PosReceiptProps['children'];
+    checkInTime: Date;
+    expectedCheckOutTime: Date;
+  }
 }
 
 export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptProps>(({
@@ -28,6 +33,7 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
   items,
   totalAmount,
   cashierName,
+  sessionInfo
 }, ref) => {
   
   const show = (key: keyof ReceiptSettings) => !settings || settings[key];
@@ -40,6 +46,15 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
         <p className="text-xs">{branchName}</p>
         <p className="text-xs font-semibold">فاتورة مشتريات</p>
       </div>
+      
+      {sessionInfo && (
+        <div className="space-y-0.5 border-t border-b border-dashed border-gray-400 py-1 my-1 text-xs">
+           <div className="grid grid-cols-2"><span>الأطفال:</span> <span className='text-left font-bold'>{sessionInfo.children.map(c => c.name).join(', ')}</span></div>
+           <div className="grid grid-cols-2"><span>وقت الدخول:</span> <span className='text-left font-mono'>{sessionInfo.checkInTime.toLocaleTimeString('ar-EG')}</span></div>
+           <div className="grid grid-cols-2"><span>الخروج المتوقع:</span> <span className='text-left font-mono'>{sessionInfo.expectedCheckOutTime.toLocaleTimeString('ar-EG')}</span></div>
+        </div>
+      )}
+
 
       <div className="space-y-0.5 border-t border-b border-dashed border-gray-400 py-1 my-1">
         <table className="w-full text-xs">

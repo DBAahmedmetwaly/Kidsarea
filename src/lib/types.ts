@@ -1,6 +1,7 @@
 
 
 
+
 export interface CustomerChild {
     id: string; // Unique identifier for the child
     name: string;
@@ -240,6 +241,21 @@ export interface PosReceiptProps {
   packageName?: string;
   packageDuration?: number;
   overtimeCost?: number;
+}
+
+export interface ProductReceiptProps {
+  receiptId?: string;
+  settings: ReceiptSettings | null;
+  appName: string;
+  branchName: string;
+  items: { name: string; quantity: number; price: number }[];
+  totalAmount: number;
+  cashierName: string;
+  sessionInfo?: {
+    children: CustomerChild[];
+    checkInTime: Date;
+    expectedCheckOutTime: Date;
+  }
 }
 
 
