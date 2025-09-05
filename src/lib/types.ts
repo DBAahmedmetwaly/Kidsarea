@@ -306,8 +306,8 @@ export interface Product {
 
 // Represents an item in a specific branch's inventory
 export interface InventoryItem {
-    type: 'product'; // To distinguish from game items in cart
     id: string; // The ID of this specific inventory entry
+    type: 'product'; // To distinguish from game items in cart
     productId: string;
     productName: string;
     categoryId: string;
