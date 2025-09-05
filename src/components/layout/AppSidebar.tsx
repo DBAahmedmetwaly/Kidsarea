@@ -82,6 +82,7 @@ const managementItems = [
   { href: '/games', label: 'الألعاب', icon: Gamepad2 },
   { href: '/game-categories', label: 'تصنيفات الألعاب', icon: Layers },
   { href: '/products', label: 'كتالوج المنتجات', icon: ShoppingCart },
+  { href: '/product-categories', label: 'فئات المنتجات', icon: ShoppingBag },
   { href: '/inventory', label: 'المخزون', icon: Archive },
   { href: '/safes', label: 'الخزائن', icon: Landmark },
   { href: '/subscriptions', label: 'الاشتراكات طويلة الأمد', icon: Star },

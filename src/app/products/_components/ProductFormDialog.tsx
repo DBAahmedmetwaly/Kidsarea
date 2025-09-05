@@ -23,6 +23,7 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { ref, push, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function ProductFormDialog({ 
     open, 
@@ -43,8 +44,6 @@ export default function ProductFormDialog({
     const [name, setName] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [openCategoryCombobox, setOpenCategoryCombobox] = useState(false);
-    const [isAddCategoryOpen, setAddCategoryOpen] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
 
     useEffect(() => {
         if (open) {
@@ -62,23 +61,6 @@ export default function ProductFormDialog({
         setCategoryId(id);
         setOpenCategoryCombobox(false);
     }
-    
-    const handleAddCategory = async () => {
-        if (!newCategoryName) return;
-        try {
-            const categoriesRef = ref(db, 'productCategories');
-            const newCategoryRef = push(categoriesRef);
-            await set(newCategoryRef, { name: newCategoryName });
-            toast({ title: 'تمت إضافة الفئة بنجاح' });
-            if(newCategoryRef.key) {
-                setCategoryId(newCategoryRef.key);
-            }
-            setNewCategoryName('');
-            setAddCategoryOpen(false);
-        } catch (e) {
-            toast({ title: 'خطأ', description: 'فشلت إضافة الفئة.', variant: 'destructive' });
-        }
-    };
 
     const handleSubmit = () => {
         if (!name || !categoryId) {
@@ -103,7 +85,6 @@ export default function ProductFormDialog({
     const selectedCategoryName = productCategories.find(c => c.id === categoryId)?.name;
 
     return (
-        <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
@@ -138,9 +119,11 @@ export default function ProductFormDialog({
                                         </CommandGroup>
                                         <CommandSeparator />
                                         <CommandGroup>
-                                            <CommandItem onSelect={() => { setOpenCategoryCombobox(false); setAddCategoryOpen(true); }}>
-                                                <PlusCircle className="mr-2 h-4 w-4" />
-                                                إضافة فئة جديدة
+                                            <CommandItem asChild>
+                                                <Link href="/product-categories" className="flex items-center w-full">
+                                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                                    إدارة الفئات
+                                                </Link>
                                             </CommandItem>
                                         </CommandGroup>
                                     </CommandList>
@@ -155,22 +138,5 @@ export default function ProductFormDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-        
-        <Dialog open={isAddCategoryOpen} onOpenChange={setAddCategoryOpen}>
-             <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>إضافة فئة منتجات جديدة</DialogTitle>
-                </DialogHeader>
-                <div className="py-4">
-                    <Label htmlFor="new-category-name">اسم الفئة</Label>
-                    <Input id="new-category-name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button variant="outline">إلغاء</Button></DialogClose>
-                    <Button onClick={handleAddCategory}>إضافة</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-        </>
     );
 }
