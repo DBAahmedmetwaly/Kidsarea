@@ -133,12 +133,11 @@ function DataManagementContent() {
     setLoadingDelete(true);
     try {
       // This will delete EVERYTHING except for:
-      // employees, policies, branches, roles, safes, games, gameCategories, products, productCategories
+      // employees, policies, branches, roles, safes, games, gameCategories, products, productCategories, inventory
       const dataPathsToDelete = [
         'customers',
         'expenses',
         'expenseTypes',
-        'inventory',
         'openShifts',
         'payrollTransactions',
         'productSales',
@@ -153,7 +152,7 @@ function DataManagementContent() {
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف جميع بيانات المعاملات. تم الاحتفاظ بالموظفين، الفروع، الخزائن، الألعاب، المنتجات، الصلاحيات، والسياسات.',
+        description: 'تم حذف جميع بيانات المعاملات. تم الاحتفاظ بالبيانات الأساسية (الموظفين، الفروع، المخزون، إلخ).',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -258,7 +257,7 @@ function DataManagementContent() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>إعادة ضبط المصنع (حذف بيانات المعاملات)</AlertTitle>
                     <AlertDescription>
-                       سيؤدي هذا إلى حذف جميع بيانات المعاملات (مثل العملاء، الجلسات، المبيعات، المصروفات، إلخ) مع الاحتفاظ بالبيانات الأساسية مثل (الموظفين، الفروع، الألعاب، المنتجات، السياسات، والصلاحيات).
+                       سيؤدي هذا إلى حذف جميع بيانات المعاملات (مثل العملاء، الجلسات، المبيعات، المصروفات، إلخ) مع الاحتفاظ بالبيانات الأساسية مثل (الموظفين، الفروع، المخزون، الألعاب، المنتجات، السياسات، والصلاحيات).
                     </AlertDescription>
                 </Alert>
               <AlertDialog>
