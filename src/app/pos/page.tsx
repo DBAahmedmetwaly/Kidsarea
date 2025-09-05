@@ -1425,9 +1425,9 @@ function PosTrackingContent() {
         return;
     }
     
-    const productItemsInCart = cart.filter(item => item.type === 'product') as (InventoryItem & { cartQuantity: number })[];
-    const gameItems = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & { cartQuantity: number })[];
-    const extendItems = cart.filter(item => item.type === 'extend-session') as (ExtendSessionCartItem & { cartQuantity: number })[];
+    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => item.type === 'product');
+    const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => item.type === 'prepaid-game');
+    const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => item.type === 'extend-session');
     
     const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
     const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
@@ -1439,7 +1439,15 @@ function PosTrackingContent() {
         if (productItemsInCart.length > 0) {
             const saleRecordRef = push(ref(db, 'productSales'));
             const saleId = saleRecordRef.key!;
-            const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({ id: item.id, productId: item.productId, productName: item.productName, price: item.price, cartQuantity: item.cartQuantity, categoryId: item.categoryId, categoryName: item.categoryName }));
+            const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({
+                id: item.id,
+                productId: item.productId,
+                productName: item.productName,
+                categoryId: item.categoryId,
+                categoryName: item.categoryName,
+                price: item.price,
+                cartQuantity: item.cartQuantity,
+            }));
             const saleRecord: ProductSale = { id: saleId, receiptNumber, items: saleRecordItems, totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0), branchName: currentUser.branch, cashierUsername: user.username, cashierName: currentUser.name, createdAt: new Date().toISOString(), notes: cartNotes };
             await set(saleRecordRef, saleRecord);
         }
