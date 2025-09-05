@@ -242,8 +242,10 @@ function CheckOutDialog({
 
 
     if (isPackageGame) {
-        // For package games, the base price is already paid. We only calculate overtime.
         let packageBasePrice = child.packagePrice || 0;
+        if(policies?.packagePricingModel === 'per_child') {
+            packageBasePrice = packageBasePrice * numberOfChildren;
+        }
         
         if (policies?.enablePackageOvertime && child.packageDuration) {
             const packageDurationMs = child.packageDuration * 60 * 1000;
@@ -496,12 +498,14 @@ function CheckInDialog({
     selectedGame,
     onConfirmPostpaid, // For postpaid games
     onConfirmPrepaid,  // For prepaid games
+    policies,
 } : {
     open: boolean,
     onOpenChange: (open: boolean) => void,
     selectedGame: Game | null,
     onConfirmPostpaid: (childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => void,
     onConfirmPrepaid: (cartItem: PrepaidGameCartItem) => void,
+    policies: Policies | null,
 }) {
     const { customers } = useCustomers();
     const { toast } = useToast();
@@ -554,11 +558,16 @@ function CheckInDialog({
             sessionDetails.packageDuration = selectedPackage.duration;
             sessionDetails.packagePrice = selectedPackage.price;
             
+            let finalPrice = selectedPackage.price;
+            if (policies?.packagePricingModel === 'per_child') {
+                finalPrice = selectedPackage.price * selectedChildren.length;
+            }
+
             const cartItem: PrepaidGameCartItem = {
                 type: 'prepaid-game',
                 id: `prepaid-${selectedGame.id}-${selectedCustomer.id}-${selectedChildren.map(c=>c.id).join('-')}-${selectedPackage.label}`,
                 sessionDetails: sessionDetails,
-                price: selectedPackage.price,
+                price: finalPrice,
             };
             onConfirmPrepaid(cartItem);
 
@@ -1518,6 +1527,7 @@ function PosTrackingContent() {
                 selectedGame={selectedGame}
                 onConfirmPostpaid={handleStartSession}
                 onConfirmPrepaid={handleAddToCart}
+                policies={policies}
             />
             <CheckOutDialog 
                 open={isCheckoutDialogOpen}
@@ -1556,7 +1566,7 @@ function PosTrackingContent() {
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                            {item.type === 'prepaid-game' 
-                                                ? `${item.sessionDetails.children.map(c => c.name).join(', ')} - ${item.sessionDetails.packagePrice} ج.م`
+                                                ? `${item.sessionDetails.children.map(c => c.name).join(', ')} - ${item.price.toFixed(2)} ج.م`
                                                 : `${item.price.toFixed(2)} ج.م`
                                             }
                                         </p>
