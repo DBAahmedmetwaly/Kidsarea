@@ -808,9 +808,9 @@ function PosTrackingContent() {
       return inventory.filter(item => item.branchId === branchDetails.id);
   }, [inventory, selectedBranchFilter, branches]);
 
-  const allProductCategories = useMemo(() => [{id: 'all', name: 'الكل'}, ...productCategories], [productCategories]);
-  const [selectedProductCategory, setSelectedProductCategory] = useState('all');
+  
   const [productSearch, setProductSearch] = useState('');
+  const [selectedProductCategory, setSelectedProductCategory] = useState(productCategories.length > 0 ? productCategories[0].id : '');
 
   const filteredProductsForDisplay = useMemo(() => {
     return branchInventory.filter(item => {
@@ -1203,7 +1203,7 @@ function PosTrackingContent() {
   }
 
   const selectedBranchName = selectedBranchFilter === 'all' ? 'كل الفروع' : selectedBranchFilter;
-  const [currentTab, setCurrentTab] = useState('products-tab');
+  const [mainTab, setMainTab] = useState('games-tab');
 
   const gameCategoriesForBranch = useMemo(() => {
       if (selectedBranchFilter === 'all') {
@@ -1215,30 +1215,37 @@ function PosTrackingContent() {
   }, [gameCategories, games, selectedBranchFilter]);
 
     useEffect(() => {
-        if(currentTab === 'products-tab') return;
+        if(mainTab === 'products-tab') return;
 
-        const isCurrentTabVisible = gameCategoriesForBranch.some(c => c.id === currentTab);
+        const isCurrentTabVisible = gameCategoriesForBranch.some(c => c.id === mainTab);
         if(!isCurrentTabVisible && gameCategoriesForBranch.length > 0) {
-            setCurrentTab(gameCategoriesForBranch[0].id);
+            setMainTab(gameCategoriesForBranch[0].id);
         } else if (gameCategoriesForBranch.length === 0) {
-            setCurrentTab('products-tab');
+            setMainTab('products-tab');
         }
-  }, [gameCategoriesForBranch, currentTab]);
+  }, [gameCategoriesForBranch, mainTab]);
 
 
   const gamesForSelectedCategory = useMemo(() => {
-    if (currentTab === 'products-tab') return [];
+    if (mainTab === 'products-tab') return [];
     return games.filter(g => 
-        g.categoryId === currentTab && 
+        g.categoryId === mainTab && 
         g.status === 'Available' &&
         (selectedBranchFilter === 'all' || g.branch === selectedBranchFilter || g.branch === 'كل الفروع')
     );
-  }, [games, currentTab, selectedBranchFilter]);
+  }, [games, mainTab, selectedBranchFilter]);
 
 
   const categoryColor = useMemo(() => {
-      return gameCategories.find(c => c.id === currentTab)?.color || '#ffffff';
-  }, [gameCategories, currentTab])
+      return gameCategories.find(c => c.id === mainTab)?.color || '#ffffff';
+  }, [gameCategories, mainTab])
+
+  useEffect(() => {
+    if (productCategories.length > 0 && selectedProductCategory === '') {
+        setSelectedProductCategory(productCategories[0].id);
+    }
+  }, [productCategories, selectedProductCategory]);
+
 
   return (
     <div className="relative h-full grid lg:grid-cols-3 gap-4">
@@ -1322,7 +1329,7 @@ function PosTrackingContent() {
         
             <div className="flex-grow flex flex-col gap-4 z-10">
                 {/* Games Section */}
-                <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+                <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
                     <TabsList className="flex flex-wrap h-auto">
                     {gameCategoriesForBranch.map(category => (
                         <TabsTrigger 
@@ -1330,8 +1337,8 @@ function PosTrackingContent() {
                             value={category.id} 
                             className="transition-all"
                             style={{
-                                backgroundColor: currentTab === category.id ? category.color : '',
-                                color: currentTab === category.id ? 'white' : '',
+                                backgroundColor: mainTab === category.id ? category.color : '',
+                                color: mainTab === category.id ? 'white' : '',
                                 borderColor: category.color
                             }}
                         >
@@ -1374,50 +1381,48 @@ function PosTrackingContent() {
 
                     {/* Products Content */}
                     <TabsContent value="products-tab">
-                        <Card className="min-h-[150px] mt-4">
-                            <CardHeader>
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    <div className="w-full md:w-1/3">
-                                        <Select value={selectedProductCategory} onValueChange={setSelectedProductCategory}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="اختر فئة المنتج" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {allProductCategories.map(cat => (
-                                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                     <div className="w-full md:w-1/3">
-                                        <Input 
-                                            placeholder="ابحث عن منتج بالاسم..."
-                                            value={productSearch}
-                                            onChange={(e) => setProductSearch(e.target.value)}
-                                        />
-                                     </div>
+                         <Tabs defaultValue={selectedProductCategory} onValueChange={setSelectedProductCategory} className="w-full mt-4">
+                            <div className='flex items-center gap-4'>
+                                <TabsList className="flex flex-wrap h-auto">
+                                    {productCategories.map(cat => (
+                                        <TabsTrigger key={cat.id} value={cat.id}>{cat.name}</TabsTrigger>
+                                    ))}
+                                </TabsList>
+                                <div className="flex-grow">
+                                     <Input 
+                                        placeholder="ابحث عن منتج بالاسم..."
+                                        value={productSearch}
+                                        onChange={(e) => setProductSearch(e.target.value)}
+                                    />
                                 </div>
-                            </CardHeader>
-                            <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 pt-6">
-                                {filteredProductsForDisplay.map(item => (
-                                    <button 
-                                        key={item.id} 
-                                        onClick={() => handleAddToCart(item)}
-                                        disabled={!hasActiveShift || item.quantity <= 0}
-                                        className="aspect-square border rounded-lg flex flex-col items-center justify-center p-2 gap-1 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none relative"
-                                    >
-                                        {item.quantity <= 0 && <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center text-white font-bold">نفدت</div>}
-                                        <p className="font-semibold text-xs text-center">{item.productName}</p>
-                                        <p className="text-xs text-primary font-bold">{`ج.م ${item.price.toFixed(2)}`}</p>
-                                    </button>
-                                ))}
-                                {filteredProductsForDisplay.length === 0 && (
-                                    <div className="col-span-full text-center text-muted-foreground py-16">
-                                        لا توجد منتجات تطابق بحثك.
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                            </div>
+                            
+                            {productCategories.map(cat => (
+                                <TabsContent key={cat.id} value={cat.id}>
+                                     <Card className="min-h-[150px] mt-2">
+                                        <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 pt-6">
+                                            {filteredProductsForDisplay.filter(p => p.categoryId === cat.id).map(item => (
+                                                <button 
+                                                    key={item.id} 
+                                                    onClick={() => handleAddToCart(item)}
+                                                    disabled={!hasActiveShift || item.quantity <= 0}
+                                                    className="aspect-square border rounded-lg flex flex-col items-center justify-center p-2 gap-1 text-center hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none relative"
+                                                >
+                                                    {item.quantity <= 0 && <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center text-white font-bold">نفدت</div>}
+                                                    <p className="font-semibold text-xs text-center">{item.productName}</p>
+                                                    <p className="text-xs text-primary font-bold">{`ج.م ${item.price.toFixed(2)}`}</p>
+                                                </button>
+                                            ))}
+                                            {filteredProductsForDisplay.filter(p => p.categoryId === cat.id).length === 0 && (
+                                                <div className="col-span-full text-center text-muted-foreground py-16">
+                                                    لا توجد منتجات في هذه الفئة.
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+                            ))}
+                         </Tabs>
                     </TabsContent>
                 </Tabs>
 
