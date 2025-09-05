@@ -684,23 +684,22 @@ function CheckInDialog({
                         {selectedGame?.paymentModel === 'prepaid' && (
                              <div className="space-y-2">
                                 <Label>اختر باقة الوقت</Label>
-                                <Select onValueChange={(value) => {
-                                    const pkg = selectedGame?.fixedTimePackages?.find(p => p.label === value);
-                                    if(pkg) {
-                                      setSelectedPackage(pkg);
-                                    }
-                                }}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="اختر باقة..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {selectedGame?.fixedTimePackages?.map(pkg => (
-                                            <SelectItem key={pkg.label} value={pkg.label}>
-                                                {pkg.label} ({pkg.price} ج.م / {pkg.duration} دقيقة)
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {selectedGame?.fixedTimePackages?.map(pkg => (
+                                        <button
+                                            key={pkg.label}
+                                            onClick={() => setSelectedPackage(pkg)}
+                                            className={cn(
+                                                "border p-2 rounded-md text-center hover:bg-muted transition-colors",
+                                                selectedPackage?.label === pkg.label && "bg-primary text-primary-foreground hover:bg-primary/90"
+                                            )}
+                                        >
+                                            <p className="font-semibold">{pkg.label}</p>
+                                            <p className="text-sm">{pkg.duration} دقيقة</p>
+                                            <p className="text-xs font-bold">{pkg.price} ج.م</p>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1078,10 +1077,6 @@ function PosTrackingContent() {
     const productItems = cart.filter(item => item.type !== 'prepaid-game') as (InventoryItem & { cartQuantity: number })[];
     const gameItems = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & { cartQuantity: number })[];
     
-    const productTotal = productItems.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
-    const gameTotal = gameItems.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
-
-
     const saleRecord: ProductSale = {
         id: saleId,
         receiptNumber: receiptNumber,
@@ -1663,4 +1658,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
