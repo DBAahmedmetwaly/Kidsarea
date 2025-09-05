@@ -204,7 +204,7 @@ function SessionsContent() {
 
             return (
             <TableRow key={session.id}>
-                <TableCell className="font-medium text-right">
+                <TableCell className="font-medium text-right whitespace-nowrap">
                 {session.children?.map(c => c.name).join(', ') ?? 'N/A'}
                 </TableCell>
                 <TableCell className="text-right">{session.parentName}</TableCell>
@@ -223,7 +223,7 @@ function SessionsContent() {
                         <span>{`ج.م ${session.cost.toFixed(2)}`}</span>
                     </div>
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="text-center whitespace-nowrap">
                 {new Date(
                     session.checkOutTime
                 ).toLocaleString('ar-EG')}
