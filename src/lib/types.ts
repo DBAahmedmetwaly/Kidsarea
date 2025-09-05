@@ -282,7 +282,7 @@ export interface Product {
 
 // Represents an item in a specific branch's inventory
 export interface InventoryItem {
-    type?: 'product'; // To distinguish from game items in cart
+    type: 'product'; // To distinguish from game items in cart
     id: string; // The ID of this specific inventory entry
     productId: string;
     productName: string;
@@ -308,7 +308,7 @@ export interface ProductSale {
 // Represents a prepaid game session ready to be added to the cart
 export interface PrepaidGameCartItem {
     type: 'prepaid-game';
-    id: string; // Unique ID for the cart item
+    id: string; // Unique ID for the cart item, e.g., combining game, customer, child, and package
     sessionDetails: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>;
     price: number;
 }

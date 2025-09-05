@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps } from '@/lib/types';
@@ -524,7 +524,7 @@ function CheckInDialog({
             
             const cartItem: PrepaidGameCartItem = {
                 type: 'prepaid-game',
-                id: `prepaid-${Date.now()}-${Math.random()}`,
+                id: `prepaid-${selectedGame.id}-${selectedCustomer.id}-${selectedChildren.map(c=>c.id).join('-')}-${selectedPackage.label}`,
                 sessionDetails: sessionDetails,
                 price: selectedPackage.price,
             };
@@ -997,59 +997,58 @@ function PosTrackingContent() {
         return;
     }
     
-    // Process prepaid games in cart
     for (const item of cart) {
-        if (item.type === 'prepaid-game') {
-            const gameItem = item as PrepaidGameCartItem;
-            
-            // 1. Create a CompletedSession to log the revenue immediately
-            const completedSessionRef = push(ref(db, 'sessions/completed'));
-            const completedSessionId = completedSessionRef.key!;
-            const now = Date.now();
-            const receiptNumber = (await runTransaction(ref(db, `branches/${branch.id}/nextReceiptNumber`), (current) => (current || 0) + 1)).snapshot.val() || 0;
+      if (item.type === 'prepaid-game') {
+        const gameItem = item as PrepaidGameCartItem;
+        
+        for (let i = 0; i < gameItem.cartQuantity; i++) {
+          // 1. Create a CompletedSession to log the revenue immediately for each unit
+          const completedSessionRef = push(ref(db, 'sessions/completed'));
+          const completedSessionId = completedSessionRef.key!;
+          const now = Date.now();
+          const receiptNumber = (await runTransaction(ref(db, `branches/${branch.id}/nextReceiptNumber`), (current) => (current || 0) + 1)).snapshot.val() || 0;
 
-            const completedSessionData: CompletedSession = {
-                ...gameItem.sessionDetails,
-                id: completedSessionId,
-                cashierUsername: user.username,
-                checkInTime: now,
-                checkOutTime: now, // Logged at time of sale
-                durationMs: 0,
-                cost: gameItem.price,
-                costBeforeDiscount: gameItem.price,
-                receiptNumber: receiptNumber,
-            };
-            
-            const receiptDetails: PosReceiptProps = {
-                receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
-                settings: receiptSettings,
-                appName: policies?.appName || 'FunTrack',
-                branchName: gameItem.sessionDetails.branchName,
-                children: gameItem.sessionDetails.children,
-                parentName: gameItem.sessionDetails.parentName,
-                phoneNumbers: gameItem.sessionDetails.phoneNumbers,
-                gameName: gameItem.sessionDetails.game,
-                checkInTime: new Date(now),
-                checkOutTime: new Date(now),
-                duration: "0",
-                totalCost: gameItem.price,
-                packagePrice: gameItem.price,
-                packageDuration: gameItem.sessionDetails.packageDuration,
-                cashierName: currentUser.name,
-            };
+          const completedSessionData: CompletedSession = {
+            ...gameItem.sessionDetails,
+            id: completedSessionId,
+            cashierUsername: user.username,
+            checkInTime: now,
+            checkOutTime: now,
+            durationMs: 0,
+            cost: gameItem.price,
+            costBeforeDiscount: gameItem.price,
+            receiptNumber: receiptNumber,
+          };
+          
+          await set(completedSessionRef, completedSessionData);
 
-            printReceipt(<PosReceipt {...receiptDetails} />);
-            await set(completedSessionRef, completedSessionData);
+          const receiptDetails: PosReceiptProps = {
+            receiptId: `${branch.name.substring(0, 3).toUpperCase() || 'DEF'}-${receiptNumber}`,
+            settings: receiptSettings,
+            appName: policies?.appName || 'FunTrack',
+            branchName: gameItem.sessionDetails.branchName,
+            children: gameItem.sessionDetails.children,
+            parentName: gameItem.sessionDetails.parentName,
+            phoneNumbers: gameItem.sessionDetails.phoneNumbers,
+            gameName: gameItem.sessionDetails.game,
+            checkInTime: new Date(now),
+            checkOutTime: new Date(now),
+            duration: "0",
+            totalCost: gameItem.price,
+            packagePrice: gameItem.price,
+            packageDuration: gameItem.sessionDetails.packageDuration,
+            cashierName: currentUser.name,
+          };
+          printReceipt(<PosReceipt {...receiptDetails} />);
 
-
-            // 2. Start the actual active session
-            const activeSessionData: Omit<Child, 'id'> = {
-                ...gameItem.sessionDetails,
-                // We link the active session to the completed one for traceability
-                prepaidSessionId: completedSessionId 
-            };
-            await handleStartSession(activeSessionData);
+          // 2. Start the actual active session
+          const activeSessionData: Omit<Child, 'id'> = {
+            ...gameItem.sessionDetails,
+            prepaidSessionId: completedSessionId 
+          };
+          await handleStartSession(activeSessionData);
         }
+      }
     }
 
 
@@ -1524,15 +1523,18 @@ function PosTrackingContent() {
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                            {item.type === 'prepaid-game' 
-                                                ? `طفل: ${item.sessionDetails.children.map(c => c.name).join(', ')}`
-                                                : `الكمية: ${item.cartQuantity}`
+                                                ? `${item.sessionDetails.children.map(c => c.name).join(', ')} - ${item.sessionDetails.packagePrice} ج.م`
+                                                : `${item.price.toFixed(2)} ج.م`
                                             }
                                         </p>
                                     </div>
-                                     <div className="flex flex-col items-end">
-                                        <p className="text-sm font-semibold">{`ج.م ${item.price.toFixed(2)}`}</p>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveFromCart(item.id)}>
-                                            <Trash2 className="h-3 w-3 text-red-500" />
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => handleUpdateCartQuantity(item.id, item.cartQuantity + 1)}>
+                                            <PlusCircle className="h-3 w-3" />
+                                        </Button>
+                                        <span className="w-6 text-center font-mono text-sm">{item.cartQuantity}</span>
+                                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => handleUpdateCartQuantity(item.id, item.cartQuantity - 1)}>
+                                            <Minus className="h-3 w-3" />
                                         </Button>
                                     </div>
                                 </div>
