@@ -1081,13 +1081,9 @@ function PosTrackingContent() {
     if (isPackageGame) {
         const remainingTimeMs = (session.checkInTime + session.packageDuration * 60 * 1000) - Date.now();
         
-        if (remainingTimeMs > 0) { // Leaving early
-            if (canApplyDiscount) {
-                setEarlyCheckoutDiscountOpen(true);
-            } else {
-                // If no discount permission, checkout at zero cost.
-                setZeroCostCheckoutOpen(true);
-            }
+        // If they leave early and the cashier can apply a discount
+        if (remainingTimeMs > 5 * 60 * 1000 && canApplyDiscount) {
+            setEarlyCheckoutDiscountOpen(true);
             return;
         }
 
@@ -1096,6 +1092,7 @@ function PosTrackingContent() {
         const packageDurationMs = session.packageDuration * 60 * 1000;
         const chargeableOvertimeMs = Math.max(0, elapsedMs - packageDurationMs - gracePeriodMs);
 
+        // If there's no chargeable overtime, checkout is free.
         if (chargeableOvertimeMs <= 0) {
             setZeroCostCheckoutOpen(true);
             return;
@@ -1132,13 +1129,13 @@ function PosTrackingContent() {
     };
     
     handleCheckOut(childToCheckout, receiptDetails, originalPrice);
+    setEarlyCheckoutDiscountOpen(false);
   };
 
 
   const handleCheckOut = async (child: Child, receiptDetails?: PosReceiptProps, costBeforeDiscount?: number) => {
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
-    setEarlyCheckoutDiscountOpen(false);
 
     if (!child) return;
     
@@ -1157,7 +1154,8 @@ function PosTrackingContent() {
     const checkOutTime = receiptDetails?.checkOutTime.getTime() ?? Date.now();
     const durationMs = checkOutTime - child.checkInTime;
     const cost = receiptDetails?.totalCost ?? 0;
-    const finalCostBeforeDiscount = costBeforeDiscount ?? cost + (receiptDetails?.discount || 0);
+    
+    const finalCostBeforeDiscount = costBeforeDiscount ?? (cost + (receiptDetails?.discount || 0));
 
 
     const baseSession: Omit<CompletedSession, 'id' | 'subscriptionId'> = {
@@ -1318,7 +1316,7 @@ function PosTrackingContent() {
   }, 0), [cart]);
 
   const handleConfirmSale = async () => {
-    if (!user?.username || !currentUser) return;
+    if (!user?.username || !currentUser || cart.length === 0) return;
 
     const branch = branches.find(b => b.name === currentUser.branch);
     if (!branch) {
@@ -1326,49 +1324,41 @@ function PosTrackingContent() {
         return;
     }
     
-    // Filter out non-product items for the productSales record
+    // Separate items by type
     const productItemsInCart = cart.filter(item => item.type === 'product') as (InventoryItem & { cartQuantity: number })[];
-
-    if (productItemsInCart.length === 0) {
-        toast({ title: "لا توجد منتجات للبيع", description: "يجب إضافة منتجات فعلية لإتمام عملية البيع.", variant: 'destructive' });
-        return;
-    }
+    const gameItems = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & { cartQuantity: number })[];
+    const extendItems = cart.filter(item => item.type === 'extend-session') as (ExtendSessionCartItem & { cartQuantity: number })[];
     
-    const saleRecordRef = push(ref(db, 'productSales'));
-    const saleId = saleRecordRef.key!;
-
     const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
     const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
     const receiptNumber = (committed && snapshot.val()) ? snapshot.val() : 0;
 
-    const gameItems = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & { cartQuantity: number })[];
-    const extendItems = cart.filter(item => item.type === 'extend-session') as (ExtendSessionCartItem & { cartQuantity: number })[];
-    
     let sessionInfoForReceipt: ProductReceiptProps['sessionInfo'] | undefined;
     
-    const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({
-        id: item.id,
-        productId: item.productId,
-        productName: item.productName,
-        price: item.price,
-        cartQuantity: item.cartQuantity,
-        categoryId: item.categoryId,
-        categoryName: item.categoryName,
-    }));
-    
-    const saleRecord: ProductSale = {
-        id: saleId,
-        receiptNumber: receiptNumber,
-        items: saleRecordItems,
-        totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0),
-        branchName: currentUser.branch,
-        cashierUsername: user.username,
-        cashierName: currentUser.name,
-        createdAt: new Date().toISOString()
-    };
-    
     try {
-        if (saleRecord.items.length > 0) {
+        // Create product sale record if there are products
+        if (productItemsInCart.length > 0) {
+            const saleRecordRef = push(ref(db, 'productSales'));
+            const saleId = saleRecordRef.key!;
+            const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({
+                id: item.id,
+                productId: item.productId,
+                productName: item.productName,
+                price: item.price,
+                cartQuantity: item.cartQuantity,
+                categoryId: item.categoryId,
+                categoryName: item.categoryName,
+            }));
+            const saleRecord: ProductSale = {
+                id: saleId,
+                receiptNumber: receiptNumber,
+                items: saleRecordItems,
+                totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0),
+                branchName: currentUser.branch,
+                cashierUsername: user.username,
+                cashierName: currentUser.name,
+                createdAt: new Date().toISOString()
+            };
             await set(saleRecordRef, saleRecord);
         }
         
@@ -1408,24 +1398,6 @@ function PosTrackingContent() {
             }
         }
         
-        const receiptProps: ProductReceiptProps = {
-            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
-            settings: receiptSettings,
-            appName: policies?.appName || 'FunTrack',
-            branchName: currentUser.branch,
-            cashierName: currentUser.name,
-            items: cart.map(item => {
-                 let name = '';
-                 if (item.type === 'product') name = item.productName;
-                 if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`;
-                 if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`;
-                 return { name, quantity: item.cartQuantity, price: item.price };
-            }),
-            totalAmount: cartTotal,
-            sessionInfo: sessionInfoForReceipt,
-        }
-        printReceipt(<ProductReceipt {...receiptProps} />);
-        
         // Update inventory for product items
         for (const item of productItemsInCart) {
             const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
@@ -1444,12 +1416,33 @@ function PosTrackingContent() {
                     
                     const addedDurationMs = (extendItem.packageDuration * extendItem.cartQuantity) * 60 * 1000;
                     
-                    currentSession.packageDuration = (originalDurationMs - overtimeConsumedMs + addedDurationMs) / (60 * 1000);
+                    // Reset check-in time and calculate new total duration from now
+                    const remainingOriginalMs = Math.max(0, originalDurationMs - elapsedMsSinceCheckIn);
+                    currentSession.packageDuration = (remainingOriginalMs + addedDurationMs) / (60 * 1000);
                     currentSession.checkInTime = now;
                 }
                 return currentSession;
              });
         }
+        
+        // Print one combined receipt
+        const receiptProps: ProductReceiptProps = {
+            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
+            settings: receiptSettings,
+            appName: policies?.appName || 'FunTrack',
+            branchName: currentUser.branch,
+            cashierName: currentUser.name,
+            items: cart.map(item => {
+                 let name = '';
+                 if (item.type === 'product') name = item.productName;
+                 if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`;
+                 if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`;
+                 return { name, quantity: item.cartQuantity, price: item.price };
+            }),
+            totalAmount: cartTotal,
+            sessionInfo: sessionInfoForReceipt,
+        }
+        printReceipt(<ProductReceipt {...receiptProps} />);
         
         toast({ title: "تمت عملية البيع بنجاح", description: "تم تسجيل الفاتورة وتحديث البيانات." });
         setCart([]);
@@ -1460,6 +1453,7 @@ function PosTrackingContent() {
         toast({ title: "خطأ", description: "فشل تسجيل عملية البيع.", variant: "destructive"});
     }
   };
+
 
   const handleTimeEnd = (session: Child) => {
     const showToast = () => {
@@ -1972,5 +1966,6 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
