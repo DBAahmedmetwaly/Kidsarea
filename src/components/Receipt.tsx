@@ -108,7 +108,8 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
        </div>
        
        <div className="text-xs my-1 py-1 border-t border-dashed border-gray-400 space-y-1">
-        <div className="flex justify-between"><span>ولي الأمر: {parentName}</span><span>الطفل: {children.map(c => c.name).join(', ')}</span></div>
+        <div className="flex justify-between"><span>ولي الأمر: {parentName}</span><span>الهاتف: {(phoneNumbers || []).join('/')}</span></div>
+        <div className="flex justify-between"><span>الأطفال ({children.length}): {children.map(c => c.name).join(', ')}</span></div>
         <div>اللعبة: {gameName}</div>
          {packageName && <div>الباقة: {packageName}</div>}
         <div className="flex justify-between">
