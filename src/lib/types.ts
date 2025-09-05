@@ -1,4 +1,5 @@
 
+
 export interface CustomerChild {
     id: string; // Unique identifier for the child
     name: string;
@@ -297,6 +298,7 @@ export interface ProductCategory {
 // Represents a product in the global catalog
 export interface Product {
     id: string;
+    type: 'product';
     name: string;
     categoryId: string;
     categoryName: string;
