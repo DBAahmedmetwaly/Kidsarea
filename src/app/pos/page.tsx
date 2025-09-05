@@ -207,7 +207,7 @@ function CheckOutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   child: Child | null;
-  onConfirm: (child: Child, receiptDetails: PosReceiptProps, costBeforeDiscount: number) => void;
+  onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
   canApplyDiscount: boolean;
 }) {
   const { games, policies: allPolicies, employees, receiptSettings, subscriptions, branches } = useFirebase();
@@ -351,23 +351,7 @@ function CheckOutDialog({
     const finalCost = checkoutData.totalCost;
     const isFullySubscribed = child.children.every(c => activeSubscriptions.some(s => s.childName === c.name));
     
-    const branch = branches.find(b => b.name === child.branchName);
-    const branchId = branch?.id;
-
-    let receiptNumber = 0;
-    if (branchId) {
-        const counterRef = ref(db, `branches/${branchId}/nextReceiptNumber`);
-        const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => {
-            return (currentValue || 0) + 1;
-        });
-        if (committed) {
-            receiptNumber = snapshot.val();
-        }
-    }
-
-
     const receiptDetails: PosReceiptProps = {
-        receiptId: `${branch?.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
         settings: receiptSettings,
         appName: policies?.appName || 'FunTrack',
         branchName: child.branchName,
@@ -390,10 +374,7 @@ function CheckOutDialog({
         overtimeCost: checkoutData.overtimeCost,
     };
     
-    if (receiptSettings) {
-        printReceipt(<PosReceipt {...receiptDetails} />);
-    }
-    onConfirm(child, receiptDetails, checkoutData.costBeforeDiscount);
+    onConfirm(child, receiptDetails);
   }
 
   if (!child || !checkoutData) return null;
@@ -1117,14 +1098,14 @@ function PosTrackingContent() {
   
     const handleEarlyCheckoutConfirm = (discount: number) => {
         if (!childToCheckout) return;
-
-        const originalPrice = childToCheckout.packagePrice || 0;
-        const finalCost = Math.max(0, originalPrice - discount);
         
         const cashier = employees.find(e => e.username === user?.username);
         const cashierName = user?.username === 'admin' 
             ? 'Admin' 
             : cashier?.name || user?.username || 'N/A';
+        
+        const originalPrice = childToCheckout.packagePrice || 0;
+        const finalCost = Math.max(0, originalPrice - discount);
 
         const receiptDetails: PosReceiptProps = {
             settings: receiptSettings,
@@ -1147,71 +1128,78 @@ function PosTrackingContent() {
             overtimeCost: 0,
         };
         
-        handleCheckOut(childToCheckout, receiptDetails, originalPrice);
+        handleCheckOut(childToCheckout, receiptDetails);
         setEarlyCheckoutDiscountOpen(false);
   };
 
 
-  const handleCheckOut = async (child: Child, receiptDetails?: PosReceiptProps, costBeforeDiscount?: number) => {
+  const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
 
     if (!child) return;
-    
-    // Clear any running notification intervals for this child
+
     if (notificationIntervals.has(child.id)) {
         clearInterval(notificationIntervals.get(child.id));
         notificationIntervals.delete(child.id);
     }
     
-    let finalReceiptNumber = 0;
-    if(receiptDetails?.receiptId) {
-        finalReceiptNumber = Number(receiptDetails.receiptId.split('-')[1]) || 0;
-    } else {
+    // For postpaid, we generate a new receipt number
+    let finalReceiptNumber = receiptDetails.receiptId ? parseInt(receiptDetails.receiptId.split('-')[1], 10) : 0;
+    if (!child.prepaidSessionId) {
         const branch = branches.find(b => b.name === child.branchName);
         if (branch?.id) {
             const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
             const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
-            if (committed) {
-                finalReceiptNumber = snapshot.val();
-            }
+            if (committed) finalReceiptNumber = snapshot.val();
         }
     }
-
-
-    const checkOutTime = receiptDetails?.checkOutTime.getTime() ?? Date.now();
-    const durationMs = checkOutTime - child.checkInTime;
-    const cost = receiptDetails?.totalCost ?? 0;
     
-    const finalCostBeforeDiscount = costBeforeDiscount ?? (cost + (receiptDetails?.discount || 0));
+    const checkOutTime = new Date();
+    const durationMs = checkOutTime.getTime() - child.checkInTime;
 
-    const completedSession: CompletedSession = {
-        ...(child as Omit<Child, 'id'>),
+    const sessionToSave: CompletedSession = {
+        ...child,
         id: child.id,
-        checkOutTime: checkOutTime,
+        checkOutTime: checkOutTime.getTime(),
         durationMs: durationMs,
-        cost: cost,
-        costBeforeDiscount: finalCostBeforeDiscount,
-        durationCost: receiptDetails?.durationCost ?? 0,
-        entryFee: receiptDetails?.entryFee ?? 0,
-        discount: receiptDetails?.discount ?? 0,
+        cost: receiptDetails.totalCost,
+        costBeforeDiscount: (receiptDetails.totalCost) + (receiptDetails.discount || 0),
+        durationCost: receiptDetails.durationCost,
+        entryFee: receiptDetails.entryFee,
+        discount: receiptDetails.discount,
         receiptNumber: finalReceiptNumber,
-        packageName: child.packageName,
-        overtimeCost: receiptDetails?.overtimeCost ?? 0,
+        overtimeCost: receiptDetails.overtimeCost,
     };
+    
+    if (receiptSettings) {
+        printReceipt(<PosReceipt {...receiptDetails} receiptId={`${sessionToSave.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
+    }
 
     try {
-        await set(ref(db, `sessions/completed/${child.id}`), completedSession);
+        if (child.prepaidSessionId) {
+            // It's a prepaid session, update the existing record
+            const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
+            await update(completedSessionRef, {
+                checkOutTime: sessionToSave.checkOutTime,
+                durationMs: sessionToSave.durationMs,
+                cost: sessionToSave.cost,
+                discount: sessionToSave.discount,
+                costBeforeDiscount: sessionToSave.costBeforeDiscount,
+                overtimeCost: sessionToSave.overtimeCost,
+            });
+        } else {
+            // It's a postpaid session, create a new record
+            await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
+        }
         await set(ref(db, `sessions/active/${child.id}`), null);
-        
     } catch(err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
     }
-
   };
 
-  const handleStartSession = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => {
+  const handleStartSession = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>, prepaidSessionId?: string) => {
     const { children } = data;
     
     if (policies && policies.maxCapacity && (firebaseActiveChildren.length + children.length) > policies.maxCapacity) {
@@ -1223,7 +1211,6 @@ function PosTrackingContent() {
         return;
     }
 
-    // Check if any of the selected children are already in an active session
     const activeChildIds = firebaseActiveChildren.flatMap(ac => ac.children.map(c => c.id));
     const alreadyActiveChildren = children.filter(c => c.id && activeChildIds.includes(c.id));
 
@@ -1237,11 +1224,7 @@ function PosTrackingContent() {
     }
 
     if (!user || !user.username) {
-        toast({
-            title: 'خطأ',
-            description: 'لا يمكن تسجيل الدخول. لم يتم تحديد الكاشير الحالي.',
-            variant: 'destructive',
-        });
+        toast({ title: 'خطأ', description: 'لم يتم تحديد الكاشير الحالي.', variant: 'destructive' });
         return;
     }
     
@@ -1254,14 +1237,12 @@ function PosTrackingContent() {
       branchName: data.branchName === 'كل الفروع' ? currentUser!.branch : data.branchName,
       checkInTime: Date.now(),
       cashierUsername: user.username,
+      prepaidSessionId: prepaidSessionId,
     };
 
     try {
         await set(newSessionRef, newSession);
-        toast({
-        title: 'تم تسجيل الدخول بنجاح',
-        description: `تم تسجيل دخول الأطفال: ${children.map(c=>c.name).join(', ')}.`,
-        });
+        toast({ title: 'تم تسجيل الدخول بنجاح', description: `تم تسجيل دخول الأطفال: ${children.map(c=>c.name).join(', ')}.` });
     } catch(err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الدخول', variant: 'destructive'})
@@ -1313,7 +1294,6 @@ function PosTrackingContent() {
   };
   
     const handleConfirmPrepaid = (cartItem: PrepaidGameCartItem) => {
-        handleStartSession(cartItem.sessionDetails);
         handleAddToCart(cartItem);
     };
 
@@ -1349,7 +1329,6 @@ function PosTrackingContent() {
         return;
     }
     
-    // Separate items by type
     const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => 'type' in item && item.type === 'product');
     const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => 'type' in item && item.type === 'prepaid-game');
     const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => 'type' in item && item.type === 'extend-session');
@@ -1361,102 +1340,66 @@ function PosTrackingContent() {
     let sessionInfoForReceipt: ProductReceiptProps['sessionInfo'] | undefined;
     
     try {
-        // Create product sale record if there are products
         if (productItemsInCart.length > 0) {
             const saleRecordRef = push(ref(db, 'productSales'));
             const saleId = saleRecordRef.key!;
-            const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({
-                id: item.id,
-                productId: item.productId,
-                productName: item.productName,
-                price: item.price,
-                cartQuantity: item.cartQuantity,
-                categoryId: item.categoryId,
-                categoryName: item.categoryName,
-            }));
-            const saleRecord: ProductSale = {
-                id: saleId,
-                receiptNumber: receiptNumber,
-                items: saleRecordItems,
-                totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0),
-                branchName: currentUser.branch,
-                cashierUsername: user.username,
-                cashierName: currentUser.name,
-                createdAt: new Date().toISOString()
-            };
+            const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({ id: item.id, productId: item.productId, productName: item.productName, price: item.price, cartQuantity: item.cartQuantity, categoryId: item.categoryId, categoryName: item.categoryName }));
+            const saleRecord: ProductSale = { id: saleId, receiptNumber, items: saleRecordItems, totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0), branchName: currentUser.branch, cashierUsername: user.username, cashierName: currentUser.name, createdAt: new Date().toISOString() };
             await set(saleRecordRef, saleRecord);
         }
         
-        // We only create the receipt info here
         for (const gameItem of gameItems) {
-             const checkInTime = new Date();
-             const expectedCheckOutTime = new Date(checkInTime.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
-             sessionInfoForReceipt = {
-                children: gameItem.sessionDetails.children,
-                checkInTime: checkInTime,
-                expectedCheckOutTime: expectedCheckOutTime,
-             };
+            const completedSessionRef = push(ref(db, `sessions/completed`));
+            const completedSessionId = completedSessionRef.key!;
+
+            const completedSession: CompletedSession = {
+                ...gameItem.sessionDetails,
+                id: completedSessionId,
+                receiptNumber,
+                checkInTime: Date.now(),
+                checkOutTime: 0,
+                durationMs: 0,
+                cost: gameItem.price,
+                costBeforeDiscount: gameItem.price,
+                cashierUsername: user.username,
+            };
+            await set(completedSessionRef, completedSession);
+            await handleStartSession(gameItem.sessionDetails, completedSessionId);
+
+            const checkInTime = new Date();
+            const expectedCheckOutTime = new Date(checkInTime.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
+            sessionInfoForReceipt = { children: gameItem.sessionDetails.children, checkInTime, expectedCheckOutTime };
         }
         
-        // Update inventory for product items
         for (const item of productItemsInCart) {
             const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
             await runTransaction(inventoryItemRef, (currentQuantity) => (currentQuantity || 0) - item.cartQuantity);
         }
         
-        // Extend active sessions for extend items
         for (const extendItem of extendItems) {
              await runTransaction(ref(db, `sessions/active/${extendItem.activeSessionId}`), (currentSession: Child) => {
                 if (currentSession && currentSession.packageDuration) {
                     const now = Date.now();
                     const elapsedMsSinceCheckIn = now - currentSession.checkInTime;
                     const originalDurationMs = currentSession.packageDuration * 60 * 1000;
-                    
                     const addedDurationMs = (extendItem.packageDuration * extendItem.cartQuantity) * 60 * 1000;
-                    
-                    // Reset check-in time and calculate new total duration from now
                     const remainingOriginalMs = Math.max(0, originalDurationMs - elapsedMsSinceCheckIn);
                     currentSession.packageDuration = (remainingOriginalMs + addedDurationMs) / (60 * 1000);
                     currentSession.checkInTime = now;
                 }
                 return currentSession;
              });
-             // Add a record to completed sessions for financial tracking
+
              const extendRecordRef = push(ref(db, 'sessions/completed'));
              const originalSession = firebaseActiveChildren.find(s => s.id === extendItem.activeSessionId);
              if (originalSession) {
-                const extendRecordData: Partial<CompletedSession> = {
-                    ...originalSession,
-                    id: extendRecordRef.key!,
-                    checkOutTime: Date.now(),
-                    durationMs: 0,
-                    cost: extendItem.price * extendItem.cartQuantity,
-                    costBeforeDiscount: extendItem.price * extendItem.cartQuantity,
-                    receiptNumber: receiptNumber,
-                    packageName: `تمديد: ${extendItem.packageName}`,
-                };
+                const extendRecordData: Partial<CompletedSession> = { ...originalSession, id: extendRecordRef.key!, checkOutTime: Date.now(), durationMs: 0, cost: extendItem.price * extendItem.cartQuantity, costBeforeDiscount: extendItem.price * extendItem.cartQuantity, receiptNumber, packageName: `تمديد: ${extendItem.packageName}` };
                 delete extendRecordData.prepaidSessionId;
                 await set(extendRecordRef, extendRecordData);
              }
         }
         
-        // Print one combined receipt
-        const receiptProps: ProductReceiptProps = {
-            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,
-            settings: receiptSettings,
-            appName: policies?.appName || 'FunTrack',
-            branchName: currentUser.branch,
-            cashierName: currentUser.name,
-            items: cart.map(item => {
-                 let name = '';
-                 if ('type' in item && item.type === 'product') name = item.productName;
-                 if ('type' in item && item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`;
-                 if ('type' in item && item.type === 'extend-session') name = `تمديد: ${item.gameName}`;
-                 return { name, quantity: item.cartQuantity, price: item.price };
-            }),
-            totalAmount: cartTotal,
-            sessionInfo: sessionInfoForReceipt,
-        }
+        const receiptProps: ProductReceiptProps = { receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, settings: receiptSettings, appName: policies?.appName || 'FunTrack', branchName: currentUser.branch, cashierName: currentUser.name, items: cart.map(item => { let name = ''; if ('type' in item && item.type === 'product') name = item.productName; if ('type' in item && item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`; if ('type' in item && item.type === 'extend-session') name = `تمديد: ${item.gameName}`; return { name, quantity: item.cartQuantity, price: item.price }; }), totalAmount: cartTotal, sessionInfo: sessionInfoForReceipt };
         printReceipt(<ProductReceipt {...receiptProps} />);
         
         toast({ title: "تمت عملية البيع بنجاح", description: "تم تسجيل الفاتورة وتحديث البيانات." });
@@ -1897,7 +1840,7 @@ function PosTrackingContent() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!)}>تأكيد الخروج</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { totalCost: 0 } as PosReceiptProps)}>تأكيد الخروج</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -1982,4 +1925,5 @@ export default function PosTrackingPage() {
 }
 
     
+
 
