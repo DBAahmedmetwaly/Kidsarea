@@ -100,7 +100,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
             {show('showCashierName') && <div className="grid grid-cols-2"><span>الكاشير:</span> <span className='text-left'>{cashierName}</span></div>}
             {show('showParentName') && <div className="grid grid-cols-2"><span>ولي الأمر:</span> <span className='text-left'>{parentName}</span></div>}
             {show('showParentName') && <div className="grid grid-cols-2"><span>الهاتف:</span> <span className='text-left font-mono'>{(phoneNumbers || []).join('/')}</span></div>}
-            <div className="grid grid-cols-2"><span>الأطفال ({children.length}):</span> <span className='text-left'>{children.map(c => c.name).join(', ')}</span></div>
+            {show('showChildName') && <div className="grid grid-cols-2"><span>الأطفال ({children.length}):</span> <span className='text-left'>{children.map(c => c.name).join(', ')}</span></div>}
        </div>
 
        {/* Session Details */}
