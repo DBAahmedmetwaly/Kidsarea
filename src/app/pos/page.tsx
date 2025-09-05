@@ -293,7 +293,7 @@ function CheckOutDialog({
     }
 
     const entryFeePolicy = policies?.entryFeeApplication;
-    if (!isPackageGame && policies && policies.entryFee > 0 && (entryFeePolicy === 'all' || entryFeePolicy === 'hourly')) {
+    if (policies && policies.entryFee > 0 && ((entryFeePolicy === 'all') || (entryFeePolicy === 'hourly' && !isPackageGame) || (entryFeePolicy === 'package' && isPackageGame))) {
         entryFee = policies.entryFee * numberOfChildren;
         costBeforeDiscount += entryFee;
     }
@@ -587,13 +587,21 @@ function CheckInDialog({
                 return;
             }
             
-            sessionDetails.packageDuration = totalDuration;
-            sessionDetails.packagePrice = totalPrice;
-            sessionDetails.packageName = `جلسة مخصصة (${totalDuration} دقيقة)`;
-            
-            let finalPrice = totalPrice;
+            const totalPackagePrice = Object.values(selectedPackages).reduce((sum, {package: pkg, quantity}) => sum + (pkg.price * quantity), 0);
+            const totalPackageDuration = Object.values(selectedPackages).reduce((sum, {package: pkg, quantity}) => sum + (pkg.duration * quantity), 0);
+
+            sessionDetails.packageDuration = totalPackageDuration;
+            sessionDetails.packagePrice = totalPackagePrice;
+            sessionDetails.packageName = Object.values(selectedPackages).map(item => `${item.quantity}x ${item.package.label}`).join(', ');
+
+            let finalPrice = totalPackagePrice;
             if (policies?.packagePricingModel === 'per_child') {
-                finalPrice = totalPrice * selectedChildren.length;
+                finalPrice = totalPackagePrice * selectedChildren.length;
+            }
+            
+             // Apply entry fee to prepaid if applicable
+            if (policies && policies.entryFee > 0 && (policies.entryFeeApplication === 'all' || policies.entryFeeApplication === 'package')) {
+                finalPrice += policies.entryFee * selectedChildren.length;
             }
 
             const cartItem: PrepaidGameCartItem = {
@@ -1151,8 +1159,9 @@ function PosTrackingContent() {
     
     const finalCostBeforeDiscount = costBeforeDiscount ?? (cost + (receiptDetails?.discount || 0));
 
-    const completedSession: Omit<CompletedSession, 'id'> = {
-        ...child,
+    const completedSession: CompletedSession = {
+        ...(child as Omit<Child, 'id'>),
+        id: child.id,
         checkOutTime: checkOutTime,
         durationMs: durationMs,
         cost: cost,
@@ -1160,18 +1169,13 @@ function PosTrackingContent() {
         durationCost: receiptDetails?.durationCost ?? 0,
         entryFee: receiptDetails?.entryFee ?? 0,
         discount: receiptDetails?.discount ?? 0,
-        overtimeCost: receiptDetails?.overtimeCost ?? 0,
         receiptNumber: Number(receiptDetails?.receiptId?.split('-')[1]) || 0,
         packageName: child.packageName,
-    };
-    
-    const completedSessionWithId: CompletedSession = {
-      ...completedSession,
-      id: child.id,
+        overtimeCost: receiptDetails?.overtimeCost,
     };
 
     try {
-        await set(ref(db, `sessions/completed/${child.id}`), completedSessionWithId);
+        await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
         
     } catch(err) {
@@ -1362,27 +1366,8 @@ function PosTrackingContent() {
                 expectedCheckOutTime: expectedCheckOutTime,
              };
             for (let i = 0; i < gameItem.cartQuantity; i++) {
-                const completedSessionRef = push(ref(db, 'sessions/completed'));
-                const completedSessionId = completedSessionRef.key!;
-                const now = Date.now();
-
-                const completedSessionData: CompletedSession = {
-                    ...gameItem.sessionDetails,
-                    id: completedSessionId,
-                    cashierUsername: user.username,
-                    checkInTime: now,
-                    checkOutTime: now,
-                    durationMs: 0,
-                    cost: gameItem.price / gameItem.cartQuantity,
-                    costBeforeDiscount: gameItem.price / gameItem.cartQuantity,
-                    receiptNumber: receiptNumber,
-                    packageName: gameItem.sessionDetails.packageName,
-                };
-                await set(completedSessionRef, completedSessionData);
-
                 const activeSessionData: Omit<Child, 'id'> = {
                     ...gameItem.sessionDetails,
-                    prepaidSessionId: completedSessionId,
                 };
                 await handleStartSession(activeSessionData);
             }
@@ -1402,8 +1387,6 @@ function PosTrackingContent() {
                     const elapsedMsSinceCheckIn = now - currentSession.checkInTime;
                     const originalDurationMs = currentSession.packageDuration * 60 * 1000;
                     
-                    const overtimeConsumedMs = Math.max(0, elapsedMsSinceCheckIn - originalDurationMs);
-                    
                     const addedDurationMs = (extendItem.packageDuration * extendItem.cartQuantity) * 60 * 1000;
                     
                     // Reset check-in time and calculate new total duration from now
@@ -1413,6 +1396,23 @@ function PosTrackingContent() {
                 }
                 return currentSession;
              });
+             // Add a record to completed sessions for financial tracking
+             const extendRecordRef = push(ref(db, 'sessions/completed'));
+             const originalSession = firebaseActiveChildren.find(s => s.id === extendItem.activeSessionId);
+             if (originalSession) {
+                const extendRecordData: Partial<CompletedSession> = {
+                    ...originalSession,
+                    id: extendRecordRef.key!,
+                    checkOutTime: Date.now(),
+                    durationMs: 0,
+                    cost: extendItem.price * extendItem.cartQuantity,
+                    costBeforeDiscount: extendItem.price * extendItem.cartQuantity,
+                    receiptNumber: receiptNumber,
+                    packageName: `تمديد: ${extendItem.packageName}`,
+                };
+                delete extendRecordData.prepaidSessionId;
+                await set(extendRecordRef, extendRecordData);
+             }
         }
         
         // Print one combined receipt
@@ -1962,3 +1962,6 @@ export default function PosTrackingPage() {
 
 
 
+
+
+    
