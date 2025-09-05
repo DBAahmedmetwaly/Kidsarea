@@ -1325,9 +1325,9 @@ function PosTrackingContent() {
     }
     
     // Separate items by type
-    const productItemsInCart = cart.filter(item => item.type === 'product') as (InventoryItem & { cartQuantity: number })[];
-    const gameItems = cart.filter(item => item.type === 'prepaid-game') as (PrepaidGameCartItem & { cartQuantity: number })[];
-    const extendItems = cart.filter(item => item.type === 'extend-session') as (ExtendSessionCartItem & { cartQuantity: number })[];
+    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => item.type === 'product');
+    const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => item.type === 'prepaid-game');
+    const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => item.type === 'extend-session');
     
     const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
     const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
@@ -1802,37 +1802,36 @@ function PosTrackingContent() {
                                                 <TableHead className="text-right">الطفل</TableHead>
                                                 <TableHead className="text-right">ولي الأمر</TableHead>
                                                 <TableHead className="text-center">وقت الخروج</TableHead>
-                                                <TableHead className="text-center">قبل الخصم</TableHead>
-                                                <TableHead className="text-center">الخصم</TableHead>
-                                                <TableHead className="text-center">بعد الخصم</TableHead>
+                                                <TableHead className="text-center">التكلفة</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {todaysCompletedSessions.length > 0 ? (
-                                                todaysCompletedSessions.map((session) => {
-                                                    const costBeforeDiscount = session.costBeforeDiscount > 0
-                                                        ? session.costBeforeDiscount
-                                                        : session.cost + (session.discount || 0);
-
-                                                    return (
+                                                todaysCompletedSessions.map((session) => (
                                                     <TableRow key={session.id}>
                                                         <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
                                                         <TableCell className="text-right">{session.parentName}</TableCell>
                                                         <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
-                                                        <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
-                                                        <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
                                                         <TableCell className="font-bold text-center">
-                                                            {session.subscriptionId ? (
-                                                                <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
-                                                            ) : (session.packagePrice !== undefined && session.packagePrice > 0) || session.packageName ? (
-                                                               <span className="flex items-center justify-center gap-1 text-blue-600"><PackageCheck className="h-4 w-4"/> باقة</span>
-                                                            ) : `ج.م ${session.cost.toFixed(2)}`}
+                                                            <div className='flex items-center justify-center gap-2 whitespace-nowrap'>
+                                                                {session.discount ? (
+                                                                    <>
+                                                                        <span className="line-through text-muted-foreground">{`ج.م ${session.costBeforeDiscount.toFixed(2)}`}</span>
+                                                                        <span className='text-primary'>{`ج.م ${session.cost.toFixed(2)}`}</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <span>{`ج.م ${session.cost.toFixed(2)}`}</span>
+                                                                )}
+
+                                                                {session.subscriptionId && <Star className="h-4 w-4 text-yellow-500" />}
+                                                                {(session.packagePrice !== undefined || session.packageName) && <PackageCheck className="h-4 w-4 text-blue-500" />}
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
-                                                )})
+                                                ))
                                             ) : (
                                                 <TableRow>
-                                                    <TableCell colSpan={6} className="h-24 text-center">
+                                                    <TableCell colSpan={4} className="h-24 text-center">
                                                         لم تكتمل أي جلسات في ورديتك بعد.
                                                     </TableCell>
                                                 </TableRow>
@@ -1966,6 +1965,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 

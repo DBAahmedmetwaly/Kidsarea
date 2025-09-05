@@ -204,23 +204,30 @@ function SessionsContent() {
 
             return (
             <TableRow key={session.id}>
+                <TableCell className="font-medium text-right whitespace-nowrap">{session.receiptNumber ? `${session.branchName.substring(0,3).toUpperCase()}-${session.receiptNumber}` : 'N/A'}</TableCell>
                 <TableCell className="font-medium text-right whitespace-nowrap">
                 {session.children?.map(c => c.name).join(', ') ?? 'N/A'}
                 </TableCell>
-                <TableCell className="text-right">{session.parentName}</TableCell>
-                <TableCell className="text-center">{(session.phoneNumbers || []).join(', ')}</TableCell>
-                <TableCell className="text-right">{session.branchName}</TableCell>
-                <TableCell className="text-right">{session.game}</TableCell>
-                <TableCell className="text-center">
+                <TableCell className="text-right whitespace-nowrap">{session.parentName}</TableCell>
+                <TableCell className="text-center whitespace-nowrap">{(session.phoneNumbers || []).join(', ')}</TableCell>
+                <TableCell className="text-right whitespace-nowrap">{session.branchName}</TableCell>
+                <TableCell className="text-right whitespace-nowrap">{session.game}</TableCell>
+                <TableCell className="text-center whitespace-nowrap">
                 {formatDuration(session.durationMs)}
                 </TableCell>
-                <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
-                 <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
-                <TableCell className="font-bold text-center">
+                <TableCell className="font-bold text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-2">
+                        {session.discount ? (
+                            <>
+                                <span className="line-through text-muted-foreground">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</span>
+                                <span className='text-primary'>{`ج.م ${session.cost.toFixed(2)}`}</span>
+                            </>
+                        ) : (
+                            <span>{`ج.م ${session.cost.toFixed(2)}`}</span>
+                        )}
+
                         {session.subscriptionId && <Star className="h-4 w-4 text-yellow-500" />}
                         {(session.packagePrice !== undefined || session.packageName) && <PackageCheck className="h-4 w-4 text-blue-500" />}
-                        <span>{`ج.م ${session.cost.toFixed(2)}`}</span>
                     </div>
                 </TableCell>
                 <TableCell className="text-center whitespace-nowrap">
@@ -354,15 +361,14 @@ function SessionsContent() {
                  <Table>
                     <TableHeader>
                     <TableRow>
+                        <TableHead className="text-right">رقم الإيصال</TableHead>
                         <TableHead className="text-right">اسم الطفل</TableHead>
                         <TableHead className="text-right">ولي الأمر</TableHead>
                         <TableHead className="text-center">رقم الهاتف</TableHead>
                         <TableHead className="text-right">الفرع</TableHead>
                         <TableHead className="text-right">اللعبة</TableHead>
                         <TableHead className="text-center">مدة اللعب</TableHead>
-                        <TableHead className="text-center">قبل الخصم</TableHead>
-                        <TableHead className="text-center">الخصم</TableHead>
-                        <TableHead className="text-center">بعد الخصم</TableHead>
+                        <TableHead className="text-center">التكلفة</TableHead>
                         <TableHead className="text-center">وقت الخروج</TableHead>
                         <TableHead className="text-center">إجراء</TableHead>
                     </TableRow>
@@ -397,3 +403,4 @@ export default function SessionsPage() {
 }
 
     
+
