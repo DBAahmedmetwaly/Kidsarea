@@ -494,6 +494,8 @@ type SelectedPackageType = {
     label: string;
 };
 
+type SelectedPackagesMap = { [label: string]: { package: SelectedPackageType; quantity: number } };
+
 function CheckInDialog({
     open,
     onOpenChange,
@@ -514,7 +516,7 @@ function CheckInDialog({
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
-    const [selectedPackage, setSelectedPackage] = useState<SelectedPackageType | null>(null);
+    const [selectedPackages, setSelectedPackages] = useState<SelectedPackagesMap>({});
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
     
@@ -522,7 +524,7 @@ function CheckInDialog({
         if (!open) {
             setSelectedCustomer(null);
             setSelectedChildren([]);
-            setSelectedPackage(null);
+            setSelectedPackages({});
             setOpenCombobox(false);
         }
     }, [open]);
@@ -538,6 +540,39 @@ function CheckInDialog({
             checked ? [...prev, child] : prev.filter(c => c.id !== child.id)
         );
     }
+    
+    const handlePackageQuantityChange = (pkg: SelectedPackageType, change: 1 | -1) => {
+        setSelectedPackages(prev => {
+            const newPackages = { ...prev };
+            const existing = newPackages[pkg.label];
+
+            if (existing) {
+                if (change === 1) {
+                    existing.quantity += 1;
+                } else {
+                    existing.quantity -= 1;
+                    if (existing.quantity <= 0) {
+                        delete newPackages[pkg.label];
+                    }
+                }
+            } else if (change === 1) {
+                newPackages[pkg.label] = { package: pkg, quantity: 1 };
+            }
+            return newPackages;
+        });
+    };
+    
+    const { totalDuration, totalPrice } = useMemo(() => {
+        let duration = 0;
+        let price = 0;
+        for (const key in selectedPackages) {
+            const item = selectedPackages[key];
+            duration += item.package.duration * item.quantity;
+            price += item.package.price * item.quantity;
+        }
+        return { totalDuration: duration, totalPrice: price };
+    }, [selectedPackages]);
+
 
     const handleConfirm = () => {
         if (!selectedCustomer || selectedChildren.length === 0 || !selectedGame) return;
@@ -552,23 +587,23 @@ function CheckInDialog({
         };
 
         if (isPrepaid) {
-            if (!selectedPackage) {
-                toast({ title: "يرجى اختيار باقة وقت", variant: "destructive" });
+            if (Object.keys(selectedPackages).length === 0) {
+                toast({ title: "يرجى اختيار باقة وقت واحدة على الأقل", variant: "destructive" });
                 return;
             }
             
-            sessionDetails.packageDuration = selectedPackage.duration;
-            sessionDetails.packagePrice = selectedPackage.price;
-            sessionDetails.packageName = selectedPackage.label;
+            sessionDetails.packageDuration = totalDuration;
+            sessionDetails.packagePrice = totalPrice;
+            sessionDetails.packageName = `جلسة مخصصة (${totalDuration} دقيقة)`;
             
-            let finalPrice = selectedPackage.price;
+            let finalPrice = totalPrice;
             if (policies?.packagePricingModel === 'per_child') {
-                finalPrice = selectedPackage.price * selectedChildren.length;
+                finalPrice = totalPrice * selectedChildren.length;
             }
 
             const cartItem: PrepaidGameCartItem = {
                 type: 'prepaid-game',
-                id: `prepaid-${selectedGame.id}-${selectedCustomer.id}-${selectedChildren.map(c=>c.id).join('-')}-${selectedPackage.label}`,
+                id: `prepaid-${selectedGame.id}-${selectedCustomer.id}-${Date.now()}`,
                 sessionDetails: sessionDetails,
                 price: finalPrice,
             };
@@ -684,24 +719,47 @@ function CheckInDialog({
                             </div>
                         )}
                         {selectedGame?.paymentModel === 'prepaid' && (
-                             <div className="space-y-2">
-                                <Label>اختر باقة الوقت</Label>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {selectedGame?.fixedTimePackages?.map(pkg => (
-                                        <button
-                                            key={pkg.label}
-                                            onClick={() => setSelectedPackage(pkg)}
-                                            className={cn(
-                                                "border p-2 rounded-md text-center hover:bg-muted transition-colors",
-                                                selectedPackage?.label === pkg.label && "bg-primary text-primary-foreground hover:bg-primary/90"
-                                            )}
-                                        >
-                                            <p className="font-semibold">{pkg.label}</p>
-                                            <p className="text-sm">{pkg.duration} دقيقة</p>
-                                            <p className="text-xs font-bold">{pkg.price} ج.م</p>
-                                        </button>
-                                    ))}
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>اختر باقة (يمكن اختيار أكثر من باقة)</Label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {selectedGame?.fixedTimePackages?.map(pkg => (
+                                            <Button
+                                                key={pkg.label}
+                                                variant="outline"
+                                                onClick={() => handlePackageQuantityChange(pkg, 1)}
+                                                className="h-auto flex-col"
+                                            >
+                                                <p className="font-semibold">{pkg.label}</p>
+                                                <p className="text-sm">{pkg.duration} دقيقة</p>
+                                                <p className="text-xs font-bold">{pkg.price} ج.م</p>
+                                            </Button>
+                                        ))}
+                                    </div>
                                 </div>
+                                {Object.keys(selectedPackages).length > 0 && (
+                                     <div className="space-y-2 rounded-md border p-4">
+                                         <h4 className="font-medium text-center mb-2">الباقات المحددة</h4>
+                                         {Object.values(selectedPackages).map(({package: pkg, quantity}) => (
+                                              <div key={pkg.label} className="flex justify-between items-center">
+                                                  <div>
+                                                      <p className="font-medium">{pkg.label}</p>
+                                                      <p className="text-xs text-muted-foreground">{pkg.price} ج.م</p>
+                                                  </div>
+                                                  <div className="flex items-center gap-2">
+                                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handlePackageQuantityChange(pkg, -1)}><Minus className="h-4 w-4" /></Button>
+                                                      <span className="font-bold">{quantity}</span>
+                                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handlePackageQuantityChange(pkg, 1)}><PlusCircle className="h-4 w-4" /></Button>
+                                                  </div>
+                                              </div>
+                                         ))}
+                                         <Separator className="my-2" />
+                                          <div className="flex justify-between items-center font-bold">
+                                              <span>الإجمالي:</span>
+                                              <span>{totalDuration} دقيقة / {totalPrice.toFixed(2)} ج.م</span>
+                                          </div>
+                                     </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -709,7 +767,7 @@ function CheckInDialog({
                         <DialogClose asChild>
                             <Button variant="outline">إلغاء</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer || (selectedGame?.paymentModel === 'prepaid' && !selectedPackage)}>
+                        <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer || (selectedGame?.paymentModel === 'prepaid' && Object.keys(selectedPackages).length === 0)}>
                            {selectedGame?.paymentModel === 'prepaid' ? 'إضافة للسلة' : 'بدء اللعب'}
                         </Button>
                     </DialogFooter>
@@ -1293,13 +1351,15 @@ function PosTrackingContent() {
                     const originalDurationMs = currentSession.packageDuration * 60 * 1000;
                     
                     // This is the overtime that has already passed.
-                    const overtimeMs = Math.max(0, elapsedMs - originalDurationMs);
+                    const overtimeConsumedMs = Math.max(0, elapsedMs - originalDurationMs);
                     
                     // The new package duration minus the overtime already consumed.
-                    const newPackageDurationMs = (extendItem.packageDuration * 60 * 1000 * extendItem.cartQuantity) - overtimeMs;
+                    const newTotalDuration = (currentSession.packageDuration + (extendItem.packageDuration * extendItem.cartQuantity));
+                    currentSession.packageDuration = newTotalDuration;
 
-                    currentSession.checkInTime = now;
-                    currentSession.packageDuration = Math.max(0, newPackageDurationMs / (60 * 1000)); // ensure it's not negative
+                    // Reset check-in time to now, but adjust duration based on consumed overtime.
+                    const remainingTimeMs = (newTotalDuration * 60 * 1000) - overtimeConsumedMs;
+                    currentSession.checkInTime = now - ((newTotalDuration * 60 * 1000) - remainingTimeMs);
                 }
                 return currentSession;
              });
@@ -1819,10 +1879,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-
-
-
-
-
 
