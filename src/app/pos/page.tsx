@@ -1012,8 +1012,10 @@ function PosTrackingContent() {
   
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [isSaleCheckoutOpen, setSaleCheckoutOpen] = useState(false);
   const [cartNotes, setCartNotes] = useState('');
+  const [isSaleCheckoutOpen, setSaleCheckoutOpen] = useState(false);
+  
+  const [currentTime, setCurrentTime] = useState<string>('');
 
   const notificationIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map()).current;
 
@@ -1041,6 +1043,13 @@ function PosTrackingContent() {
             setSelectedBranchFilter(currentUser.branch);
         }
     }, [currentUser]);
+    
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit'}));
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, []);
 
   const hasActiveShift = useMemo(() => {
     if (!user || !user.username) return false;
@@ -1183,7 +1192,8 @@ function PosTrackingContent() {
             packagePrice: childToCheckout.packagePrice,
             packageName: childToCheckout.packageName,
             packageDuration: childToCheckout.packageDuration,
-            overtimeCost: 0,
+            overtimeCost: 0, // No overtime on early checkout
+            notes: `خروج مبكر - خصم ${discount.toFixed(2)}`,
         };
         
         handleCheckOut(childToCheckout, receiptDetails);
@@ -1228,6 +1238,7 @@ function PosTrackingContent() {
         discount: receiptDetails.discount,
         receiptNumber: finalReceiptNumber,
         overtimeCost: receiptDetails.overtimeCost,
+        notes: receiptDetails.notes,
     };
     
     if (receiptSettings) {
@@ -1244,6 +1255,7 @@ function PosTrackingContent() {
                 discount: sessionToSave.discount,
                 costBeforeDiscount: sessionToSave.costBeforeDiscount,
                 overtimeCost: sessionToSave.overtimeCost,
+                notes: sessionToSave.notes,
             });
         } else {
              await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
@@ -1350,7 +1362,12 @@ function PosTrackingContent() {
   };
   
     const handleConfirmPrepaid = (cartItem: PrepaidGameCartItem) => {
-        handleAddToCart(cartItem);
+        const updatedCartItem = {
+            ...cartItem,
+            price: cartItem.price,
+            cartQuantity: cartItem.sessionDetails.children.length, // Start with number of children
+        };
+        setCart(prev => [...prev, updatedCartItem]);
     };
 
   const handleRemoveFromCart = (itemId: string) => {
@@ -1365,11 +1382,13 @@ function PosTrackingContent() {
                   toast({ title: "الكمية غير كافية", description: `الكمية المتاحة هي ${item.quantity} فقط.`, variant: 'destructive' });
                   return { ...item, cartQuantity: item.quantity };
               }
-               if (item.type === 'prepaid-game' && policies?.packagePricingModel === 'per_child') {
-                 const basePrice = item.price / item.sessionDetails.children.length;
-                 const newPrice = basePrice * newQuantity;
-                 return { ...item, cartQuantity: newQuantity, price: newPrice, sessionDetails: {...item.sessionDetails, packagePrice: newPrice} };
-               }
+              
+              if (item.type === 'prepaid-game' && policies?.packagePricingModel === 'per_child') {
+                  const basePrice = item.sessionDetails.packagePrice! / item.sessionDetails.children.length;
+                  const newPrice = basePrice * newQuantity;
+                  return { ...item, cartQuantity: newQuantity, price: newPrice };
+              }
+
               return { ...item, cartQuantity: newQuantity };
           }
           return item;
@@ -1377,12 +1396,14 @@ function PosTrackingContent() {
   };
   
   const cartTotal = useMemo(() => cart.reduce((sum, item) => {
-    const price = 'price' in item ? item.price : 0;
-    if (item.type === 'prepaid-game') {
-      const basePrice = item.price / item.cartQuantity;
-      return sum + (basePrice * item.cartQuantity);
+    let price = 0;
+    if ('price' in item) {
+        price = item.price;
     }
-    return sum + (price * item.cartQuantity)
+    if (item.type !== 'prepaid-game') {
+        return sum + (price * item.cartQuantity);
+    }
+    return sum + price; // For prepaid, price is already calculated for all children/quantity
   }, 0), [cart]);
 
   const handleConfirmSale = async () => {
@@ -1394,7 +1415,7 @@ function PosTrackingContent() {
         return;
     }
     
-    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => item.type === 'product');
+    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => 'type' in item && item.type === 'product');
     const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => item.type === 'prepaid-game');
     const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => item.type === 'extend-session');
     
@@ -1465,7 +1486,7 @@ function PosTrackingContent() {
              }
         }
         
-        const receiptProps: ProductReceiptProps = { receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, settings: receiptSettings, appName: policies?.appName || 'FunTrack', branchName: currentUser.branch, cashierName: currentUser.name, items: cart.map(item => { let name = ''; if (item.type === 'product') name = item.productName; if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`; if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`; return { name, quantity: item.cartQuantity, price: item.price }; }), totalAmount: cartTotal, sessionInfo: sessionInfoForReceipt, notes: cartNotes };
+        const receiptProps: ProductReceiptProps = { receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, settings: receiptSettings, appName: policies?.appName || 'FunTrack', branchName: currentUser.branch, cashierName: currentUser.name, items: cart.map(item => { let name = ''; if (item.type === 'product') name = item.productName; if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`; if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`; return { name, quantity: item.cartQuantity, price: 'price' in item ? item.price : 0 }; }), totalAmount: cartTotal, sessionInfo: sessionInfoForReceipt, notes: cartNotes };
         printReceipt(<ProductReceipt {...receiptProps} />);
         
         toast({ title: "تمت عملية البيع بنجاح", description: "تم تسجيل الفاتورة وتحديث البيانات." });
@@ -1582,6 +1603,10 @@ function PosTrackingContent() {
                 <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-bold">{policies?.posLabels?.screenTitle || 'يلا نلعب'}</h1>
                     <span className="text-lg text-muted-foreground font-semibold">({selectedBranchName})</span>
+                </div>
+                 <div className="hidden sm:flex items-center gap-2 p-2 bg-muted rounded-lg">
+                    <Clock className="h-5 w-5" />
+                    <span className="font-mono font-bold text-lg" suppressHydrationWarning>{currentTime}</span>
                 </div>
                 <div className="ms-auto flex items-center gap-2">
                      <Button size="sm" variant="outline" onClick={() => setCustomerFormOpen(true)}>
@@ -1907,7 +1932,7 @@ function PosTrackingContent() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { totalCost: 0 } as PosReceiptProps)}>تأكيد الخروج</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { totalCost: 0, notes: 'خروج مجاني' } as PosReceiptProps)}>تأكيد الخروج</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -1944,13 +1969,13 @@ function PosTrackingContent() {
                                            {item.type === 'prepaid-game' 
                                                 ? `${item.sessionDetails.children.map(c => c.name).join(', ')} - ${item.price.toFixed(2)} ج.م`
                                                 : item.type === 'extend-session' 
-                                                    ? `${item.childName} - ${item.price.toFixed(2)} ج.م`
+                                                    ? `${item.childName} - ${'price' in item ? item.price.toFixed(2) : '0.00'} ج.م`
                                                     : 'price' in item ? `${item.price.toFixed(2)} ج.م` : ''
                                             }
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => handleUpdateCartQuantity(item.id, item.cartQuantity + 1)}>
+                                         <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => handleUpdateCartQuantity(item.id, item.cartQuantity + 1)}>
                                             <PlusCircle className="h-3 w-3" />
                                         </Button>
                                         <span className="w-6 text-center font-mono text-sm">{item.cartQuantity}</span>
