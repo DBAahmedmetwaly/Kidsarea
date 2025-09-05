@@ -1115,35 +1115,40 @@ function PosTrackingContent() {
     setCheckoutDialogOpen(true);
   };
   
-  const handleEarlyCheckoutConfirm = (discount: number) => {
-    if (!childToCheckout) return;
+    const handleEarlyCheckoutConfirm = (discount: number) => {
+        if (!childToCheckout) return;
 
-    const originalPrice = childToCheckout.packagePrice || 0;
-    const finalCost = Math.max(0, originalPrice - discount);
-    
-    const receiptDetails: PosReceiptProps = {
-        settings: receiptSettings,
-        appName: policies?.appName || 'FunTrack',
-        branchName: childToCheckout.branchName,
-        children: childToCheckout.children,
-        parentName: childToCheckout.parentName,
-        phoneNumbers: childToCheckout.phoneNumbers,
-        gameName: childToCheckout.game,
-        checkInTime: new Date(childToCheckout.checkInTime),
-        checkOutTime: new Date(),
-        duration: formatDuration(Date.now() - childToCheckout.checkInTime),
-        totalCost: finalCost,
-        discount: discount,
-        cashierName: currentUser?.name || user?.username || 'Admin',
-        isSubscription: false,
-        packagePrice: childToCheckout.packagePrice,
-        packageName: childToCheckout.packageName,
-        packageDuration: childToCheckout.packageDuration,
-        overtimeCost: 0,
-    };
-    
-    handleCheckOut(childToCheckout, receiptDetails, originalPrice);
-    setEarlyCheckoutDiscountOpen(false);
+        const originalPrice = childToCheckout.packagePrice || 0;
+        const finalCost = Math.max(0, originalPrice - discount);
+        
+        const cashier = employees.find(e => e.username === user?.username);
+        const cashierName = user?.username === 'admin' 
+            ? 'Admin' 
+            : cashier?.name || user?.username || 'N/A';
+
+        const receiptDetails: PosReceiptProps = {
+            settings: receiptSettings,
+            appName: policies?.appName || 'FunTrack',
+            branchName: childToCheckout.branchName,
+            children: childToCheckout.children,
+            parentName: childToCheckout.parentName,
+            phoneNumbers: childToCheckout.phoneNumbers,
+            gameName: childToCheckout.game,
+            checkInTime: new Date(childToCheckout.checkInTime),
+            checkOutTime: new Date(),
+            duration: formatDuration(Date.now() - childToCheckout.checkInTime),
+            totalCost: finalCost,
+            discount: discount,
+            cashierName: cashierName,
+            isSubscription: false,
+            packagePrice: childToCheckout.packagePrice,
+            packageName: childToCheckout.packageName,
+            packageDuration: childToCheckout.packageDuration,
+            overtimeCost: 0,
+        };
+        
+        handleCheckOut(childToCheckout, receiptDetails, originalPrice);
+        setEarlyCheckoutDiscountOpen(false);
   };
 
 
@@ -1158,6 +1163,21 @@ function PosTrackingContent() {
         clearInterval(notificationIntervals.get(child.id));
         notificationIntervals.delete(child.id);
     }
+    
+    let finalReceiptNumber = 0;
+    if(receiptDetails?.receiptId) {
+        finalReceiptNumber = Number(receiptDetails.receiptId.split('-')[1]) || 0;
+    } else {
+        const branch = branches.find(b => b.name === child.branchName);
+        if (branch?.id) {
+            const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
+            const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
+            if (committed) {
+                finalReceiptNumber = snapshot.val();
+            }
+        }
+    }
+
 
     const checkOutTime = receiptDetails?.checkOutTime.getTime() ?? Date.now();
     const durationMs = checkOutTime - child.checkInTime;
@@ -1175,7 +1195,7 @@ function PosTrackingContent() {
         durationCost: receiptDetails?.durationCost ?? 0,
         entryFee: receiptDetails?.entryFee ?? 0,
         discount: receiptDetails?.discount ?? 0,
-        receiptNumber: Number(receiptDetails?.receiptId?.split('-')[1]) || 0,
+        receiptNumber: finalReceiptNumber,
         packageName: child.packageName,
         overtimeCost: receiptDetails?.overtimeCost ?? 0,
     };
@@ -1293,7 +1313,6 @@ function PosTrackingContent() {
   };
   
     const handleConfirmPrepaid = (cartItem: PrepaidGameCartItem) => {
-        // This function now correctly passes the total price to be stored.
         handleStartSession(cartItem.sessionDetails);
         handleAddToCart(cartItem);
     };
@@ -1368,7 +1387,6 @@ function PosTrackingContent() {
             await set(saleRecordRef, saleRecord);
         }
         
-        // Start active sessions for new game items - THIS IS NOW HANDLED BY `onConfirmPrepaid`
         // We only create the receipt info here
         for (const gameItem of gameItems) {
              const checkInTime = new Date();
@@ -1964,3 +1982,4 @@ export default function PosTrackingPage() {
 }
 
     
+

@@ -4,6 +4,7 @@
 
 
 
+
 export interface CustomerChild {
     id: string; // Unique identifier for the child
     name: string;
@@ -28,7 +29,7 @@ export interface Child {
 }
 
 export interface CompletedSession extends Child {
-    receiptNumber?: number;
+    receiptNumber: number;
     checkOutTime: number;
     durationMs: number;
     cost: number; // Total cost
@@ -329,7 +330,7 @@ export interface ProductSaleItem {
 
 export interface ProductSale {
     id: string;
-    receiptNumber?: number;
+    receiptNumber: number;
     items: ProductSaleItem[];
     totalAmount: number;
     branchName: string;

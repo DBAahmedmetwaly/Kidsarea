@@ -263,7 +263,7 @@ function ProductSalesContent() {
             <TableBody>
               {filteredSales.map((item, index) => (
                 <TableRow key={`${item.saleId}-${item.productName}-${index}`}>
-                    <TableCell className="text-right font-mono">{`${item.branchName.substring(0,3).toUpperCase()}-${item.receiptNumber}`}</TableCell>
+                    <TableCell className="text-right font-mono">{item.receiptNumber ? `${item.branchName.substring(0,3).toUpperCase()}-${item.receiptNumber}` : 'N/A'}</TableCell>
                     <TableCell className="text-right">{new Date(item.createdAt).toLocaleString('ar-EG')}</TableCell>
                     <TableCell className="text-right">{item.branchName}</TableCell>
                     <TableCell className="text-right">{item.cashierName}</TableCell>
@@ -301,4 +301,5 @@ export default function ProductSalesPage() {
         </SidebarProvider>
     );
 }
+
 
