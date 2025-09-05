@@ -52,7 +52,7 @@ import { StatCard } from '@/components/StatCard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onTimeEnd }: { startTime: number, packageDuration?: number, gracePeriodInMinutes?: number, onTimeEnd?: () => void }) => {
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -909,10 +909,10 @@ function PosTrackingContent() {
         durationMs: durationMs,
         cost: cost,
         costBeforeDiscount: finalCostBeforeDiscount,
-        durationCost: receiptDetails?.durationCost,
-        entryFee: receiptDetails?.entryFee,
-        discount: receiptDetails?.discount,
-        overtimeCost: receiptDetails?.overtimeCost,
+        durationCost: receiptDetails?.durationCost ?? 0,
+        entryFee: receiptDetails?.entryFee ?? 0,
+        discount: receiptDetails?.discount ?? 0,
+        overtimeCost: receiptDetails?.overtimeCost ?? 0,
         receiptNumber: Number(receiptDetails?.receiptId?.split('-')[1]) || 0,
     };
     
