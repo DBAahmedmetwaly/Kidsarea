@@ -79,7 +79,7 @@ function ProductSalesContent() {
                 branchName: sale.branchName,
                 cashierName: sale.cashierName,
             }))
-        );
+        ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [productSales]);
 
     const filteredSales = useMemo(() => {
