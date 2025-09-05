@@ -238,19 +238,12 @@ function CheckOutDialog({
     
     const durationMs = Date.now() - child.checkInTime;
     const numberOfChildren = child.children.length;
-    let finalTotalCost: number;
-    let finalDurationCost: number = 0;
-    let finalEntryFee: number = 0;
-    let costBeforeDiscount: number;
-    let overtimeCost = 0;
-
+    let costBeforeDiscount: number = 0;
+    let durationCost: number = 0;
+    let entryFee: number = 0;
+    let overtimeCost: number = 0;
 
     if (isPackageGame) {
-        let packageBasePrice = child.packagePrice || 0;
-        if(policies?.packagePricingModel === 'per_child') {
-            packageBasePrice = packageBasePrice * numberOfChildren;
-        }
-        
         if (policies?.enablePackageOvertime && child.packageDuration) {
             const packageDurationMs = child.packageDuration * 60 * 1000;
             const gracePeriodMs = (policies.packageOvertimeGracePeriod || 0) * 60 * 1000;
@@ -273,7 +266,6 @@ function CheckOutDialog({
                 overtimeCost = overtimeMinutes * (policies.packageOvertimeRatePerMinute || 0);
             }
         }
-        
         costBeforeDiscount = overtimeCost;
     } else {
         const gameDetails = games.find((g) => g.name === child.game);
@@ -294,28 +286,26 @@ function CheckOutDialog({
             !activeSubscriptions.some(s => s.childName === c.name)
         ).length;
 
-        const { durationCost } = calculateCost(durationMs, hourlyRate, policies, nonSubscribedChildrenCount);
-        finalDurationCost = durationCost;
-        costBeforeDiscount = finalDurationCost;
+        const { durationCost: calculatedDurationCost } = calculateCost(durationMs, hourlyRate, policies, nonSubscribedChildrenCount);
+        durationCost = calculatedDurationCost;
+        costBeforeDiscount = durationCost;
     }
 
-    // Apply Entry Fee (only for postpaid games)
     const entryFeePolicy = policies?.entryFeeApplication;
     if (!isPackageGame && policies && policies.entryFee > 0 && (entryFeePolicy === 'all' || entryFeePolicy === 'hourly')) {
-        finalEntryFee = policies.entryFee * numberOfChildren;
-        costBeforeDiscount += finalEntryFee;
+        entryFee = policies.entryFee * numberOfChildren;
+        costBeforeDiscount += entryFee;
     }
 
-    finalTotalCost = costBeforeDiscount;
     const discountAmount = parseFloat(discount) || 0;
-    const finalCostAfterDiscount = finalTotalCost - discountAmount > 0 ? finalTotalCost - discountAmount : 0;
+    const finalTotalCost = Math.max(0, costBeforeDiscount - discountAmount);
 
     return {
         duration: formatDuration(durationMs),
-        totalCost: finalCostAfterDiscount,
+        totalCost: finalTotalCost,
         costBeforeDiscount: costBeforeDiscount,
-        durationCost: finalDurationCost,
-        entryFee: finalEntryFee,
+        durationCost: durationCost,
+        entryFee: entryFee,
         discount: discountAmount,
         overtimeCost,
     }
@@ -1116,6 +1106,9 @@ function PosTrackingContent() {
   
   const handleEarlyCheckoutConfirm = (discount: number) => {
     if (!childToCheckout) return;
+
+    const originalPrice = childToCheckout.packagePrice || 0;
+    const finalCost = Math.max(0, originalPrice - discount);
     
     const receiptDetails: PosReceiptProps = {
         settings: receiptSettings,
@@ -1128,7 +1121,7 @@ function PosTrackingContent() {
         checkInTime: new Date(childToCheckout.checkInTime),
         checkOutTime: new Date(),
         duration: formatDuration(Date.now() - childToCheckout.checkInTime),
-        totalCost: 0, // Cost is 0, only discount is recorded
+        totalCost: finalCost,
         discount: discount,
         cashierName: currentUser?.name || user?.username || 'Admin',
         isSubscription: false,
@@ -1137,13 +1130,14 @@ function PosTrackingContent() {
         packageDuration: childToCheckout.packageDuration,
     };
     
-    handleCheckOut(childToCheckout, receiptDetails, childToCheckout.packagePrice || 0);
+    handleCheckOut(childToCheckout, receiptDetails, originalPrice);
   };
 
 
   const handleCheckOut = async (child: Child, receiptDetails?: PosReceiptProps, costBeforeDiscount?: number) => {
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
+    setEarlyCheckoutDiscountOpen(false);
 
     if (!child) return;
     
@@ -1457,12 +1451,8 @@ function PosTrackingContent() {
                     
                     const addedDurationMs = (extendItem.packageDuration * extendItem.cartQuantity) * 60 * 1000;
                     
-                    currentSession.packageDuration += (extendItem.packageDuration * extendItem.cartQuantity);
-                    
-                    // Reset checkInTime to effectively handle the new total duration from "now"
-                    const timeAlreadyPassedInNewPackage = overtimeConsumedMs;
-                    currentSession.checkInTime = now - timeAlreadyPassedInNewPackage;
-
+                    currentSession.packageDuration = (originalDurationMs - overtimeConsumedMs + addedDurationMs) / (60 * 1000);
+                    currentSession.checkInTime = now;
                 }
                 return currentSession;
              });
