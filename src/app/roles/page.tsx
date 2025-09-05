@@ -12,10 +12,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield } from 'lucide-react';
+import { Shield, Settings, VenetianMask } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PasswordDialog from '../branches/_components/PasswordDialog';
 import { useFirebase } from '@/context/FirebaseContext';
+import { Separator } from '@/components/ui/separator';
 
 const STATIC_SCREENS = [
   { href: '/', label: 'الرئيسية' },
@@ -43,6 +44,10 @@ const STATIC_SCREENS = [
   { href: '/data-management', label: 'إدارة البيانات' },
   { href: '/branches', label: 'الفروع' },
   { href: '/roles', label: 'الصلاحيات' },
+];
+
+const SPECIAL_PERMISSIONS = [
+    { href: '/permissions/apply-discount', label: 'إمكانية عمل خصم' }
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -100,13 +105,15 @@ function RolesContent() {
         // Initialize default permissions if none exist
         const defaultPermissions: any = {};
          ROLES.forEach(role => {
-            defaultPermissions[role] = allScreens.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {});
+            const screens = [...allScreens, ...SPECIAL_PERMISSIONS];
+            defaultPermissions[role] = screens.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {});
         });
         set(rolesRef, defaultPermissions);
         
         const decodedForState: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
          ROLES.forEach(role => {
-            decodedForState[role] = allScreens.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {});
+            const screens = [...allScreens, ...SPECIAL_PERMISSIONS];
+            decodedForState[role] = screens.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {});
         });
         setPermissions(decodedForState);
       }
@@ -231,20 +238,39 @@ function RolesContent() {
                   {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-1/2" />)}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
-                    {allScreens.map(screen => (
-                        <div key={screen.href} className="flex items-center space-x-2">
-                            <Checkbox
-                                id={`${selectedRole}-${screen.href}`}
-                                checked={permissions?.[selectedRole]?.[screen.href] || false}
-                                onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
-                            />
-                            <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                {screen.label}
-                            </Label>
-                        </div>
-                    ))}
-                </div>
+                <>
+                    <h4 className="font-semibold text-muted-foreground flex items-center gap-2 mb-2"><VenetianMask className="h-4 w-4"/> صلاحيات خاصة</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border p-4 rounded-md mb-6">
+                        {SPECIAL_PERMISSIONS.map(screen => (
+                            <div key={screen.href} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`${selectedRole}-${screen.href}`}
+                                    checked={permissions?.[selectedRole]?.[screen.href] || false}
+                                    onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
+                                />
+                                <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    {screen.label}
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
+                    <Separator />
+                    <h4 className="font-semibold text-muted-foreground flex items-center gap-2 my-4"><Settings className="h-4 w-4"/> صلاحيات الوصول للشاشات</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {allScreens.map(screen => (
+                            <div key={screen.href} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`${selectedRole}-${screen.href}`}
+                                    checked={permissions?.[selectedRole]?.[screen.href] || false}
+                                    onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
+                                />
+                                <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    {screen.label}
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
+                </>
               )}
                <Button onClick={handleSaveChanges} className="mt-6" disabled={loading}>
                 حفظ التغييرات
@@ -274,4 +300,5 @@ export default function RolesPage() {
     </SidebarProvider>
   );
 }
+
 

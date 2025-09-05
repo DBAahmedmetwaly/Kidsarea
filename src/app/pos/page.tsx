@@ -53,6 +53,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { usePermissions } from '@/context/PermissionsContext';
 
 const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onTimeEnd }: { startTime: number, packageDuration?: number, gracePeriodInMinutes?: number, onTimeEnd?: () => void }) => {
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -201,11 +202,13 @@ function CheckOutDialog({
   onOpenChange,
   child,
   onConfirm,
+  canApplyDiscount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   child: Child | null;
   onConfirm: (child: Child, receiptDetails: PosReceiptProps, costBeforeDiscount: number) => void;
+  canApplyDiscount: boolean;
 }) {
   const { games, policies: allPolicies, employees, receiptSettings, subscriptions, branches } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
@@ -451,6 +454,7 @@ function CheckOutDialog({
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
                     placeholder="أدخل الخصم"
+                    disabled={!canApplyDiscount}
                     />
                 </div>
                 <div className="space-y-2">
@@ -882,6 +886,7 @@ type CartItem = (InventoryItem | PrepaidGameCartItem | ExtendSessionCartItem) & 
 function PosTrackingContent() {
   const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
   const { user } = useAuth();
+  const { permissions } = usePermissions();
   const { toast } = useToast();
   const { printReceipt } = usePosPrint();
   const { customers } = useCustomers();
@@ -942,6 +947,11 @@ function PosTrackingContent() {
     if (!user || !user.username) return false;
     return openShifts.some(shift => shift.cashierUsername === user.username);
   }, [user, openShifts]);
+  
+  const canApplyDiscount = useMemo(() => {
+      if (!permissions) return false;
+      return permissions['/permissions/apply-discount'] === true;
+  }, [permissions]);
 
   const activeChildren = useMemo(() => {
     if (selectedBranchFilter === 'all') return firebaseActiveChildren;
@@ -1025,7 +1035,12 @@ function PosTrackingContent() {
         const remainingTimeMs = (session.checkInTime + session.packageDuration * 60 * 1000) - Date.now();
         
         if (remainingTimeMs > 0) { // Leaving early
-            setEarlyCheckoutDiscountOpen(true);
+            if (canApplyDiscount) {
+                setEarlyCheckoutDiscountOpen(true);
+            } else {
+                // If no discount permission, checkout at zero cost.
+                setZeroCostCheckoutOpen(true);
+            }
             return;
         }
 
@@ -1361,22 +1376,19 @@ function PosTrackingContent() {
         
         // Extend active sessions for extend items
         for (const extendItem of extendItems) {
-             const sessionRef = ref(db, `sessions/active/${extendItem.activeSessionId}`);
-             await runTransaction(sessionRef, (currentSession: Child) => {
+             await runTransaction(ref(db, `sessions/active/${extendItem.activeSessionId}`), (currentSession: Child) => {
                 if (currentSession && currentSession.packageDuration) {
                     const now = Date.now();
-                    const elapsedMs = now - currentSession.checkInTime;
+                    const elapsedMsSinceCheckIn = now - currentSession.checkInTime;
                     const originalDurationMs = currentSession.packageDuration * 60 * 1000;
                     
-                    const overtimeConsumedMs = Math.max(0, elapsedMs - originalDurationMs);
+                    const overtimeConsumedMs = Math.max(0, elapsedMsSinceCheckIn - originalDurationMs);
                     
-                    const newTotalDurationInMinutes = (currentSession.packageDuration + (extendItem.packageDuration * extendItem.cartQuantity));
-                    const newTotalDurationMs = newTotalDurationInMinutes * 60 * 1000;
+                    const addedDurationMs = (extendItem.packageDuration * extendItem.cartQuantity) * 60 * 1000;
+                    const newNetDurationMs = addedDurationMs - overtimeConsumedMs;
 
-                    const remainingTimeMs = newTotalDurationMs - overtimeConsumedMs;
-
-                    currentSession.packageDuration = newTotalDurationInMinutes;
-                    currentSession.checkInTime = now - (newTotalDurationMs - remainingTimeMs);
+                    currentSession.packageDuration += (extendItem.packageDuration * extendItem.cartQuantity);
+                    currentSession.checkInTime = now - newNetDurationMs;
                 }
                 return currentSession;
              });
@@ -1796,6 +1808,7 @@ function PosTrackingContent() {
                 onOpenChange={setCheckoutDialogOpen}
                 child={childToCheckout}
                 onConfirm={handleCheckOut}
+                canApplyDiscount={canApplyDiscount}
             />
             <ExtendSessionDialog
                 open={isExtendDialogOpen}
@@ -1910,5 +1923,6 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
