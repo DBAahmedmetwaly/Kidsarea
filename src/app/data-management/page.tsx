@@ -132,18 +132,15 @@ function DataManagementContent() {
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
     try {
-      // This will delete EVERYTHING except for employees, policies, branches, roles and safes.
+      // This will delete EVERYTHING except for:
+      // employees, policies, branches, roles, safes, games, gameCategories, products, productCategories
       const dataPathsToDelete = [
         'customers',
         'expenses',
         'expenseTypes',
-        'games',
-        'gameCategories',
         'inventory',
         'openShifts',
         'payrollTransactions',
-        'products',
-        'productCategories',
         'productSales',
         'safeTransactions', 
         'sessions', 
@@ -156,7 +153,7 @@ function DataManagementContent() {
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف جميع بيانات التطبيق بنجاح باستثناء الموظفين والفروع والخزائن والصلاحيات والسياسات.',
+        description: 'تم حذف جميع بيانات المعاملات. تم الاحتفاظ بالموظفين، الفروع، الخزائن، الألعاب، المنتجات، الصلاحيات، والسياسات.',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -259,9 +256,9 @@ function DataManagementContent() {
             <div>
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>إعادة ضبط المصنع (حذف البيانات)</AlertTitle>
+                    <AlertTitle>إعادة ضبط المصنع (حذف بيانات المعاملات)</AlertTitle>
                     <AlertDescription>
-                        سيؤدي هذا الإجراء إلى حذف جميع بيانات التطبيق بشكل دائم، مثل العملاء والمعاملات والمخزون. سيتم الاحتفاظ فقط ببيانات الموظفين والفروع والخزائن والصلاحيات والسياسات.
+                       سيؤدي هذا إلى حذف جميع بيانات المعاملات (مثل العملاء، الجلسات، المبيعات، المصروفات، إلخ) مع الاحتفاظ بالبيانات الأساسية مثل (الموظفين، الفروع، الألعاب، المنتجات، السياسات، والصلاحيات).
                     </AlertDescription>
                 </Alert>
               <AlertDialog>
@@ -275,7 +272,7 @@ function DataManagementContent() {
                     ) : (
                         <>
                             <Trash2 className="me-2 h-4 w-4" />
-                            حذف جميع البيانات
+                            حذف بيانات المعاملات
                         </>
                     )}
                   </Button>
@@ -284,7 +281,7 @@ function DataManagementContent() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
                     <AlertDialogDescription>
-                      هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات التطبيق بشكل دائم باستثناء الموظفين والفروع والخزائن والصلاحيات والسياسات. هل تريد المتابعة؟
+                      هذا الإجراء لا يمكن التراجع عنه. هل تريد المتابعة؟
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
