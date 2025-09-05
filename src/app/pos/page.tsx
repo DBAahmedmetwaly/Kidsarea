@@ -650,7 +650,7 @@ function CheckInDialog({
                             }
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-2">
                         <div className="space-y-2">
                             <Label>ابحث عن عميل حالي</Label>
                                 <div className="flex items-center gap-2">
@@ -1067,10 +1067,10 @@ function PosTrackingContent() {
         durationMs: durationMs,
         cost: cost,
         costBeforeDiscount: finalCostBeforeDiscount,
-        durationCost: receiptDetails?.durationCost || 0,
-        entryFee: receiptDetails?.entryFee || 0,
-        discount: receiptDetails?.discount || 0,
-        overtimeCost: receiptDetails?.overtimeCost || 0,
+        durationCost: receiptDetails?.durationCost ?? 0,
+        entryFee: receiptDetails?.entryFee ?? 0,
+        discount: receiptDetails?.discount ?? 0,
+        overtimeCost: receiptDetails?.overtimeCost ?? 0,
         receiptNumber: Number(receiptDetails?.receiptId?.split('-')[1]) || 0,
         packageName: child.packageName,
     };
@@ -1350,16 +1350,15 @@ function PosTrackingContent() {
                     const elapsedMs = now - currentSession.checkInTime;
                     const originalDurationMs = currentSession.packageDuration * 60 * 1000;
                     
-                    // This is the overtime that has already passed.
                     const overtimeConsumedMs = Math.max(0, elapsedMs - originalDurationMs);
                     
-                    // The new package duration minus the overtime already consumed.
-                    const newTotalDuration = (currentSession.packageDuration + (extendItem.packageDuration * extendItem.cartQuantity));
-                    currentSession.packageDuration = newTotalDuration;
+                    const newTotalDurationInMinutes = (currentSession.packageDuration + (extendItem.packageDuration * extendItem.cartQuantity));
+                    const newTotalDurationMs = newTotalDurationInMinutes * 60 * 1000;
 
-                    // Reset check-in time to now, but adjust duration based on consumed overtime.
-                    const remainingTimeMs = (newTotalDuration * 60 * 1000) - overtimeConsumedMs;
-                    currentSession.checkInTime = now - ((newTotalDuration * 60 * 1000) - remainingTimeMs);
+                    const remainingTimeMs = newTotalDurationMs - overtimeConsumedMs;
+
+                    currentSession.packageDuration = newTotalDurationInMinutes;
+                    currentSession.checkInTime = now - (newTotalDurationMs - remainingTimeMs);
                 }
                 return currentSession;
              });
