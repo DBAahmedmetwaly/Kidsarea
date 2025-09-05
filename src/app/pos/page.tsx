@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -1134,6 +1133,7 @@ function PosTrackingContent() {
         packagePrice: childToCheckout.packagePrice,
         packageName: childToCheckout.packageName,
         packageDuration: childToCheckout.packageDuration,
+        overtimeCost: 0,
     };
     
     handleCheckOut(childToCheckout, receiptDetails, originalPrice);
@@ -1171,7 +1171,7 @@ function PosTrackingContent() {
         discount: receiptDetails?.discount ?? 0,
         receiptNumber: Number(receiptDetails?.receiptId?.split('-')[1]) || 0,
         packageName: child.packageName,
-        overtimeCost: receiptDetails?.overtimeCost,
+        overtimeCost: receiptDetails?.overtimeCost ?? 0,
     };
 
     try {
@@ -1955,13 +1955,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-
-
-
-
-
-
-
 
     
