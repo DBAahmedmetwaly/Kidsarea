@@ -5,11 +5,13 @@
 
 
 
+
 export interface CustomerChild {
     id: string; // Unique identifier for the child
     name: string;
     age: number;
     birthdate?: string; // YYYY-MM-DD format
+    isGuest?: boolean;
 }
 
 export interface Child {
@@ -349,6 +351,7 @@ export interface PrepaidGameCartItem {
     id: string; // Unique ID for the cart item, e.g., combining game, customer, child, and package
     sessionDetails: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>;
     price: number;
+    cartQuantity: number;
 }
 
 export interface ExtendSessionCartItem {
@@ -360,4 +363,5 @@ export interface ExtendSessionCartItem {
     packageName: string;
     packageDuration: number;
     price: number;
+    cartQuantity: number;
 }

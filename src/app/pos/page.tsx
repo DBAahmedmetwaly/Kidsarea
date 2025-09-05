@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -493,6 +492,7 @@ function CheckInDialog({
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
+    const [guestChildren, setGuestChildren] = useState<CustomerChild[]>([]);
     const [selectedPackages, setSelectedPackages] = useState<SelectedPackagesMap>({});
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
@@ -501,6 +501,7 @@ function CheckInDialog({
         if (!open) {
             setSelectedCustomer(null);
             setSelectedChildren([]);
+            setGuestChildren([]);
             setSelectedPackages({});
             setOpenCombobox(false);
         }
@@ -509,6 +510,7 @@ function CheckInDialog({
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
         setSelectedChildren([]); // Reset selected children when customer changes
+        setGuestChildren([]); // Reset guest children
         setOpenCombobox(false);
     }
     
@@ -516,6 +518,23 @@ function CheckInDialog({
         setSelectedChildren(prev => 
             checked ? [...prev, child] : prev.filter(c => c.id !== child.id)
         );
+    }
+
+    const addGuestChild = () => {
+        setGuestChildren(prev => [...prev, { id: `guest-${Date.now()}`, name: '', age: 1, isGuest: true }]);
+    }
+    
+    const updateGuestChild = (id: string, field: 'name' | 'age', value: string) => {
+        setGuestChildren(prev => prev.map(child => {
+            if (child.id === id) {
+                return { ...child, [field]: field === 'age' ? parseInt(value, 10) || 1 : value };
+            }
+            return child;
+        }));
+    }
+
+    const removeGuestChild = (id: string) => {
+        setGuestChildren(prev => prev.filter(child => child.id !== id));
     }
     
     const handlePackageQuantityChange = (pkg: SelectedPackageType, change: 1 | -1) => {
@@ -552,7 +571,8 @@ function CheckInDialog({
 
 
     const handleConfirm = () => {
-        if (!selectedCustomer || selectedChildren.length === 0 || !selectedGame) return;
+        const allChildren = [...selectedChildren, ...guestChildren.filter(g => g.name)];
+        if (!selectedCustomer || allChildren.length === 0 || !selectedGame) return;
         
         const isPrepaid = selectedGame.paymentModel === 'prepaid';
         
@@ -564,22 +584,23 @@ function CheckInDialog({
             
             const totalPackagePrice = Object.values(selectedPackages).reduce((sum, {package: pkg, quantity}) => sum + (pkg.price * quantity), 0);
             const totalPackageDuration = Object.values(selectedPackages).reduce((sum, {package: pkg, quantity}) => sum + (pkg.duration * quantity), 0);
+            let cartQuantity = Object.values(selectedPackages).reduce((sum, { quantity }) => sum + quantity, 0);
 
             let finalPrice = totalPackagePrice;
             if (policies?.packagePricingModel === 'per_child') {
-                finalPrice = totalPackagePrice * selectedChildren.length;
+                finalPrice = (totalPackagePrice / cartQuantity) * allChildren.length;
             }
             
              // Apply entry fee to prepaid if applicable
             if (policies && policies.entryFee > 0 && (policies.entryFeeApplication === 'all' || policies.entryFeeApplication === 'package')) {
-                finalPrice += policies.entryFee * selectedChildren.length;
+                finalPrice += policies.entryFee * allChildren.length;
             }
 
             const cartItem: PrepaidGameCartItem = {
                 type: 'prepaid-game',
                 id: `prepaid-${selectedGame.id}-${selectedCustomer.id}-${Date.now()}`,
                 sessionDetails: {
-                    children: selectedChildren,
+                    children: allChildren,
                     game: selectedGame.name,
                     branchName: selectedGame.branch,
                     parentName: selectedCustomer.parentName,
@@ -589,12 +610,13 @@ function CheckInDialog({
                     packageName: Object.values(selectedPackages).map(item => `${item.quantity}x ${item.package.label}`).join(', '),
                 },
                 price: finalPrice,
+                cartQuantity: policies?.packagePricingModel === 'per_child' ? allChildren.length : cartQuantity,
             };
             onConfirmPrepaid(cartItem);
 
         } else {
             const sessionDetails: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> = {
-                children: selectedChildren,
+                children: allChildren,
                 game: selectedGame.name,
                 branchName: selectedGame.branch,
                 parentName: selectedCustomer.parentName,
@@ -626,6 +648,8 @@ function CheckInDialog({
           console.error(e);
       }
     };
+    
+    const totalChildren = selectedChildren.length + guestChildren.filter(g => g.name).length;
 
     return (
         <>
@@ -690,23 +714,54 @@ function CheckInDialog({
                             </div>
                         </div>
                         {selectedCustomer && (
-                             <div className="space-y-2">
-                                <Label>اختر الأطفال</Label>
-                                <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
-                                    {(selectedCustomer.children || []).map((child, index) => (
-                                        <div key={child.id || index} className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id={`child-${child.id || index}`}
-                                                onCheckedChange={(checked) => handleChildSelect(child, !!checked)}
-                                                checked={selectedChildren.some(c => c.id === child.id)}
-                                            />
-                                            <Label htmlFor={`child-${child.id || index}`} className="font-normal">
-                                                {child.name} (عمر: {child.age})
-                                            </Label>
-                                        </div>
-                                    ))}
+                            <>
+                                <div className="space-y-2">
+                                    <Label>اختر الأطفال المسجلين</Label>
+                                    <div className="space-y-2 rounded-md border p-2 max-h-40 overflow-y-auto">
+                                        {(selectedCustomer.children || []).map((child, index) => (
+                                            <div key={child.id || index} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`child-${child.id || index}`}
+                                                    onCheckedChange={(checked) => handleChildSelect(child, !!checked)}
+                                                    checked={selectedChildren.some(c => c.id === child.id)}
+                                                />
+                                                <Label htmlFor={`child-${child.id || index}`} className="font-normal">
+                                                    {child.name} (عمر: {child.age})
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                                <div className="space-y-2">
+                                    <Label>إضافة أطفال ضيوف (لحساب التكلفة فقط)</Label>
+                                    <div className="space-y-2">
+                                        {guestChildren.map((guest, index) => (
+                                            <div key={guest.id} className="grid grid-cols-12 gap-2 items-center">
+                                                <Input 
+                                                    className="col-span-6" 
+                                                    placeholder={`اسم الطفل الضيف ${index + 1}`} 
+                                                    value={guest.name} 
+                                                    onChange={(e) => updateGuestChild(guest.id, 'name', e.target.value)}
+                                                />
+                                                <Input 
+                                                    className="col-span-4" 
+                                                    type="number"
+                                                    placeholder="العمر" 
+                                                    value={guest.age} 
+                                                    onChange={(e) => updateGuestChild(guest.id, 'age', e.target.value)}
+                                                />
+                                                <Button className="col-span-2" variant="destructive" size="icon" onClick={() => removeGuestChild(guest.id)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" onClick={addGuestChild}>
+                                        <PlusCircle className="me-2 h-4 w-4"/>
+                                        إضافة طفل ضيف
+                                    </Button>
+                                </div>
+                            </>
                         )}
                         {selectedGame?.paymentModel === 'prepaid' && (
                             <div className="space-y-4">
@@ -757,7 +812,7 @@ function CheckInDialog({
                         <DialogClose asChild>
                             <Button variant="outline">إلغاء</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirm} disabled={selectedChildren.length === 0 || !selectedCustomer || (selectedGame?.paymentModel === 'prepaid' && Object.keys(selectedPackages).length === 0)}>
+                        <Button onClick={handleConfirm} disabled={totalChildren === 0 || !selectedCustomer || (selectedGame?.paymentModel === 'prepaid' && Object.keys(selectedPackages).length === 0)}>
                            {selectedGame?.paymentModel === 'prepaid' ? 'إضافة للسلة' : 'بدء اللعب'}
                         </Button>
                     </DialogFooter>
@@ -817,6 +872,7 @@ function ExtendSessionDialog({
             packageName: selectedPackage.label,
             packageDuration: selectedPackage.duration,
             price: selectedPackage.price,
+            cartQuantity: 1,
         };
 
         onConfirm(cartItem);
@@ -1171,7 +1227,7 @@ function PosTrackingContent() {
         entryFee: receiptDetails.entryFee,
         discount: receiptDetails.discount,
         receiptNumber: finalReceiptNumber,
-        overtimeCost: receiptDetails.overtimeCost || 0,
+        overtimeCost: receiptDetails.overtimeCost,
     };
     
     if (receiptSettings) {
@@ -1323,7 +1379,8 @@ function PosTrackingContent() {
   const cartTotal = useMemo(() => cart.reduce((sum, item) => {
     const price = 'price' in item ? item.price : 0;
     if (item.type === 'prepaid-game') {
-      return sum + item.price;
+      const basePrice = item.price / item.cartQuantity;
+      return sum + (basePrice * item.cartQuantity);
     }
     return sum + (price * item.cartQuantity)
   }, 0), [cart]);
@@ -1945,6 +2002,4 @@ export default function PosTrackingPage() {
 
     
 
-
-
-
+    
