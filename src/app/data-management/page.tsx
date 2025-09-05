@@ -135,7 +135,6 @@ function DataManagementContent() {
       // This will delete EVERYTHING except for:
       // employees, policies, branches, roles, safes, games, gameCategories, products, productCategories, inventory
       const dataPathsToDelete = [
-        'customers',
         'expenses',
         'expenseTypes',
         'openShifts',
@@ -152,7 +151,7 @@ function DataManagementContent() {
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف جميع بيانات المعاملات. تم الاحتفاظ بالبيانات الأساسية (الموظفين، الفروع، المخزون، إلخ).',
+        description: 'تم حذف بيانات المعاملات. تم الاحتفاظ بالبيانات الأساسية (العملاء، الموظفين، الفروع، إلخ).',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
