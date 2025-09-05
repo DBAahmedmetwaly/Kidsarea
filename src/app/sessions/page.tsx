@@ -217,11 +217,11 @@ function SessionsContent() {
                 <TableCell className="text-center">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</TableCell>
                  <TableCell className="text-center text-red-600">{`ج.م ${(session.discount || 0).toFixed(2)}`}</TableCell>
                 <TableCell className="font-bold text-center">
-                    {session.subscriptionId ? (
-                        <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
-                    ) : (session.packagePrice !== undefined && session.packagePrice > 0) || session.packageName ? (
-                       <span className="flex items-center justify-center gap-1 text-blue-600"><PackageCheck className="h-4 w-4"/> باقة</span>
-                    ) : `ج.م ${session.cost.toFixed(2)}`}
+                    <div className="flex items-center justify-center gap-2">
+                        {session.subscriptionId && <Star className="h-4 w-4 text-yellow-500" />}
+                        {(session.packagePrice !== undefined || session.packageName) && <PackageCheck className="h-4 w-4 text-blue-500" />}
+                        <span>{`ج.م ${session.cost.toFixed(2)}`}</span>
+                    </div>
                 </TableCell>
                 <TableCell className="text-center">
                 {new Date(
