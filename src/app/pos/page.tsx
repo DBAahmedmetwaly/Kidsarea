@@ -588,7 +588,8 @@ function CheckInDialog({
 
             let finalPrice = totalPackagePrice;
             if (policies?.packagePricingModel === 'per_child') {
-                finalPrice = (totalPackagePrice / cartQuantity) * allChildren.length;
+                finalPrice = totalPackagePrice * allChildren.length;
+                cartQuantity = allChildren.length;
             }
             
              // Apply entry fee to prepaid if applicable
@@ -610,7 +611,7 @@ function CheckInDialog({
                     packageName: Object.values(selectedPackages).map(item => `${item.quantity}x ${item.package.label}`).join(', '),
                 },
                 price: finalPrice,
-                cartQuantity: policies?.packagePricingModel === 'per_child' ? allChildren.length : cartQuantity,
+                cartQuantity: cartQuantity,
             };
             onConfirmPrepaid(cartItem);
 
@@ -1342,7 +1343,7 @@ function PosTrackingContent() {
       setCart(prevCart => {
           const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
           if (existingItem) {
-               if ('type' in item && item.type === 'product' && 'quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
+               if (item.type === 'product' && 'quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
                     toast({ title: "الكمية غير كافية", variant: "destructive" });
                     return prevCart;
                 }
@@ -1352,7 +1353,7 @@ function PosTrackingContent() {
                         : cartItem
                 );
           } else {
-               if ('type' in item && item.type === 'product' && 'quantity' in item && item.quantity <= 0) {
+               if (item.type === 'product' && 'quantity' in item && item.quantity <= 0) {
                    toast({ title: "نفدت الكمية", variant: "destructive" });
                    return prevCart;
                }
@@ -1362,10 +1363,15 @@ function PosTrackingContent() {
   };
   
     const handleConfirmPrepaid = (cartItem: PrepaidGameCartItem) => {
+        let finalCartQuantity = 1;
+        if (policies?.packagePricingModel === 'per_child') {
+            finalCartQuantity = cartItem.sessionDetails.children.length;
+        }
+        
         const updatedCartItem = {
             ...cartItem,
             price: cartItem.price,
-            cartQuantity: cartItem.sessionDetails.children.length, // Start with number of children
+            cartQuantity: finalCartQuantity
         };
         setCart(prev => [...prev, updatedCartItem]);
     };
@@ -1384,7 +1390,7 @@ function PosTrackingContent() {
               }
               
               if (item.type === 'prepaid-game' && policies?.packagePricingModel === 'per_child') {
-                  const basePrice = item.sessionDetails.packagePrice! / item.sessionDetails.children.length;
+                  const basePrice = item.sessionDetails.packagePrice! / item.cartQuantity;
                   const newPrice = basePrice * newQuantity;
                   return { ...item, cartQuantity: newQuantity, price: newPrice };
               }
@@ -1403,7 +1409,7 @@ function PosTrackingContent() {
     if (item.type !== 'prepaid-game') {
         return sum + (price * item.cartQuantity);
     }
-    return sum + price; // For prepaid, price is already calculated for all children/quantity
+    return sum + price;
   }, 0), [cart]);
 
   const handleConfirmSale = async () => {
@@ -1415,7 +1421,7 @@ function PosTrackingContent() {
         return;
     }
     
-    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => 'type' in item && item.type === 'product');
+    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => item.type === 'product');
     const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => item.type === 'prepaid-game');
     const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => item.type === 'extend-session');
     
@@ -2028,3 +2034,4 @@ export default function PosTrackingPage() {
     
 
     
+
