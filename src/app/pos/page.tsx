@@ -593,6 +593,7 @@ function CheckInDialog({
                 title: "تمت الإضافة بنجاح",
                 description: `تمت إضافة العميل "${newCustomerData.parentName}".`,
           });
+          setCustomerFormOpen(false); // Close dialog on success
       } catch(e) {
           console.error(e);
       }
@@ -1106,7 +1107,7 @@ function PosTrackingContent() {
         const saleRecord: ProductSale = {
             id: push(ref(db, 'productSales')).key!,
             receiptNumber: receiptNumber,
-            items: productItems.map(({ quantity, ...item}) => item),
+            items: productItems.map(({ quantity, type, ...item}) => item),
             totalAmount: productTotal,
             branchName: currentUser.branch,
             cashierUsername: user.username,
@@ -1118,9 +1119,11 @@ function PosTrackingContent() {
             await set(ref(db, `productSales/${saleRecord.id}`), saleRecord);
             const updates: { [key: string]: any } = {};
             for (const item of productItems) {
-                updates[`/inventory/${item.id}`] = { ...item, quantity: item.quantity - item.cartQuantity};
+                const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
+                await runTransaction(inventoryItemRef, (currentQuantity) => {
+                    return (currentQuantity || 0) - item.cartQuantity;
+                });
             }
-            await update(ref(db), updates);
 
             const receiptProps: ProductReceiptProps = {
                 receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`,

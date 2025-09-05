@@ -298,7 +298,7 @@ export interface InventoryItem {
 export interface ProductSale {
     id: string;
     receiptNumber?: number;
-    items: (Omit<InventoryItem, 'quantity' | 'type'> & { cartQuantity: number })[];
+    items: (Omit<InventoryItem, 'quantity' | 'branchId' | 'branchName' | 'type'> & { cartQuantity: number })[];
     totalAmount: number;
     branchName: string;
     cashierName: string;

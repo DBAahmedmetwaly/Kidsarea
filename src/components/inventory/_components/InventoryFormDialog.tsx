@@ -32,7 +32,7 @@ export default function InventoryFormDialog({
 }: { 
     open: boolean; 
     onOpenChange: (open: boolean) => void; 
-    onSubmit: (item: Omit<InventoryItem, 'id' | 'type'> | InventoryItem) => void; 
+    onSubmit: (item: Omit<InventoryItem, 'id'> | InventoryItem) => void; 
     isEditMode: boolean;
     initialData: InventoryItem | null;
     branchName: string;
@@ -99,7 +99,8 @@ export default function InventoryFormDialog({
             return;
         }
 
-        const itemData = {
+        const itemData: Omit<InventoryItem, 'id'> = {
+            type: 'product',
             productId: product.id,
             productName: product.name,
             categoryId: product.categoryId,
@@ -110,7 +111,7 @@ export default function InventoryFormDialog({
             quantity: parseInt(quantity, 10),
         };
 
-        const finalData = isEditMode && initialData ? { ...itemData, id: initialData.id, type: initialData.type } : itemData;
+        const finalData = isEditMode && initialData ? { ...itemData, id: initialData.id } : itemData;
 
         onSubmit(finalData);
         onOpenChange(false);
