@@ -175,7 +175,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={11} className="h-24 text-center">
+            <TableCell colSpan={10}>
                 <Loader2 className="mx-auto h-6 w-6 animate-spin" />
             </TableCell>
           </TableRow>
@@ -187,7 +187,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={11} className="h-24 text-center">
+            <TableCell colSpan={10} className="h-24 text-center">
               لا توجد جلسات مطابقة للبحث.
             </TableCell>
           </TableRow>
@@ -203,7 +203,7 @@ function SessionsContent() {
                 : session.cost + (session.discount || 0);
 
             return (
-            <TableRow key={session.id}>
+            <TableRow key={session.id || `${session.receiptNumber}-${session.parentName}`}>
                 <TableCell className="font-medium text-right whitespace-nowrap">{session.receiptNumber ? `${session.branchName.substring(0,3).toUpperCase()}-${session.receiptNumber}` : 'N/A'}</TableCell>
                 <TableCell className="font-medium text-right whitespace-nowrap">
                 {session.children?.map(c => c.name).join(', ') ?? 'N/A'}
@@ -215,8 +215,8 @@ function SessionsContent() {
                 <TableCell className="text-center whitespace-nowrap">
                 {formatDuration(session.durationMs)}
                 </TableCell>
-                <TableCell className="font-bold text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-2">
+                <TableCell className="font-bold text-center">
+                    <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                         {session.discount ? (
                             <>
                                 <span className="line-through text-muted-foreground">{`ج.م ${costBeforeDiscount.toFixed(2)}`}</span>
@@ -368,7 +368,7 @@ function SessionsContent() {
                         <TableHead className="text-right">الفرع</TableHead>
                         <TableHead className="text-right">اللعبة</TableHead>
                         <TableHead className="text-center">مدة اللعب</TableHead>
-                        <TableHead className="text-center">التكلفة</TableHead>
+                        <TableHead className="text-center">التكلفة النهائية</TableHead>
                         <TableHead className="text-center">وقت الخروج</TableHead>
                         <TableHead className="text-center">إجراء</TableHead>
                     </TableRow>
@@ -403,4 +403,5 @@ export default function SessionsPage() {
 }
 
     
+
 
