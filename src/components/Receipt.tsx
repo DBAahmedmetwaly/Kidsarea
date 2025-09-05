@@ -16,11 +16,11 @@ const ReceiptRow = ({ label, value }: { label: string; value: React.ReactNode; }
 );
 
 const PaymentDetailRow = ({ label, value }: { label: string; value: number | undefined }) => {
-  if (!value || value === 0) return null;
+  if (value === undefined || value === 0) return null;
   return (
-    <div className="flex justify-between items-center text-sm py-0.5">
-      <span>{label}</span>
-      <span className="font-mono">{`ج.م ${value.toFixed(2)}`}</span>
+    <div className="grid grid-cols-2 text-sm py-0.5">
+      <span className='text-right'>{label}</span>
+      <span className="font-mono text-left">{`ج.م ${value.toFixed(2)}`}</span>
     </div>
   );
 };
@@ -65,28 +65,27 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
     }
     
     return (
-      <div className="space-y-1 py-1 my-1">
-          <div className='border-y border-dashed border-gray-400 py-1 space-y-1'>
-            <PaymentDetailRow label="تكلفة الباقة" value={packagePrice} />
-            <PaymentDetailRow label="تكلفة اللعب" value={durationCost} />
-            <PaymentDetailRow label="رسوم دخول" value={entryFee} />
-            <PaymentDetailRow label="وقت إضافي" value={overtimeCost} />
-            <PaymentDetailRow label="الخصم" value={discount} />
-          </div>
-          <div className="flex justify-between items-center text-md font-bold pt-1 mt-1 bg-gray-200 p-1 rounded-md">
-              <span>الإجمالي</span>
-              <span className='font-mono'>{`ج.م ${totalCost.toFixed(2)}`}</span>
+      <div className="space-y-1 py-1 my-1 border-t border-dashed border-gray-400">
+          <PaymentDetailRow label="تكلفة الباقة" value={packagePrice} />
+          <PaymentDetailRow label="تكلفة اللعب" value={durationCost} />
+          <PaymentDetailRow label="رسوم دخول" value={entryFee} />
+          <PaymentDetailRow label="وقت إضافي" value={overtimeCost} />
+          <PaymentDetailRow label="الخصم" value={discount} />
+          
+          <div className="grid grid-cols-2 text-md font-bold pt-1 mt-1 border-t border-gray-400">
+              <span className='text-right'>الإجمالي</span>
+              <span className='font-mono text-left'>{`ج.م ${totalCost.toFixed(2)}`}</span>
           </div>
       </div>
     );
   }
 
   return (
-    <div ref={ref} className="bg-white p-1 text-black" style={{ width: `${receiptWidth}mm`, boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white p-1 text-black text-xs" style={{ width: `${receiptWidth}mm`, boxSizing: 'border-box' }}>
       {/* Header */}
       <div className="text-center mb-1">
-        {show('showLogo') && <Gamepad2 className="mx-auto h-8 w-8 text-black" />}
-        {show('showAppName') && <h1 className="text-lg font-bold">{appName}</h1>}
+        {show('showLogo') && <Gamepad2 className="mx-auto h-6 w-6 text-black" />}
+        {show('showAppName') && <h1 className="text-base font-bold">{appName}</h1>}
         {show('showAddress') && <p className="text-xs">{settings?.address}</p>}
         {show('showPhone') && <p className="text-xs font-mono">{settings?.phone}</p>}
       </div>
@@ -95,32 +94,31 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
         {show('showCustomTitle') ? (settings?.customTitle || 'فاتورة جلسة لعب') : 'فاتورة جلسة لعب'}
       </div>
 
-      {/* Invoice Info */}
-       <div className="grid grid-cols-2 gap-x-2 text-xs my-1 py-1">
-          <div className="space-y-0.5">
-            {show('showReceiptId') && <div className="flex justify-between"><span>رقم الفاتورة:</span><span>{receiptId}</span></div>}
-            {show('showCashierName') && <div className="flex justify-between"><span>الكاشير:</span><span>{cashierName}</span></div>}
-          </div>
-          <div className="space-y-0.5 text-left">
-             <div className="flex justify-between"><span>التاريخ:</span><span>{new Date().toLocaleDateString('ar-EG')}</span></div>
-             <div className="flex justify-between"><span>الوقت:</span><span>{new Date().toLocaleTimeString('ar-EG')}</span></div>
-          </div>
+       {/* Invoice & Customer Info */}
+       <div className='space-y-1 border-b border-dashed border-gray-400 pb-1 mb-1'>
+            {show('showReceiptId') && <div className="grid grid-cols-2"><span>رقم الفاتورة:</span> <span className='text-left'>{receiptId}</span></div>}
+            {show('showCashierName') && <div className="grid grid-cols-2"><span>الكاشير:</span> <span className='text-left'>{cashierName}</span></div>}
+            {show('showParentName') && <div className="grid grid-cols-2"><span>ولي الأمر:</span> <span className='text-left'>{parentName}</span></div>}
+            {show('showParentName') && <div className="grid grid-cols-2"><span>الهاتف:</span> <span className='text-left font-mono'>{(phoneNumbers || []).join('/')}</span></div>}
+            <div className="grid grid-cols-2"><span>الأطفال ({children.length}):</span> <span className='text-left'>{children.map(c => c.name).join(', ')}</span></div>
        </div>
-       
-       <div className="text-xs my-1 py-1 border-t border-dashed border-gray-400 space-y-1">
-        <div className="flex justify-between"><span>ولي الأمر: {parentName}</span><span>الهاتف: {(phoneNumbers || []).join('/')}</span></div>
-        <div className="flex justify-between"><span>الأطفال ({children.length}): {children.map(c => c.name).join(', ')}</span></div>
-        <div>اللعبة: {gameName}</div>
-         {packageName && <div>الباقة: {packageName}</div>}
-        <div className="flex justify-between">
-            {show('showCheckInTime') && <span>الدخول: {checkInTime.toLocaleTimeString('ar-EG')}</span>}
-            {show('showCheckOutTime') && !expectedCheckOutTime && <span>الخروج: {checkOutTime.toLocaleTimeString('ar-EG')}</span>}
-            {show('showDuration') && !expectedCheckOutTime && <span>المدة: {duration}</span>}
-        </div>
-         {expectedCheckOutTime && (
-            <div className="flex justify-between font-bold text-red-600">
+
+       {/* Session Details */}
+       <div className='space-y-1 border-b border-dashed border-gray-400 pb-1 mb-1'>
+          {show('showGameName') && <div className="grid grid-cols-2"><span>اللعبة:</span> <span className='text-left'>{gameName}</span></div>}
+          {packageName && <div className="grid grid-cols-2"><span>الباقة:</span> <span className='text-left'>{packageName}</span></div>}
+          <div className="grid grid-cols-2">
+            {show('showCheckInTime') && <span>وقت الدخول:</span>}
+            {show('showCheckInTime') && <span className='text-left font-mono'>{checkInTime.toLocaleTimeString('ar-EG')}</span>}
+          </div>
+           <div className="grid grid-cols-2">
+              {show('showCheckOutTime') && !expectedCheckOutTime && <><span>وقت الخروج:</span><span className='text-left font-mono'>{checkOutTime.toLocaleTimeString('ar-EG')}</span></>}
+              {show('showDuration') && !expectedCheckOutTime && <><span>المدة:</span><span className='text-left'>{duration}</span></>}
+          </div>
+          {expectedCheckOutTime && (
+            <div className="grid grid-cols-2 font-bold text-red-600">
                 <span>الخروج المتوقع:</span>
-                <span>{expectedCheckOutTime.toLocaleTimeString('ar-EG')}</span>
+                <span className='text-left font-mono'>{expectedCheckOutTime.toLocaleTimeString('ar-EG')}</span>
             </div>
         )}
       </div>
@@ -134,6 +132,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
        <div className="mt-2 text-center text-xs text-gray-600 space-y-0.5 pt-1">
             {show('showThankYouMessage') && <p className="font-semibold">{settings?.thankYouMessage}</p>}
             {settings?.customFooter && <p>{settings.customFooter}</p>}
+            {show('showTimestamp') && <p className='font-mono'>{new Date().toLocaleString('ar-EG')}</p>}
        </div>
     </div>
   );
