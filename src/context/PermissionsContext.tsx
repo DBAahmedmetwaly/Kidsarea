@@ -54,6 +54,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       allMenuItems.forEach(item => {
         adminPermissions[item.href] = true;
       });
+      // Admin also gets special permissions
+      adminPermissions['/permissions/apply-discount'] = true;
       setPermissions(adminPermissions);
       setLoading(false);
       return;

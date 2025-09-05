@@ -46,8 +46,9 @@ const STATIC_SCREENS = [
   { href: '/roles', label: 'الصلاحيات' },
 ];
 
-const SPECIAL_PERMISSIONS = [
-    { href: '/permissions/apply-discount', label: 'إمكانية عمل خصم' }
+const SPECIAL_PERMISSIONS: { href: string; label: string }[] = [
+    // This is now managed per-employee
+    // { href: '/permissions/apply-discount', label: 'إمكانية عمل خصم' }
 ];
 
 type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
@@ -239,22 +240,26 @@ function RolesContent() {
                 </div>
               ) : (
                 <>
-                    <h4 className="font-semibold text-muted-foreground flex items-center gap-2 mb-2"><VenetianMask className="h-4 w-4"/> صلاحيات خاصة</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border p-4 rounded-md mb-6">
-                        {SPECIAL_PERMISSIONS.map(screen => (
-                            <div key={screen.href} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`${selectedRole}-${screen.href}`}
-                                    checked={permissions?.[selectedRole]?.[screen.href] || false}
-                                    onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
-                                />
-                                <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    {screen.label}
-                                </Label>
+                    {SPECIAL_PERMISSIONS.length > 0 && (
+                        <>
+                            <h4 className="font-semibold text-muted-foreground flex items-center gap-2 mb-2"><VenetianMask className="h-4 w-4"/> صلاحيات خاصة</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border p-4 rounded-md mb-6">
+                                {SPECIAL_PERMISSIONS.map(screen => (
+                                    <div key={screen.href} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`${selectedRole}-${screen.href}`}
+                                            checked={permissions?.[selectedRole]?.[screen.href] || false}
+                                            onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
+                                        />
+                                        <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {screen.label}
+                                        </Label>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                    <Separator />
+                            <Separator />
+                        </>
+                    )}
                     <h4 className="font-semibold text-muted-foreground flex items-center gap-2 my-4"><Settings className="h-4 w-4"/> صلاحيات الوصول للشاشات</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {allScreens.map(screen => (

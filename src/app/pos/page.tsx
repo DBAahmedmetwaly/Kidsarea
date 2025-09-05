@@ -53,7 +53,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { usePermissions } from '@/context/PermissionsContext';
+
 
 const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onTimeEnd }: { startTime: number, packageDuration?: number, gracePeriodInMinutes?: number, onTimeEnd?: () => void }) => {
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -944,7 +944,6 @@ function EarlyCheckoutDialog({
 function PosTrackingContent() {
   const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
   const { user } = useAuth();
-  const { permissions } = usePermissions();
   const { toast } = useToast();
   const { printReceipt } = usePosPrint();
   const { customers } = useCustomers();
@@ -1006,9 +1005,9 @@ function PosTrackingContent() {
   }, [user, openShifts]);
   
   const canApplyDiscount = useMemo(() => {
-      if (!permissions) return false;
-      return permissions['/permissions/apply-discount'] === true;
-  }, [permissions]);
+      if (!currentUser) return false;
+      return currentUser.canApplyDiscount === true;
+  }, [currentUser]);
 
   const activeChildren = useMemo(() => {
     if (selectedBranchFilter === 'all') return firebaseActiveChildren;
@@ -1457,11 +1456,13 @@ function PosTrackingContent() {
                     const overtimeConsumedMs = Math.max(0, elapsedMsSinceCheckIn - originalDurationMs);
                     
                     const addedDurationMs = (extendItem.packageDuration * extendItem.cartQuantity) * 60 * 1000;
-                    const newNetDurationMs = addedDurationMs - overtimeConsumedMs;
-
+                    
                     currentSession.packageDuration += (extendItem.packageDuration * extendItem.cartQuantity);
-                    // This logic is complex, simpler to just add duration
-                    // currentSession.checkInTime = now - newNetDurationMs;
+                    
+                    // Reset checkInTime to effectively handle the new total duration from "now"
+                    const timeAlreadyPassedInNewPackage = overtimeConsumedMs;
+                    currentSession.checkInTime = now - timeAlreadyPassedInNewPackage;
+
                 }
                 return currentSession;
              });
@@ -1988,7 +1989,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-
-
 

@@ -18,6 +18,7 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { useAuth } from '@/components/AuthProvider';
 import type { Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function EmployeeFormDialog({
     open,
@@ -43,6 +44,7 @@ export default function EmployeeFormDialog({
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [status, setStatus] = useState<'Active' | 'On Leave' | 'Disabled'>('Active');
+    const [canApplyDiscount, setCanApplyDiscount] = useState(false);
     
     useEffect(() => {
         if (isEditMode && initialData) {
@@ -52,6 +54,7 @@ export default function EmployeeFormDialog({
             setUsername(initialData.username || '');
             setPassword(initialData.password || '');
             setStatus(initialData.status);
+            setCanApplyDiscount(initialData.canApplyDiscount || false);
         } else {
             setName('');
             setRole('');
@@ -63,6 +66,7 @@ export default function EmployeeFormDialog({
             setUsername('');
             setPassword('');
             setStatus('Active');
+            setCanApplyDiscount(false);
         }
     }, [initialData, isEditMode, open, currentUser]);
 
@@ -96,6 +100,7 @@ export default function EmployeeFormDialog({
             status,
             username: requiresCredentials ? username : '',
             password: requiresCredentials ? password : '',
+            canApplyDiscount,
         };
         onSubmit(employeeData);
         onOpenChange(false);
@@ -173,6 +178,10 @@ export default function EmployeeFormDialog({
                                 <SelectItem value="Disabled">معطل</SelectItem>
                             </SelectContent>
                         </Select>
+                    </div>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                        <Checkbox id="canApplyDiscount" checked={canApplyDiscount} onCheckedChange={(checked) => setCanApplyDiscount(!!checked)} />
+                        <Label htmlFor="canApplyDiscount" className="cursor-pointer">يمكنه تطبيق الخصم</Label>
                     </div>
                 </div>
                 <DialogFooter>

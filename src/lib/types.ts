@@ -60,6 +60,7 @@ export interface Employee {
     username?: string;
     password?: string;
     baseSalary?: number;
+    canApplyDiscount?: boolean;
 }
 
 export interface Branch {
