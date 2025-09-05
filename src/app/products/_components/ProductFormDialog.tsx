@@ -70,8 +70,8 @@ export default function ProductFormDialog({
 
         const category = productCategories.find(c => c.id === categoryId);
         
-        const productData = {
-            type: 'product' as const,
+        const productData: Omit<Product, 'id'> = {
+            type: 'product',
             name,
             categoryId,
             categoryName: category?.name || '',
