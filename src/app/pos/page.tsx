@@ -1145,20 +1145,13 @@ function PosTrackingContent() {
         notificationIntervals.delete(child.id);
     }
 
-    const activeSubs = subscriptions.filter(sub => 
-        sub.customerName === child.parentName &&
-        child.children.some(c => c.name === sub.childName) &&
-        sub.status === 'Active'
-    );
-
     const checkOutTime = receiptDetails?.checkOutTime.getTime() ?? Date.now();
     const durationMs = checkOutTime - child.checkInTime;
     const cost = receiptDetails?.totalCost ?? 0;
     
     const finalCostBeforeDiscount = costBeforeDiscount ?? (cost + (receiptDetails?.discount || 0));
 
-
-    const baseSession: Omit<CompletedSession, 'id' | 'subscriptionId'> = {
+    const completedSession: Omit<CompletedSession, 'id'> = {
         ...child,
         checkOutTime: checkOutTime,
         durationMs: durationMs,
@@ -1172,15 +1165,9 @@ function PosTrackingContent() {
         packageName: child.packageName,
     };
     
-    let completedSession: Partial<CompletedSession> = { ...baseSession };
-    if (activeSubs.length > 0) {
-        completedSession.subscriptionId = activeSubs.map(s => s.id).join(',');
-    }
+    delete (completedSession as Partial<CompletedSession>).id;
 
     try {
-        if (completedSession.subscriptionId === undefined) {
-            delete completedSession.subscriptionId;
-        }
         await set(ref(db, `sessions/completed/${child.id}`), completedSession);
         await set(ref(db, `sessions/active/${child.id}`), null);
         
@@ -1965,6 +1952,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
