@@ -244,6 +244,7 @@ function CheckOutDialog({
     let overtimeCost: number = 0;
 
     if (isPackageGame) {
+        costBeforeDiscount = child.packagePrice || 0;
         if (policies?.enablePackageOvertime && child.packageDuration) {
             const packageDurationMs = child.packageDuration * 60 * 1000;
             const gracePeriodMs = (policies.packageOvertimeGracePeriod || 0) * 60 * 1000;
@@ -266,7 +267,7 @@ function CheckOutDialog({
                 overtimeCost = overtimeMinutes * (policies.packageOvertimeRatePerMinute || 0);
             }
         }
-        costBeforeDiscount = overtimeCost;
+        costBeforeDiscount += overtimeCost;
     } else {
         const gameDetails = games.find((g) => g.name === child.game);
         let hourlyRate = gameDetails?.price || 0;
@@ -995,8 +996,8 @@ function PosTrackingContent() {
   }, [user, openShifts]);
   
   const canApplyDiscount = useMemo(() => {
-      if (!currentUser) return false;
-      return currentUser.canApplyDiscount === true;
+    if (!currentUser) return false;
+    return currentUser.canApplyDiscount === true;
   }, [currentUser]);
 
   const activeChildren = useMemo(() => {
@@ -1971,4 +1972,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
