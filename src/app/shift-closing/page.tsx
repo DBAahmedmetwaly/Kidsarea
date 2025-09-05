@@ -90,17 +90,19 @@ function ShiftClosingForm() {
 
   const selectedCashierUsername = form.watch('cashierUsername');
   
-  const {sessionsRevenue, subscriptionsRevenue, productRevenue, expectedRevenue} = useMemo(() => {
-    if (!selectedCashierUsername) return { sessionsRevenue: 0, subscriptionsRevenue: 0, productRevenue: 0, expectedRevenue: 0 };
+  const {sessionsRevenue, subscriptionsRevenue, productRevenue, expectedRevenue, totalDiscounts} = useMemo(() => {
+    if (!selectedCashierUsername) return { sessionsRevenue: 0, subscriptionsRevenue: 0, productRevenue: 0, expectedRevenue: 0, totalDiscounts: 0 };
     
     const openShift = openShifts.find(c => c.cashierUsername === selectedCashierUsername);
-    if (!openShift) return { sessionsRevenue: 0, subscriptionsRevenue: 0, productRevenue: 0, expectedRevenue: 0 };
+    if (!openShift) return { sessionsRevenue: 0, subscriptionsRevenue: 0, productRevenue: 0, expectedRevenue: 0, totalDiscounts: 0 };
     
     const shiftStartTime = new Date(openShift.startTime).getTime();
     
-    const sessionsRevenue = completedSessions
+    const shiftSessions = completedSessions
       .filter(session => session.cashierUsername === selectedCashierUsername && new Date(session.checkOutTime).getTime() >= shiftStartTime)
-      .reduce((total, session) => total + session.cost, 0);
+
+    const sessionsRevenue = shiftSessions.reduce((total, session) => total + session.cost, 0);
+    const totalDiscounts = shiftSessions.reduce((total, session) => total + (session.discount || 0), 0);
 
     const subscriptionsRevenue = subscriptions
       .filter(sub => sub.cashierUsername === selectedCashierUsername && new Date(sub.createdAt).getTime() >= shiftStartTime)
@@ -110,7 +112,9 @@ function ShiftClosingForm() {
       .filter(sale => sale.cashierUsername === selectedCashierUsername && new Date(sale.createdAt).getTime() >= shiftStartTime)
       .reduce((total, sale) => total + sale.totalAmount, 0);
 
-    return { sessionsRevenue, subscriptionsRevenue, productRevenue, expectedRevenue: sessionsRevenue + subscriptionsRevenue + productRevenue };
+    const expectedRevenue = sessionsRevenue + subscriptionsRevenue + productRevenue;
+
+    return { sessionsRevenue, subscriptionsRevenue, productRevenue, expectedRevenue, totalDiscounts };
   }, [selectedCashierUsername, openShifts, completedSessions, subscriptions, productSales]);
 
   useEffect(() => {
@@ -270,6 +274,10 @@ function ShiftClosingForm() {
                      <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">إيرادات المنتجات</span>
                         <span className="font-mono font-semibold">{`ج.م ${productRevenue.toFixed(2)}`}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-red-500">إجمالي الخصومات (-)</span>
+                        <span className="font-mono font-semibold text-red-500">{`ج.م ${totalDiscounts.toFixed(2)}`}</span>
                     </div>
                      <div className="flex justify-between items-center text-md font-bold pt-2 border-t">
                         <span className="text-primary">الإجمالي المتوقع</span>
@@ -913,3 +921,4 @@ export default function ShiftManagementPage() {
         </SidebarProvider>
     );
 }
+

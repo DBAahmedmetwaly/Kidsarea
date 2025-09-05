@@ -219,7 +219,7 @@ function SessionsContent() {
                 <TableCell className="font-bold text-center">
                     {session.subscriptionId ? (
                         <span className="flex items-center justify-center gap-1 text-green-600"><Star className="h-4 w-4"/> اشتراك</span>
-                    ) : session.packagePrice && session.durationMs > 0 ? (
+                    ) : (session.packagePrice !== undefined && session.packagePrice > 0) || session.packageName ? (
                        <span className="flex items-center justify-center gap-1 text-blue-600"><PackageCheck className="h-4 w-4"/> باقة</span>
                     ) : `ج.م ${session.cost.toFixed(2)}`}
                 </TableCell>

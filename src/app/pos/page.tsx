@@ -897,7 +897,9 @@ function PosTrackingContent() {
   
   const [isExtendDialogOpen, setExtendDialogOpen] = useState(false);
   const [childToExtend, setChildToExtend] = useState<Child | null>(null);
-
+  
+  const [isEarlyCheckoutDiscountOpen, setEarlyCheckoutDiscountOpen] = useState(false);
+  const [earlyCheckoutDiscount, setEarlyCheckoutDiscount] = useState('');
 
   const [activeSearch, setActiveSearch] = useState('');
   
@@ -1017,26 +1019,42 @@ function PosTrackingContent() {
   
   const handleCheckoutClick = (session: Child) => {
     setChildToCheckout(session);
-
-    // Calculate if there's overtime cost
+    
     const isPackageGame = session?.packageDuration && session.packageDuration > 0;
-    if (isPackageGame && policies) {
-        const durationMs = Date.now() - session.checkInTime;
+    if (isPackageGame) {
+        const remainingTimeMs = (session.checkInTime + session.packageDuration * 60 * 1000) - Date.now();
+        
+        if (remainingTimeMs > 0) { // Leaving early
+            setEarlyCheckoutDiscountOpen(true);
+            return;
+        }
+
+        const gracePeriodMs = (policies?.packageOvertimeGracePeriod || 0) * 60 * 1000;
+        const elapsedMs = Date.now() - session.checkInTime;
         const packageDurationMs = session.packageDuration * 60 * 1000;
-        const gracePeriodMs = (policies.packageOvertimeGracePeriod || 0) * 60 * 1000;
-        const chargeableOvertimeMs = Math.max(0, durationMs - packageDurationMs - gracePeriodMs);
+        const chargeableOvertimeMs = Math.max(0, elapsedMs - packageDurationMs - gracePeriodMs);
 
         if (chargeableOvertimeMs <= 0) {
-            // No overtime cost, show simple confirmation
             setZeroCostCheckoutOpen(true);
             return;
         }
     }
     
-    // Default to full checkout dialog
     setCheckoutDialogOpen(true);
   };
   
+  const handleEarlyCheckout = (applyDiscount: boolean) => {
+    setEarlyCheckoutDiscountOpen(false);
+    if (applyDiscount) {
+        setEarlyCheckoutDiscount('');
+        // Open the full checkout dialog to enter discount
+        setCheckoutDialogOpen(true);
+    } else {
+        // Checkout with zero cost if no discount is applied
+        setZeroCostCheckoutOpen(true);
+    }
+  }
+
   const handleCheckOut = async (child: Child, receiptDetails?: PosReceiptProps, costBeforeDiscount?: number) => {
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
@@ -1799,6 +1817,20 @@ function PosTrackingContent() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <AlertDialog open={isEarlyCheckoutDiscountOpen} onOpenChange={setEarlyCheckoutDiscountOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>خروج مبكر</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          الطفل يغادر قبل انتهاء وقت الباقة. هل تريد تطبيق خصم على الفاتورة؟
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => handleEarlyCheckout(true)}>نعم، تطبيق خصم</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => handleEarlyCheckout(false)}>لا، خروج بدون خصم</AlertDialogCancel>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <CustomerFormDialog 
                 open={isCustomerFormOpen} 
                 onOpenChange={setCustomerFormOpen} 
@@ -1878,4 +1910,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
