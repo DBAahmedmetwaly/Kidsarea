@@ -71,6 +71,7 @@ export default function ProductFormDialog({
         const category = productCategories.find(c => c.id === categoryId);
         
         const productData = {
+            type: 'product', // This ensures the product is correctly identified
             name,
             categoryId,
             categoryName: category?.name || '',
