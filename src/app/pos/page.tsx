@@ -52,6 +52,7 @@ import { StatCard } from '@/components/StatCard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onTimeEnd }: { startTime: number, packageDuration?: number, gracePeriodInMinutes?: number, onTimeEnd?: () => void }) => {
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -741,6 +742,7 @@ function PosTrackingContent() {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   
   const [isCheckoutDialogOpen, setCheckoutDialogOpen] = useState(false);
+  const [isZeroCostCheckoutOpen, setZeroCostCheckoutOpen] = useState(false);
   const [childToCheckout, setChildToCheckout] = useState<Child | null>(null);
 
   const [activeSearch, setActiveSearch] = useState('');
@@ -854,13 +856,33 @@ function PosTrackingContent() {
     setCheckInDialogOpen(true);
   }
   
-  const openCheckOutDialog = (child: Child) => {
-    setChildToCheckout(child);
+  const handleCheckoutClick = (session: Child) => {
+    setChildToCheckout(session);
+
+    // Calculate if there's overtime cost
+    const isPackageGame = session?.packageDuration && session.packageDuration > 0;
+    if (isPackageGame && policies) {
+        const durationMs = Date.now() - session.checkInTime;
+        const packageDurationMs = session.packageDuration * 60 * 1000;
+        const gracePeriodMs = (policies.packageOvertimeGracePeriod || 0) * 60 * 1000;
+        const chargeableOvertimeMs = Math.max(0, durationMs - packageDurationMs - gracePeriodMs);
+
+        if (chargeableOvertimeMs <= 0) {
+            // No overtime cost, show simple confirmation
+            setZeroCostCheckoutOpen(true);
+            return;
+        }
+    }
+    
+    // Default to full checkout dialog
     setCheckoutDialogOpen(true);
-  }
+  };
   
-  const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps, costBeforeDiscount: number) => {
+  const handleCheckOut = async (child: Child, receiptDetails?: PosReceiptProps, costBeforeDiscount?: number) => {
     setCheckoutDialogOpen(false);
+    setZeroCostCheckoutOpen(false);
+
+    if (!child) return;
     
     // Clear any running notification intervals for this child
     if (notificationIntervals.has(child.id)) {
@@ -874,17 +896,23 @@ function PosTrackingContent() {
         sub.status === 'Active'
     );
 
+    const checkOutTime = receiptDetails?.checkOutTime.getTime() ?? Date.now();
+    const durationMs = checkOutTime - child.checkInTime;
+    const cost = receiptDetails?.totalCost ?? 0;
+    const finalCostBeforeDiscount = costBeforeDiscount ?? cost + (receiptDetails?.discount || 0);
+
+
     const baseSession: Omit<CompletedSession, 'id' | 'subscriptionId'> = {
         ...child,
-        checkOutTime: receiptDetails.checkOutTime.getTime(),
-        durationMs: receiptDetails.checkOutTime.getTime() - child.checkInTime,
-        cost: receiptDetails.totalCost,
-        costBeforeDiscount: costBeforeDiscount,
-        durationCost: receiptDetails.durationCost,
-        entryFee: receiptDetails.entryFee,
-        discount: receiptDetails.discount,
-        overtimeCost: receiptDetails.overtimeCost,
-        receiptNumber: Number(receiptDetails.receiptId?.split('-')[1]) || 0,
+        checkOutTime: checkOutTime,
+        durationMs: durationMs,
+        cost: cost,
+        costBeforeDiscount: finalCostBeforeDiscount,
+        durationCost: receiptDetails?.durationCost,
+        entryFee: receiptDetails?.entryFee,
+        discount: receiptDetails?.discount,
+        overtimeCost: receiptDetails?.overtimeCost,
+        receiptNumber: Number(receiptDetails?.receiptId?.split('-')[1]) || 0,
     };
     
     let completedSession: Partial<CompletedSession> = { ...baseSession };
@@ -1438,7 +1466,7 @@ function PosTrackingContent() {
                                         <Button
                                         variant="destructive"
                                         size="sm"
-                                        onClick={() => openCheckOutDialog(session)}
+                                        onClick={() => handleCheckoutClick(session)}
                                         disabled={!hasActiveShift}
                                         >
                                         <Square className="me-2 h-4 w-4" />
@@ -1538,6 +1566,20 @@ function PosTrackingContent() {
                 child={childToCheckout}
                 onConfirm={handleCheckOut}
             />
+             <AlertDialog open={isZeroCostCheckoutOpen} onOpenChange={setZeroCostCheckoutOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>تأكيد الخروج</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            لا توجد تكلفة إضافية. هل أنت متأكد من تسجيل خروج {childToCheckout?.children.map(c => c.name).join(', ')}؟
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!)}>تأكيد الخروج</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <CustomerFormDialog 
                 open={isCustomerFormOpen} 
                 onOpenChange={setCustomerFormOpen} 
@@ -1615,3 +1657,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
