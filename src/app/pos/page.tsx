@@ -1146,14 +1146,14 @@ function PosTrackingContent() {
         notificationIntervals.delete(child.id);
     }
     
-    // For postpaid, we generate a new receipt number
+    const branch = branches.find(b => b.name === child.branchName);
     let finalReceiptNumber = receiptDetails.receiptId ? parseInt(receiptDetails.receiptId.split('-')[1], 10) : 0;
-    if (!child.prepaidSessionId) {
-        const branch = branches.find(b => b.name === child.branchName);
-        if (branch?.id) {
-            const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
-            const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
-            if (committed) finalReceiptNumber = snapshot.val();
+    
+    if (branch?.id && !child.prepaidSessionId) {
+        const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
+        const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
+        if (committed) {
+          finalReceiptNumber = snapshot.val();
         }
     }
     
@@ -1171,7 +1171,7 @@ function PosTrackingContent() {
         entryFee: receiptDetails.entryFee,
         discount: receiptDetails.discount,
         receiptNumber: finalReceiptNumber,
-        overtimeCost: receiptDetails.overtimeCost,
+        overtimeCost: receiptDetails.overtimeCost || 0,
     };
     
     if (receiptSettings) {
@@ -1180,7 +1180,6 @@ function PosTrackingContent() {
 
     try {
         if (child.prepaidSessionId) {
-            // It's a prepaid session, update the existing record
             const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
             await update(completedSessionRef, {
                 checkOutTime: sessionToSave.checkOutTime,
@@ -1191,8 +1190,7 @@ function PosTrackingContent() {
                 overtimeCost: sessionToSave.overtimeCost,
             });
         } else {
-            // It's a postpaid session, create a new record
-            await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
+             await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
         }
         await set(ref(db, `sessions/active/${child.id}`), null);
     } catch(err) {
@@ -1307,10 +1305,15 @@ function PosTrackingContent() {
       setCart(prev => prev.map(item => {
           if (item.id === itemId) {
               if (newQuantity <= 0) return null;
-               if ('type' in item && item.type === 'product' && 'quantity' in item && newQuantity > item.quantity) {
+               if (item.type === 'product' && 'quantity' in item && newQuantity > item.quantity) {
                   toast({ title: "الكمية غير كافية", description: `الكمية المتاحة هي ${item.quantity} فقط.`, variant: 'destructive' });
                   return { ...item, cartQuantity: item.quantity };
               }
+               if (item.type === 'prepaid-game' && policies?.packagePricingModel === 'per_child') {
+                 const basePrice = item.price / item.sessionDetails.children.length;
+                 const newPrice = basePrice * newQuantity;
+                 return { ...item, cartQuantity: newQuantity, price: newPrice, sessionDetails: {...item.sessionDetails, packagePrice: newPrice} };
+               }
               return { ...item, cartQuantity: newQuantity };
           }
           return item;
@@ -1319,6 +1322,9 @@ function PosTrackingContent() {
   
   const cartTotal = useMemo(() => cart.reduce((sum, item) => {
     const price = 'price' in item ? item.price : 0;
+    if (item.type === 'prepaid-game') {
+      return sum + item.price;
+    }
     return sum + (price * item.cartQuantity)
   }, 0), [cart]);
 
@@ -1331,9 +1337,9 @@ function PosTrackingContent() {
         return;
     }
     
-    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => 'type' in item && item.type === 'product');
-    const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => 'type' in item && item.type === 'prepaid-game');
-    const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => 'type' in item && item.type === 'extend-session');
+    const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => item.type === 'product');
+    const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => item.type === 'prepaid-game');
+    const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => item.type === 'extend-session');
     
     const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
     const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
@@ -1402,7 +1408,7 @@ function PosTrackingContent() {
              }
         }
         
-        const receiptProps: ProductReceiptProps = { receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, settings: receiptSettings, appName: policies?.appName || 'FunTrack', branchName: currentUser.branch, cashierName: currentUser.name, items: cart.map(item => { let name = ''; if ('type' in item && item.type === 'product') name = item.productName; if ('type' in item && item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`; if ('type' in item && item.type === 'extend-session') name = `تمديد: ${item.gameName}`; return { name, quantity: item.cartQuantity, price: item.price }; }), totalAmount: cartTotal, sessionInfo: sessionInfoForReceipt, notes: cartNotes };
+        const receiptProps: ProductReceiptProps = { receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, settings: receiptSettings, appName: policies?.appName || 'FunTrack', branchName: currentUser.branch, cashierName: currentUser.name, items: cart.map(item => { let name = ''; if (item.type === 'product') name = item.productName; if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`; if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`; return { name, quantity: item.cartQuantity, price: item.price }; }), totalAmount: cartTotal, sessionInfo: sessionInfoForReceipt, notes: cartNotes };
         printReceipt(<ProductReceipt {...receiptProps} />);
         
         toast({ title: "تمت عملية البيع بنجاح", description: "تم تسجيل الفاتورة وتحديث البيانات." });
@@ -1875,12 +1881,12 @@ function PosTrackingContent() {
                                 <div key={item.id} className="flex items-center gap-2 p-2 border-b">
                                     <div className="flex-grow">
                                         <p className="text-sm font-medium">
-                                            {'type' in item && item.type === 'prepaid-game' ? `لعبة: ${item.sessionDetails.game}` : 'type' in item && item.type === 'extend-session' ? `تمديد: ${item.gameName}` : 'productName' in item ? item.productName : 'פריט לא ידוע'}
+                                            {item.type === 'prepaid-game' ? `لعبة: ${item.sessionDetails.game}` : item.type === 'extend-session' ? `تمديد: ${item.gameName}` : 'productName' in item ? item.productName : 'פריט לא ידוע'}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                           {'type' in item && item.type === 'prepaid-game' 
+                                           {item.type === 'prepaid-game' 
                                                 ? `${item.sessionDetails.children.map(c => c.name).join(', ')} - ${item.price.toFixed(2)} ج.م`
-                                                : 'type' in item && item.type === 'extend-session' 
+                                                : item.type === 'extend-session' 
                                                     ? `${item.childName} - ${item.price.toFixed(2)} ج.م`
                                                     : 'price' in item ? `${item.price.toFixed(2)} ج.م` : ''
                                             }
@@ -1938,6 +1944,7 @@ export default function PosTrackingPage() {
 }
 
     
+
 
 
 
