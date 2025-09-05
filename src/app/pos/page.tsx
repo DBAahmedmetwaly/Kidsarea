@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -1403,14 +1404,18 @@ function PosTrackingContent() {
   
   const cartTotal = useMemo(() => cart.reduce((sum, item) => {
     let price = 0;
-    if ('price' in item) {
+    if (item.type === 'prepaid-game') {
+        // For prepaid games, the price is the total for the package, regardless of quantity if not per_child
+         if (policies?.packagePricingModel === 'per_child') {
+            const basePrice = item.price / item.cartQuantity;
+            return sum + (basePrice * item.cartQuantity);
+        }
+        return sum + item.price;
+    } else if ('price' in item) {
         price = item.price;
     }
-    if (item.type !== 'prepaid-game') {
-        return sum + (price * item.cartQuantity);
-    }
-    return sum + price;
-  }, 0), [cart]);
+    return sum + (price * item.cartQuantity);
+  }, 0), [cart, policies]);
 
   const handleConfirmSale = async () => {
     if (!user?.username || !currentUser || cart.length === 0) return;
@@ -1492,7 +1497,23 @@ function PosTrackingContent() {
              }
         }
         
-        const receiptProps: ProductReceiptProps = { receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, settings: receiptSettings, appName: policies?.appName || 'FunTrack', branchName: currentUser.branch, cashierName: currentUser.name, items: cart.map(item => { let name = ''; if (item.type === 'product') name = item.productName; if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`; if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`; return { name, quantity: item.cartQuantity, price: 'price' in item ? item.price : 0 }; }), totalAmount: cartTotal, sessionInfo: sessionInfoForReceipt, notes: cartNotes };
+        const receiptProps: ProductReceiptProps = { 
+            receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, 
+            settings: receiptSettings, 
+            appName: policies?.appName || 'FunTrack', 
+            branchName: currentUser.branch, 
+            cashierName: currentUser.name, 
+            items: cart.map(item => {
+                let name = '';
+                if (item.type === 'product') name = item.productName;
+                if (item.type === 'prepaid-game') name = `باقة: ${item.sessionDetails.game}`;
+                if (item.type === 'extend-session') name = `تمديد: ${item.gameName}`;
+                return { name, quantity: item.cartQuantity, price: 'price' in item ? item.price : 0 };
+            }), 
+            totalAmount: cartTotal, 
+            sessionInfo: sessionInfoForReceipt, 
+            notes: cartNotes 
+        };
         printReceipt(<ProductReceipt {...receiptProps} />);
         
         toast({ title: "تمت عملية البيع بنجاح", description: "تم تسجيل الفاتورة وتحديث البيانات." });
@@ -2034,5 +2055,6 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
