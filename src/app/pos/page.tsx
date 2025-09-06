@@ -1339,25 +1339,26 @@ function PosTrackingContent() {
       }
     };
   
-  const handleAddToCart = (item: InventoryItem | PrepaidGameCartItem | ExtendSessionCartItem) => {
+  const handleAddToCart = (item: InventoryItem) => {
+      const productItem = { ...item, type: 'product' as const };
       setCart(prevCart => {
-          const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
+          const existingItem = prevCart.find(cartItem => cartItem.id === productItem.id);
           if (existingItem) {
-               if (item.type === 'product' && 'quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
+               if ('quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
                     toast({ title: "الكمية غير كافية", variant: "destructive" });
                     return prevCart;
                 }
                  return prevCart.map(cartItem => 
-                    cartItem.id === item.id 
+                    cartItem.id === productItem.id 
                         ? { ...cartItem, cartQuantity: cartItem.cartQuantity + 1 } 
                         : cartItem
                 );
           } else {
-               if (item.type === 'product' && 'quantity' in item && item.quantity <= 0) {
+               if ('quantity' in productItem && productItem.quantity <= 0) {
                    toast({ title: "نفدت الكمية", variant: "destructive" });
                    return prevCart;
                }
-               return [...prevCart, { ...item, cartQuantity: 1 }];
+               return [...prevCart, { ...productItem, cartQuantity: 1 }];
           }
       });
   };
@@ -2019,7 +2020,7 @@ function PosTrackingContent() {
                                         case 'product':
                                             return { name: item.productName, price: item.price.toFixed(2) };
                                         case 'prepaid-game':
-                                            return { name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, price: item.price.toFixed(2) };
+                                            return { name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, price: (item.price / item.cartQuantity).toFixed(2) };
                                         case 'extend-session':
                                              return { name: `تمديد: ${item.gameName} (${item.childName})`, price: item.price.toFixed(2) };
                                         default:
