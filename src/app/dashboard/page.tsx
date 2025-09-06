@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon, FilterX, Menu, Sparkles, Loader2 } from 'lucide-react';
+import { DollarSign, Users, Activity, Wallet, Calendar as CalendarIcon, FilterX, Menu, Sparkles, Loader2, Gamepad2, ShoppingCart } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useCustomers } from '@/context/CustomerContext';
-import type { CompletedSession, GameCategory, Game, Customer, CustomerChild } from '@/lib/types';
+import type { CompletedSession, GameCategory, Game, Customer, CustomerChild, ProductSale } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { ref, set, push } from 'firebase/database';
 import { db } from '@/lib/firebase';
@@ -177,7 +177,7 @@ function DemoDataGenerator() {
 
 function DashboardContent() {
     const { completedSessions, activeChildren } = useSession();
-    const { branches, employees, games, policies: allPolicies } = useFirebase();
+    const { branches, employees, games, policies: allPolicies, productSales } = useFirebase();
     const { toggleSidebar } = useSidebar();
     const { user } = useAuth();
 
@@ -206,41 +206,44 @@ function DashboardContent() {
     }, [currentUser]);
 
     const filteredData = useMemo(() => {
-        const branchGames = selectedBranch === 'all' 
-            ? games.map(g => g.name) 
-            : games.filter(g => g.branch === selectedBranch || g.branch === 'كل الفروع').map(g => g.name);
-
         const range = fromDate && toDate ? { start: startOfDay(fromDate), end: endOfDay(toDate) } : null;
 
         const sessions = completedSessions.filter(session => {
-            const isBranchMatch = branchGames.includes(session.game);
+            const isBranchMatch = selectedBranch === 'all' || session.branchName === selectedBranch;
             if (!range) return isBranchMatch;
             const sessionDate = new Date(session.checkOutTime);
             return isBranchMatch && isWithinInterval(sessionDate, range);
         });
 
-        const active = activeChildren.filter(child => branchGames.includes(child.game));
-        
-        return { sessions, active };
+        const sales = productSales.filter(sale => {
+            const isBranchMatch = selectedBranch === 'all' || sale.branchName === selectedBranch;
+            if (!range) return isBranchMatch;
+            const saleDate = new Date(sale.createdAt);
+            return isBranchMatch && isWithinInterval(saleDate, range);
+        });
 
-    }, [completedSessions, activeChildren, games, selectedBranch, fromDate, toDate]);
+        const active = activeChildren.filter(child => selectedBranch === 'all' || child.branchName === selectedBranch);
+        
+        return { sessions, sales, active };
+
+    }, [completedSessions, productSales, activeChildren, selectedBranch, fromDate, toDate]);
 
     const stats = useMemo(() => {
-        const totalRevenue = filteredData.sessions.reduce((acc, s) => acc + s.cost, 0);
+        const gamesRevenue = filteredData.sessions.reduce((acc, s) => acc + s.cost, 0);
+        const productsRevenue = filteredData.sales.reduce((acc, s) => acc + s.totalAmount, 0);
         const totalVisitors = filteredData.sessions.length;
         const activeNow = filteredData.active.length;
         
         const todayRange = { start: startOfDay(new Date()), end: endOfDay(new Date()) };
         const revenueToday = completedSessions
             .filter(s => {
-                 const game = games.find(g => g.name === s.game);
-                 const isBranchMatch = selectedBranch === 'all' || game?.branch === selectedBranch || game?.branch === 'كل الفروع';
+                 const isBranchMatch = selectedBranch === 'all' || s.branchName === selectedBranch;
                  return isBranchMatch && isWithinInterval(new Date(s.checkOutTime), todayRange);
             })
             .reduce((acc, s) => acc + s.cost, 0);
 
-        return { totalRevenue, totalVisitors, activeNow, revenueToday };
-    }, [filteredData, completedSessions, selectedBranch, games]);
+        return { gamesRevenue, productsRevenue, totalVisitors, activeNow, revenueToday };
+    }, [filteredData, completedSessions, selectedBranch]);
 
     const chartData = useMemo(() => {
         if (!fromDate || !toDate) return [];
@@ -250,28 +253,28 @@ function DashboardContent() {
             end: toDate,
         });
 
-        const branchGames = selectedBranch === 'all' 
-            ? games.map(g => g.name) 
-            : games.filter(g => g.branch === selectedBranch || g.branch === 'كل الفروع').map(g => g.name);
-
         return intervalDays.map(day => {
             const dayStart = startOfDay(day);
             const dayEnd = endOfDay(day);
             const dayInterval = { start: dayStart, end: dayEnd };
             
             const daySessions = completedSessions.filter(session => {
-                 const isBranchMatch = branchGames.includes(session.game);
+                 const isBranchMatch = selectedBranch === 'all' || session.branchName === selectedBranch;
                  return isBranchMatch && isWithinInterval(new Date(session.checkOutTime), dayInterval);
+            });
+             const daySales = productSales.filter(sale => {
+                 const isBranchMatch = selectedBranch === 'all' || sale.branchName === selectedBranch;
+                 return isBranchMatch && isWithinInterval(new Date(sale.createdAt), dayInterval);
             });
 
             return {
                 date: format(day, 'MMM d', { locale: ar }),
-                revenue: daySessions.reduce((sum, s) => sum + s.cost, 0),
+                revenue: daySessions.reduce((sum, s) => sum + s.cost, 0) + daySales.reduce((sum, s) => sum + s.totalAmount, 0),
                 visitors: daySessions.length,
             };
         });
 
-    }, [completedSessions, selectedBranch, games, fromDate, toDate]);
+    }, [completedSessions, productSales, selectedBranch, fromDate, toDate]);
 
     const clearFilters = () => {
         if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -377,9 +380,15 @@ function DashboardContent() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
-                title="إجمالي الإيرادات"
-                value={`ج.م ${stats.totalRevenue.toFixed(2)}`}
-                icon={DollarSign}
+                title="إيرادات الألعاب"
+                value={`ج.م ${stats.gamesRevenue.toFixed(2)}`}
+                icon={Gamepad2}
+                description={fromDate && toDate ? `في الفترة المحددة` : ''}
+            />
+             <StatCard
+                title="إيرادات المنتجات"
+                value={`ج.م ${stats.productsRevenue.toFixed(2)}`}
+                icon={ShoppingCart}
                 description={fromDate && toDate ? `في الفترة المحددة` : ''}
             />
             <StatCard
@@ -393,12 +402,6 @@ function DashboardContent() {
                 value={`${stats.activeNow}`}
                 icon={Activity}
                 description={selectedBranch === 'all' ? `في كل الفروع` : `في ${selectedBranch}`}
-            />
-            <StatCard
-                title="إيرادات اليوم"
-                value={`ج.م ${stats.revenueToday.toFixed(2)}`}
-                icon={Wallet}
-                description="يشمل جميع الفروع"
             />
             </div>
 
