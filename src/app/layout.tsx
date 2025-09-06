@@ -14,7 +14,7 @@ import { PermissionsProvider } from '@/context/PermissionsContext';
 export const metadata: Metadata = {
   title: 'FunTrack Manager',
   description: 'Kids Play Area Management System',
-  manifest: undefined,
+  manifest: null,
 };
 
 export default function RootLayout({
