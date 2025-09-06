@@ -1403,9 +1403,11 @@ function PosTrackingContent() {
   
   const cartTotal = useMemo(() => cart.reduce((sum, item) => {
     let price = 0;
-    if (item.type === 'prepaid-game' || item.type === 'extend-session') {
-      price = item.price;
+    if (item.type === 'prepaid-game') {
+      price = item.price; // This price is already the total for the game session
       return sum + price;
+    } else if (item.type === 'extend-session') {
+      price = item.price;
     } else if (item.type === 'product') {
       price = item.price;
     }
@@ -2011,19 +2013,29 @@ function PosTrackingContent() {
                         <p className="text-muted-foreground text-center py-8">سلة التسوق فارغة.</p>
                     ) : (
                         <div className="space-y-2 max-h-96 overflow-y-auto">
-                            {cart.map(item => (
+                            {cart.map(item => {
+                                const renderItemDetails = () => {
+                                    switch (item.type) {
+                                        case 'product':
+                                            return { name: item.productName, price: item.price.toFixed(2) };
+                                        case 'prepaid-game':
+                                            return { name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, price: item.price.toFixed(2) };
+                                        case 'extend-session':
+                                             return { name: `تمديد: ${item.gameName} (${item.childName})`, price: item.price.toFixed(2) };
+                                        default:
+                                            return { name: 'صنف غير معروف', price: '0.00' };
+                                    }
+                                };
+                                const details = renderItemDetails();
+
+                                return (
                                 <div key={item.id} className="flex items-center gap-2 p-2 border-b">
                                     <div className="flex-grow">
                                         <p className="text-sm font-medium">
-                                            {item.type === 'prepaid-game' ? `لعبة: ${item.sessionDetails.game}` : item.type === 'extend-session' ? `تمديد: ${item.gameName}` : 'productName' in item ? item.productName : 'פריט לא ידוע'}
+                                            {details.name}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                           {item.type === 'prepaid-game' 
-                                                ? `${item.sessionDetails.children.map(c => c.name).join(', ')} - ${item.price.toFixed(2)} ج.م`
-                                                : item.type === 'extend-session' 
-                                                    ? `${item.childName} - ${'price' in item ? item.price.toFixed(2) : '0.00'} ج.م`
-                                                    : 'price' in item ? `${item.price.toFixed(2)} ج.م` : ''
-                                            }
+                                           {`ج.م ${details.price}`}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1">
@@ -2036,7 +2048,7 @@ function PosTrackingContent() {
                                         </Button>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     )}
                     <Separator />
