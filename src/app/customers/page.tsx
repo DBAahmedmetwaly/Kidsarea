@@ -486,7 +486,7 @@ function CustomersContent() {
     const filteredCustomers = useMemo(() => {
         if (!filter) return customers;
         return customers.filter(c => 
-            c.parentName.toLowerCase().includes(filter.toLowerCase()) || 
+            (typeof c.parentName === 'string' && c.parentName.toLowerCase().includes(filter.toLowerCase())) || 
             (c.phoneNumbers || []).some(p => p.includes(filter))
         );
     }, [customers, filter]);
