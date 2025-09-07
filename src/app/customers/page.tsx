@@ -281,6 +281,20 @@ export function CustomerFormDialog({
     );
 }
 
+function useDebounce<T>(value: T, delay?: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay || 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 const useCustomerUpload = (existingCustomers: Customer[]) => {
     const { toast } = useToast();
     const [uploadState, setUploadState] = useState({
@@ -388,6 +402,7 @@ function CustomersContent() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [filter, setFilter] = useState('');
+    const debouncedFilter = useDebounce(filter, 300);
     const [visibleCount, setVisibleCount] = useState(20);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
@@ -484,12 +499,12 @@ function CustomersContent() {
     };
 
     const filteredCustomers = useMemo(() => {
-        if (!filter) return customers;
+        if (!debouncedFilter) return customers;
         return customers.filter(c => 
-            (typeof c.parentName === 'string' && c.parentName.toLowerCase().includes(filter.toLowerCase())) || 
-            (c.phoneNumbers || []).some(p => p.includes(filter))
+            (typeof c.parentName === 'string' && c.parentName.toLowerCase().includes(debouncedFilter.toLowerCase())) || 
+            (c.phoneNumbers || []).some(p => p.includes(debouncedFilter))
         );
-    }, [customers, filter]);
+    }, [customers, debouncedFilter]);
 
     const visibleCustomers = useMemo(() => {
         return filteredCustomers.slice(0, visibleCount);

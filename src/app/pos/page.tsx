@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -466,6 +465,20 @@ function CheckOutDialog({
   )
 }
 
+function useDebounce<T>(value: T, delay?: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay || 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 type SelectedPackageType = {
     duration: number;
     price: number;
@@ -499,6 +512,7 @@ function CheckInDialog({
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
     
     // Sort customers by most recently created
     const sortedCustomers = useMemo(() => {
@@ -507,14 +521,14 @@ function CheckInDialog({
 
     // Show recent customers initially, and search results when typing
     const displayedCustomers = useMemo(() => {
-        if (searchQuery) {
+        if (debouncedSearchQuery) {
             return sortedCustomers.filter(c => 
-                (typeof c.parentName === 'string' && c.parentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (c.phoneNumbers || []).some(p => p.includes(searchQuery))
+                (typeof c.parentName === 'string' && c.parentName.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
+                (c.phoneNumbers || []).some(p => p.includes(debouncedSearchQuery))
             );
         }
         return sortedCustomers.slice(0, 20); // Show 20 most recent customers by default
-    }, [sortedCustomers, searchQuery]);
+    }, [sortedCustomers, debouncedSearchQuery]);
 
 
     useEffect(() => {
@@ -530,7 +544,8 @@ function CheckInDialog({
 
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
-        setSelectedChildren([]); // Reset selected children when customer changes
+        form.setValue('customerId', customer.id);
+        form.setValue('childNames', []); // Reset child selection
         setGuestChildren([]); // Reset guest children
         setOpenCombobox(false);
     }
