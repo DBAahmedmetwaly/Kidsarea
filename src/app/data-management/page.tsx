@@ -133,7 +133,6 @@ function DataManagementContent() {
     setLoadingDelete(true);
     try {
       const dataPathsToDelete = [
-        'customers',
         'expenses',
         'expenseTypes',
         'openShifts',
@@ -161,7 +160,7 @@ function DataManagementContent() {
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف بيانات المعاملات والعملاء، وتم تصفير أرصدة الخزائن.',
+        description: 'تم حذف بيانات المعاملات، وتم تصفير أرصدة الخزائن.',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -266,7 +265,7 @@ function DataManagementContent() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>إعادة ضبط المصنع (حذف بيانات المعاملات)</AlertTitle>
                     <AlertDescription>
-                       سيؤدي هذا إلى حذف جميع بيانات المعاملات (مثل العملاء، الجلسات، المبيعات، المصروفات، إلخ) وتصفير أرصدة الخزائن، مع الاحتفاظ بالبيانات الأساسية مثل (الموظفين، الفروع، المخزون، الألعاب، المنتجات، السياسات، والصلاحيات).
+                       سيؤدي هذا إلى حذف جميع بيانات المعاملات (مثل الجلسات، المبيعات، المصروفات، إلخ) وتصفير أرصدة الخزائن، مع الاحتفاظ بالبيانات الأساسية مثل (العملاء، الموظفين، الفروع، المخزون، الألعاب، المنتجات، السياسات، والصلاحيات).
                     </AlertDescription>
                 </Alert>
               <AlertDialog>
@@ -280,7 +279,7 @@ function DataManagementContent() {
                     ) : (
                         <>
                             <Trash2 className="me-2 h-4 w-4" />
-                            حذف بيانات المعاملات والعملاء
+                            حذف بيانات المعاملات
                         </>
                     )}
                   </Button>
