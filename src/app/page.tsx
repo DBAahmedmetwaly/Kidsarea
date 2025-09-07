@@ -8,13 +8,45 @@ import { useFirebase } from '@/context/FirebaseContext';
 const BossBabyLogo = ({ className }: { className?: string }) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
+      viewBox="0 0 200 200"
       className={className}
+      fill="currentColor"
     >
-      <path d="M12 2a2 2 0 0 0-2 2v2H8c-1.1 0-2 .9-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2zm0 2c.55 0 1 .45 1 1v1h-2V5c0-.55.45-1 1-1zm-2 6h4v2h-4v-2zm0 4h4v2h-4v-2z" />
-      <path d="M9 10.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5c0 .5-.25.95-.63 1.22-.5.37-1.17.58-1.87.58s-1.37-.21-1.87-.58C9.25 11.45 9 11 9 10.5zM15 10.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5c0 .5-.25.95-.63 1.22-.5.37-1.17.58-1.87.58s-1.37-.21-1.87-.58c-.38-.27-.63-.72-.63-1.22z" />
-       <path d="M12 16.5c-1.93 0-3.5-1.57-3.5-3.5 0-.55.45-1 1-1s1 .45 1 1c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5c0-.55.45-1 1-1s1 .45 1 1c0 1.93-1.57 3.5-3.5 3.5z"/>
+      <g>
+        {/* Head */}
+        <path d="M100,20 C133.14,20 160,46.86 160,80 C160,113.14 133.14,140 100,140 C66.86,140 40,113.14 40,80 C40,46.86 66.86,20 100,20 Z" fill="#FFDAB9" />
+        <path d="M100,20 C110,20 120,22 128,25 C125,22 105,18 100,18 C95,18 75,22 72,25 C80,22 90,20 100,20" fill="#FFEBCD" />
+        
+        {/* Hair */}
+        <path d="M100,18 C90,15 75,15 70,25 C70,15 80,10 100,10 C120,10 130,15 130,25 C125,15 110,15 100,18" fill="#F4A460" />
+        <path d="M100,10 C105,8 110,12 110,15 C110,18 105,20 100,20 C95,20 90,18 90,15 C90,12 95,8 100,10" fill="#DEB887" />
+
+        {/* Eyes */}
+        <circle cx="80" cy="75" r="10" fill="white" />
+        <circle cx="120" cy="75" r="10" fill="white" />
+        <circle cx="80" cy="75" r="5" fill="#2E8B57" />
+        <circle cx="120" cy="75" r="5" fill="#2E8B57" />
+        <circle cx="82" cy="73" r="2" fill="white" />
+        <circle cx="122" cy="73" r="2" fill="white" />
+
+        {/* Eyebrows */}
+        <path d="M70,60 Q80,55 90,60" stroke="black" strokeWidth="3" fill="none" />
+        <path d="M110,60 Q120,55 130,60" stroke="black" strokeWidth="3" fill="none" />
+
+        {/* Nose */}
+        <path d="M98,85 Q100,90 102,85" stroke="#D2691E" strokeWidth="2" fill="none" />
+
+        {/* Mouth */}
+        <path d="M90,105 Q100,110 110,105" stroke="black" strokeWidth="2" fill="none" />
+
+        {/* Body */}
+        <path d="M100,135 C80,150 70,180 70,190 L130,190 C130,180 120,150 100,135 Z" fill="#2c3e50" />
+        
+        {/* Collar and Tie */}
+        <path d="M90,140 L100,150 L110,140 Z" fill="white" />
+        <path d="M100,150 L95,175 L105,175 L100,150 Z" fill="#c0392b" />
+        <circle cx="100" cy="150" r="4" fill="#e74c3c" />
+      </g>
     </svg>
 );
 
@@ -28,7 +60,7 @@ function WelcomeContent() {
         <div className="flex items-center gap-4 absolute top-4 right-4 md:hidden">
             <SidebarTrigger />
         </div>
-        <BossBabyLogo className="h-24 w-24 text-primary animate-bounce" />
+        <BossBabyLogo className="h-48 w-48 text-primary" />
         <p className="mt-8 text-lg text-muted-foreground">مرحباً بكم في</p>
         <h1 className="mt-2 text-4xl font-bold">{appName}</h1>
         <p className="mt-8 text-sm text-muted-foreground animate-pulse">{loading ? 'جاري تحميل البيانات...' : 'جاهز للإنطلاق!'}</p>
