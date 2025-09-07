@@ -1154,9 +1154,10 @@ function PosTrackingContent() {
   const handleCheckoutClick = (session: Child) => {
     setChildToCheckout(session);
     
+    stopNotificationForSession(session.id); // Stop notifications as soon as checkout starts
+    
     const isPackageGame = session?.packageDuration && session.packageDuration > 0;
     if (isPackageGame) {
-        stopNotificationForSession(session.id); // Stop notifications as soon as checkout starts
         
         const remainingTimeMs = (session.checkInTime + session.packageDuration * 60 * 1000) - Date.now();
         
@@ -1849,6 +1850,7 @@ function PosTrackingContent() {
                                     <TableHead className="text-right">{policies?.posLabels?.childColumnTitle || 'الطفل'}</TableHead>
                                     <TableHead className="text-right">{policies?.posLabels?.parentColumnTitle || 'ولي الأمر'}</TableHead>
                                     <TableHead className="text-center">رقم الهاتف</TableHead>
+                                    <TableHead className="text-center">رقم الإيصال</TableHead>
                                     <TableHead className="text-right">اللعبة</TableHead>
                                     <TableHead className="text-center">الوقت</TableHead>
                                     <TableHead className="text-center">إجراء</TableHead>
@@ -1859,13 +1861,16 @@ function PosTrackingContent() {
                                 searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
                                     <TableCell className="font-medium text-right">{session.children.map(c=>c.name).join(', ')}</TableCell>
-                                    <TableCell className="text-right">
-                                        <div className='flex flex-col'>
-                                            <span>{session.parentName}</span>
-                                             {session.receiptNumber && <span className="text-xs text-muted-foreground font-mono flex items-center gap-1"><ReceiptIcon className="h-3 w-3" />{session.receiptNumber}</span>}
-                                        </div>
-                                    </TableCell>
+                                    <TableCell className="text-right">{session.parentName}</TableCell>
                                     <TableCell className="text-center">{(session.phoneNumbers || []).join(' / ')}</TableCell>
+                                    <TableCell className="text-center font-mono">
+                                        {session.receiptNumber ? (
+                                            <span className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                                                <ReceiptIcon className="h-3 w-3" />
+                                                {session.receiptNumber}
+                                            </span>
+                                        ) : '-'}
+                                    </TableCell>
                                     <TableCell className="text-right">{session.game}</TableCell>
                                     <TableCell className="text-center">
                                         <TimeCounter 
@@ -2123,6 +2128,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
