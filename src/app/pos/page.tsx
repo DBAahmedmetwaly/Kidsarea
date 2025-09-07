@@ -1253,7 +1253,7 @@ function PosTrackingContent() {
         discount: receiptDetails.discount,
         receiptNumber: finalReceiptNumber,
         overtimeCost: receiptDetails.overtimeCost,
-        notes: receiptDetails.notes,
+        notes: receiptDetails.notes || '',
     };
     
     if (receiptSettings) {
@@ -2002,7 +2002,7 @@ function PosTrackingContent() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { totalCost: 0, notes: 'خروج مجاني' } as PosReceiptProps)}>تأكيد الخروج</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { totalCost: 0 } as PosReceiptProps)}>تأكيد الخروج</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -2105,6 +2105,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
