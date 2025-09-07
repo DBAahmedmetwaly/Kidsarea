@@ -27,7 +27,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ExtendSessionCartItem, ProductSaleItem, InventoryMovement } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
-import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
+import { ref, set, onValue, push, get, update, runTransaction, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { useCustomers } from '@/context/CustomerContext';
@@ -1222,7 +1222,6 @@ function PosTrackingContent() {
     stopNotificationForSession(child.id);
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
-    setActiveChildren(prev => prev.filter(c => c.id !== child.id));
 
 
     if (!child) return;
@@ -1277,13 +1276,17 @@ function PosTrackingContent() {
              // This is a regular postpaid session, create a new completed session
              await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
         }
-        // Always remove the active session
+        
+        // Always remove the active session after handling its completion record
         await remove(ref(db, `sessions/active/${child.id}`));
 
     } catch(err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
     }
+
+    // Update local state to immediately remove child from UI
+    setActiveChildren(prev => prev.filter(c => c.id !== child.id));
   };
 
   const handleStartSession = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>, prepaidSessionId?: string, receiptNumber?: number) => {
@@ -2153,21 +2156,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
