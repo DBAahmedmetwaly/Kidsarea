@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { MoreHorizontal, PlusCircle, Trash, Edit, Calendar as CalendarIcon, Loader2, Upload, Download } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash, Edit, Calendar as CalendarIcon, Loader2, Upload, Download, Trash2, AlertTriangle } from 'lucide-react';
 import { ref, set, remove, update, push, runTransaction } from 'firebase/database';
 import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
@@ -431,6 +431,16 @@ function CustomersContent() {
         }
     }
     
+    const handleDeleteAllCustomers = async () => {
+        try {
+            await remove(ref(db, 'customers'));
+            toast({ title: "نجاح", description: "تم حذف جميع العملاء بنجاح." });
+        } catch(e) {
+            console.error(e);
+            toast({ title: "خطأ", description: "فشل حذف جميع العملاء.", variant: 'destructive' });
+        }
+    }
+
     const openForm = (customer?: Customer) => {
         if (customer) {
             setIsEditMode(true);
@@ -461,6 +471,10 @@ function CustomersContent() {
     const visibleCustomers = useMemo(() => {
         return filteredCustomers.slice(0, visibleCount);
     }, [filteredCustomers, visibleCount]);
+
+    const totalChildren = useMemo(() => {
+        return customers.reduce((acc, curr) => acc + (curr.children ? curr.children.length : 0), 0);
+    }, [customers]);
 
     const handleLoadMore = () => {
         setVisibleCount(prev => prev + 20);
@@ -501,8 +515,32 @@ function CustomersContent() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>قائمة العملاء</CardTitle>
-          <CardDescription>إجمالي العملاء: {customers.length}. عرض وإدارة بيانات العملاء المسجلين. انقر على اسم العميل لعرض سجل زياراته.</CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>قائمة العملاء</CardTitle>
+              <CardDescription>إجمالي العملاء: {customers.length} | إجمالي الأطفال: {totalChildren}. انقر على اسم العميل لعرض سجل زياراته.</CardDescription>
+            </div>
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={customers.length === 0}>
+                        <Trash2 className="me-2 h-4 w-4"/>
+                        حذف كل العملاء
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
+                    <AlertDialogDescription>
+                       <span className="font-bold text-red-600">هذا الإجراء لا يمكن التراجع عنه.</span> سيؤدي هذا إلى حذف جميع العملاء وبياناتهم بشكل دائم من قاعدة البيانات.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteAllCustomers}>نعم، أحذف كل شيء</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
