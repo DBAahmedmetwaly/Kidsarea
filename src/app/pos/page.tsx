@@ -458,10 +458,7 @@ function CheckOutDialog({
           <DialogClose asChild>
             <Button variant="outline">إلغاء</Button>
           </DialogClose>
-            <Button 
-              onClick={handleConfirm} 
-              disabled={checkoutData.totalCost > 0 && Number(amountReceived) < checkoutData.totalCost && !canApplyDiscount}
-            >
+            <Button onClick={handleConfirm} disabled={!canApplyDiscount && checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost)}>
                 حفظ
             </Button>
         </DialogFooter>
@@ -910,7 +907,7 @@ function EarlyCheckoutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   session: Child | null;
-  onConfirm: (discount: number) => void;
+  onConfirm: (discount: number, amountToReceive: number) => void;
 }) {
   const [discount, setDiscount] = useState('');
 
@@ -923,7 +920,10 @@ function EarlyCheckoutDialog({
   if (!session) return null;
 
   const handleConfirm = () => {
-    onConfirm(parseFloat(discount) || 0);
+    const discountValue = parseFloat(discount) || 0;
+    const originalPrice = session.packagePrice || 0;
+    const amountToReceive = Math.max(0, originalPrice - discountValue);
+    onConfirm(discountValue, amountToReceive);
     onOpenChange(false);
   };
 
@@ -933,12 +933,12 @@ function EarlyCheckoutDialog({
         <DialogHeader>
           <DialogTitle>خصم الخروج المبكر</DialogTitle>
           <DialogDescription>
-            الطفل يغادر مبكراً. يمكنك تسجيل خصم أو استرداد نقدي للوقت المتبقي.
-            التكلفة الأصلية للباقة كانت {session.packagePrice?.toFixed(2) || '0.00'} ج.م.
+            الطفل يغادر مبكراً. التكلفة الأصلية للباقة كانت {session.packagePrice?.toFixed(2) || '0.00'} ج.م.
+            أدخل قيمة الخصم.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <Label htmlFor="early-discount">قيمة الخصم/الاسترداد (ج.م)</Label>
+          <Label htmlFor="early-discount">قيمة الخصم (ج.م)</Label>
           <Input
             id="early-discount"
             type="number"
@@ -1139,7 +1139,7 @@ function PosTrackingContent() {
     setCheckoutDialogOpen(true);
   };
   
-    const handleEarlyCheckoutConfirm = (discount: number) => {
+    const handleEarlyCheckoutConfirm = (discountValue: number, amountToReceive: number) => {
         if (!childToCheckout) return;
         
         const cashier = employees.find(e => e.username === user?.username);
@@ -1148,7 +1148,6 @@ function PosTrackingContent() {
             : cashier?.name || user?.username || 'N/A';
         
         const originalPrice = childToCheckout.packagePrice || 0;
-        const finalCost = Math.max(0, originalPrice - discount);
 
         const receiptDetails: PosReceiptProps = {
             settings: receiptSettings,
@@ -1161,17 +1160,17 @@ function PosTrackingContent() {
             checkInTime: new Date(childToCheckout.checkInTime),
             checkOutTime: new Date(),
             duration: formatDuration(Date.now() - childToCheckout.checkInTime),
-            totalCost: finalCost,
-            amountReceived: finalCost,
+            totalCost: amountToReceive,
+            amountReceived: amountToReceive,
             costBeforeDiscount: originalPrice,
-            discount: discount,
+            discount: discountValue,
             cashierName: cashierName,
             isSubscription: false,
             packagePrice: childToCheckout.packagePrice,
             packageName: childToCheckout.packageName,
             packageDuration: childToCheckout.packageDuration,
             overtimeCost: 0,
-            notes: `خروج مبكر - خصم ${discount.toFixed(2)}`,
+            notes: `خروج مبكر - خصم ${discountValue.toFixed(2)}`,
         };
         
         handleCheckOut(childToCheckout, receiptDetails);
@@ -1200,59 +1199,45 @@ function PosTrackingContent() {
     const checkOutTime = new Date();
     const durationMs = checkOutTime.getTime() - child.checkInTime;
 
-    let finalCost = receiptDetails.totalCost;
-    let finalDiscount = receiptDetails.discount || 0;
-    const amountReceived = receiptDetails.amountReceived || 0;
-
+    const sessionToSave: Omit<CompletedSession, 'id'> = {
+        ...child,
+        checkOutTime: checkOutTime.getTime(),
+        durationMs: durationMs,
+        cost: receiptDetails.totalCost,
+        costBeforeDiscount: receiptDetails.costBeforeDiscount,
+        durationCost: receiptDetails.durationCost,
+        entryFee: receiptDetails.entryFee,
+        discount: receiptDetails.discount,
+        receiptNumber: finalReceiptNumber,
+        overtimeCost: receiptDetails.overtimeCost,
+        notes: receiptDetails.notes || '',
+    };
+    
+    // This is a prepaid session that had overtime, so update the original completed session
     if (child.prepaidSessionId) {
-        // This is a prepaid session that had overtime.
         const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
         const originalSessionSnapshot = await get(completedSessionRef);
         
         if (originalSessionSnapshot.exists()) {
             const originalSession = originalSessionSnapshot.val() as CompletedSession;
-            const newTotalCost = (originalSession.cost || 0) + finalCost;
-            const newTotalDiscount = (originalSession.discount || 0) + finalDiscount;
+            const newTotalCost = (originalSession.cost || 0) + sessionToSave.cost;
+            const newTotalDiscount = (originalSession.discount || 0) + (sessionToSave.discount || 0);
             
             await update(completedSessionRef, {
-                checkOutTime: checkOutTime.getTime(),
-                durationMs: durationMs,
+                checkOutTime: sessionToSave.checkOutTime,
+                durationMs: sessionToSave.durationMs,
                 cost: newTotalCost,
                 discount: newTotalDiscount,
                 overtimeCost: (receiptDetails.overtimeCost || 0),
-                notes: `${originalSession.notes || ''} ${receiptDetails.notes || ''}`.trim(),
+                notes: `${originalSession.notes || ''} ${sessionToSave.notes || ''}`.trim(),
             });
-            finalCost = newTotalCost;
-            finalDiscount = newTotalDiscount;
         }
-
     } else { // This is a postpaid session or an early checkout of a prepaid session
-         if (!amountReceived) { // No payment received, waive the cost
-            finalDiscount += finalCost;
-            finalCost = 0;
-         } else if(amountReceived < finalCost) { // Partial payment, rest is discount
-            finalDiscount += (finalCost - amountReceived);
-            finalCost = amountReceived;
-        }
-        
-        const sessionToSave: Omit<CompletedSession, 'id'> = {
-            ...child,
-            checkOutTime: checkOutTime.getTime(),
-            durationMs: durationMs,
-            cost: finalCost,
-            costBeforeDiscount: receiptDetails.costBeforeDiscount,
-            durationCost: receiptDetails.durationCost,
-            entryFee: receiptDetails.entryFee,
-            discount: finalDiscount,
-            receiptNumber: finalReceiptNumber,
-            overtimeCost: receiptDetails.overtimeCost,
-            notes: receiptDetails.notes || '',
-        };
         await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
     }
     
     // Only print if an amount was actually received.
-    if (receiptSettings && amountReceived > 0) {
+    if (receiptSettings && receiptDetails.amountReceived && receiptDetails.amountReceived > 0) {
         printReceipt(<PosReceipt {...receiptDetails} receiptId={`${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
     }
 
@@ -2080,6 +2065,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
