@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -62,10 +62,9 @@ const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onT
   const [status, setStatus] = useState<'playing' | 'grace_period' | 'overtime'>('playing');
   const timeEnded = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
+  
   useEffect(() => {
-    timerRef.current = setInterval(() => {
+    const updateTimer = () => {
         const now = Date.now();
         const elapsedMs = now - startTime;
         setElapsed(elapsedMs);
@@ -89,11 +88,13 @@ const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onT
                 onTimeEnd?.();
             }
         }
-    }, 1000);
+    };
+    
+    updateTimer(); // Run once immediately
+    timerRef.current = setInterval(updateTimer, 1000);
 
     return () => {
         if (timerRef.current) clearInterval(timerRef.current);
-        if (notificationIntervalRef.current) clearInterval(notificationIntervalRef.current);
     };
   }, [startTime, packageDuration, gracePeriodInMinutes, onTimeEnd]);
   
@@ -1404,9 +1405,8 @@ function PosTrackingContent() {
               }
               
               if (item.type === 'prepaid-game' && policies?.packagePricingModel === 'per_child') {
-                  const basePricePerChild = (item.price / item.cartQuantity); // price was for N children
-                  const newPrice = basePricePerChild * newQuantity;
-                  return { ...item, cartQuantity: newQuantity, price: newPrice };
+                   const basePricePerItem = item.price / item.cartQuantity;
+                   return {...item, cartQuantity: newQuantity, price: basePricePerItem * newQuantity};
               }
 
               return { ...item, cartQuantity: newQuantity };
@@ -1544,7 +1544,7 @@ function PosTrackingContent() {
                     price = item.price;
                 } else if (item.type === 'prepaid-game') {
                     name = `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`;
-                    price = item.price / item.cartQuantity; // price per unit
+                    price = item.cartQuantity > 0 ? item.price / item.cartQuantity : 0; // price per unit
                 } else if (item.type === 'extend-session') {
                     name = `تمديد: ${item.gameName} (${item.childName})`;
                     price = item.price;
@@ -1569,22 +1569,22 @@ function PosTrackingContent() {
   };
 
 
-  const handleTimeEnd = (session: Child) => {
-    const showToast = () => {
-        toast({
-            title: "🔔 انتهى الوقت!",
-            description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c=>c.name).join(', ')}.`,
-            variant: "destructive",
-            duration: (policies?.toastDuration || 5) * 1000,
-        });
-    };
-    
-    showToast(); // Show immediate toast
+    const handleTimeEnd = useCallback((session: Child) => {
+        const showToast = () => {
+            toast({
+                title: "🔔 انتهى الوقت!",
+                description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c => c.name).join(', ')}.`,
+                variant: "destructive",
+                duration: (policies?.toastDuration || 5) * 1000,
+            });
+        };
 
-    const intervalSeconds = policies?.packageOvertimeNotificationInterval || 60;
-    const intervalId = setInterval(showToast, intervalSeconds * 1000);
-    notificationIntervals.set(session.id, intervalId);
-  };
+        showToast(); // Show immediate toast
+
+        const intervalSeconds = policies?.packageOvertimeNotificationInterval || 60;
+        const intervalId = setInterval(showToast, intervalSeconds * 1000);
+        notificationIntervals.set(session.id, intervalId);
+    }, [policies, toast, notificationIntervals]);
 
   const hasTimeExpired = (session: Child) => {
     if (!session.packageDuration) return false;
@@ -2105,6 +2105,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
