@@ -146,9 +146,9 @@ export default function GameFormDialog({
         };
 
         if (paymentModel === 'postpaid') {
-            gameData.price = parseFloat(price);
+            gameData.price = parseFloat(price || '0');
         } else {
-            gameData.fixedTimePackages = fixedTimePackages.map(({id, ...p}) => ({...p, price: parseFloat(p.price)}));
+            gameData.fixedTimePackages = fixedTimePackages.map(({id, ...p}) => ({...p, price: parseFloat(p.price || '0')}));
             delete gameData.price;
         }
         
@@ -160,7 +160,7 @@ export default function GameFormDialog({
 
     const selectedCategoryName = gameCategories.find(c => c.id === categoryId)?.name;
 
-    const handlePackageChange = (id: number, field: 'label' | 'duration' | 'price', value: string) => {
+    const handlePackageChange = (id: number, field: 'label' | 'duration' | 'price', value: string | number) => {
         setFixedTimePackages(prev => prev.map(p => p.id === id ? {...p, [field]: value} : p));
     }
     
@@ -288,7 +288,7 @@ export default function GameFormDialog({
                                 {fixedTimePackages.map((pkg) => (
                                      <div key={pkg.id} className="grid grid-cols-12 gap-2 items-center">
                                         <Input className="col-span-4" placeholder="اسم الباقة (ساعة)" value={pkg.label} onChange={(e) => handlePackageChange(pkg.id, 'label', e.target.value)} />
-                                        <Input className="col-span-3" type="number" placeholder="المدة (دقائق)" value={String(pkg.duration)} onChange={(e) => handlePackageChange(pkg.id, 'duration', e.target.value)} />
+                                        <Input className="col-span-3" type="number" placeholder="المدة (دقائق)" value={String(pkg.duration)} onChange={(e) => handlePackageChange(pkg.id, 'duration', parseInt(e.target.value) || 0)} />
                                         <Input className="col-span-3" type="number" placeholder="السعر" value={pkg.price} onChange={(e) => handlePackageChange(pkg.id, 'price', e.target.value)} />
                                         <Button className="col-span-2" variant="destructive" size="icon" onClick={() => removePackage(pkg.id)}>
                                             <Trash className="h-4 w-4" />
