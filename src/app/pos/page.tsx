@@ -366,6 +366,7 @@ function CheckOutDialog({
         duration: checkoutData.duration,
         totalCost: finalCost,
         amountReceived: parseFloat(amountReceived) || 0,
+        costBeforeDiscount: checkoutData.costBeforeDiscount,
         durationCost: checkoutData.durationCost,
         entryFee: checkoutData.entryFee,
         discount: checkoutData.discount,
@@ -385,10 +386,7 @@ function CheckOutDialog({
 
   const change = Number(amountReceived) - checkoutData.totalCost;
   
-  const hasOvertimeCost = checkoutData.overtimeCost > 0;
-  const isConfirmDisabled = hasOvertimeCost 
-      ? false // Always enable for overtime
-      : (checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost || !amountReceived));
+  const isConfirmDisabled = checkoutData.totalCost > 0 && !canApplyDiscount && (Number(amountReceived) < checkoutData.totalCost || !amountReceived);
 
 
   return (
@@ -1203,11 +1201,16 @@ function PosTrackingContent() {
 
     let finalCost = receiptDetails.totalCost;
     let finalDiscount = receiptDetails.discount || 0;
+    const amountReceived = receiptDetails.amountReceived || 0;
 
     // If no amount was received, the cost is zero and the discount is the full amount.
-    if (!receiptDetails.amountReceived || receiptDetails.amountReceived <= 0) {
+    if (amountReceived <= 0) {
         finalDiscount = receiptDetails.costBeforeDiscount || finalCost;
         finalCost = 0;
+    } else {
+        // If a partial amount was received, record that as the final cost
+        finalCost = amountReceived;
+        finalDiscount = (receiptDetails.costBeforeDiscount || 0) - amountReceived;
     }
     
     const sessionToSave: Omit<CompletedSession, 'id'> = {
@@ -1225,35 +1228,38 @@ function PosTrackingContent() {
     };
 
     // Only print if an amount was actually received
-    if (receiptSettings && receiptDetails.amountReceived && receiptDetails.amountReceived > 0) {
+    if (receiptSettings && amountReceived > 0) {
         printReceipt(<PosReceipt {...receiptDetails} receiptId={`${sessionToSave.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
     }
 
     try {
-        if (child.prepaidSessionId) {
-            const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
-            await runTransaction(completedSessionRef, (currentSession: CompletedSession) => {
-                if (currentSession) {
-                    currentSession.checkOutTime = sessionToSave.checkOutTime;
-                    currentSession.durationMs = sessionToSave.durationMs;
-                    // If no amount received, overtime cost should not increase total. It gets "discounted".
-                    if (!receiptDetails.amountReceived || receiptDetails.amountReceived <= 0) {
-                        currentSession.discount = (currentSession.discount || 0) + (sessionToSave.overtimeCost || 0);
-                    } else {
-                        currentSession.cost = (currentSession.cost || 0) + (sessionToSave.overtimeCost || 0) - (sessionToSave.discount || 0);
-                    }
-                    currentSession.discount = (currentSession.discount || 0) + (sessionToSave.discount || 0);
-                    currentSession.overtimeCost = (currentSession.overtimeCost || 0) + (sessionToSave.overtimeCost || 0);
-                    currentSession.notes = `${currentSession.notes || ''}\nتحديث الخروج: ${receiptDetails.notes || ''}`.trim();
-                }
-                return currentSession;
-            });
-        } else {
-            await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
-        }
+        // Find the active session to remove it
+        const activeSessionRef = ref(db, `sessions/active/${child.id}`);
+        const activeSessionSnapshot = await get(activeSessionRef);
 
-        await remove(ref(db, `sessions/active/${child.id}`));
-        setActiveChildren(prev => prev.filter(c => c.id !== child.id));
+        if (activeSessionSnapshot.exists()) {
+            if (child.prepaidSessionId) {
+                // Update the original completed session with overtime info
+                const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
+                await runTransaction(completedSessionRef, (currentSession: CompletedSession) => {
+                    if (currentSession) {
+                        currentSession.checkOutTime = sessionToSave.checkOutTime;
+                        currentSession.durationMs = sessionToSave.durationMs;
+                        currentSession.cost = (currentSession.cost || 0) + finalCost;
+                        currentSession.discount = (currentSession.discount || 0) + finalDiscount;
+                        currentSession.overtimeCost = (currentSession.overtimeCost || 0) + (sessionToSave.overtimeCost || 0);
+                        currentSession.notes = `${currentSession.notes || ''}\nتحديث الخروج: ${receiptDetails.notes || ''}`.trim();
+                    }
+                    return currentSession;
+                });
+            } else {
+                // It's a regular postpaid session, just save it
+                await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
+            }
+            
+            // Finally, remove the active session
+            await remove(activeSessionRef);
+        }
 
     } catch (err) {
         console.error(err);
@@ -1496,7 +1502,7 @@ function PosTrackingContent() {
 
             const checkInDate = new Date(checkInTime);
             const expectedCheckOutTime = new Date(checkInDate.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
-            sessionInfoForReceipt = { children: gameItem.sessionDetails.children, checkInTime: checkInDate, expectedCheckOutTime };
+            sessionInfoForReceipt = { children: gameItem.sessionDetails.children, checkInTime: checkInDate, expectedCheckOutTime: expectedCheckOutTime };
         }
         
         // Print one combined receipt
@@ -2076,5 +2082,6 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
