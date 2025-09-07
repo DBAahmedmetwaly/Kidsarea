@@ -922,13 +922,16 @@ function EarlyCheckoutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   session: Child | null;
-  onConfirm: (discount: number) => void;
+  onConfirm: (discount: number, notes: string) => void;
 }) {
   const [discount, setDiscount] = useState('');
+  const [notes, setNotes] = useState('');
+
 
   useEffect(() => {
     if (open) {
       setDiscount('');
+      setNotes('خروج مبكر');
     }
   }, [open]);
 
@@ -936,8 +939,7 @@ function EarlyCheckoutDialog({
 
   const handleConfirm = () => {
     const discountValue = parseFloat(discount) || 0;
-    onConfirm(discountValue);
-    onOpenChange(false);
+    onConfirm(discountValue, notes);
   };
 
   return (
@@ -950,15 +952,26 @@ function EarlyCheckoutDialog({
             أدخل قيمة الخصم.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <Label htmlFor="early-discount">قيمة الخصم (ج.م)</Label>
-          <Input
-            id="early-discount"
-            type="number"
-            value={discount}
-            onChange={(e) => setDiscount(e.target.value)}
-            placeholder="0.00"
-          />
+        <div className="py-4 space-y-4">
+            <div>
+                <Label htmlFor="early-discount">قيمة الخصم (ج.م)</Label>
+                <Input
+                    id="early-discount"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                    placeholder="0.00"
+                />
+            </div>
+             <div>
+                <Label htmlFor="early-notes">ملاحظات</Label>
+                <Input
+                    id="early-notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="سبب الخروج المبكر"
+                />
+            </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -1152,8 +1165,10 @@ function PosTrackingContent() {
     setCheckoutDialogOpen(true);
   };
   
-    const handleEarlyCheckoutConfirm = (discountValue: number) => {
+    const handleEarlyCheckoutConfirm = (discountValue: number, notes: string) => {
         if (!childToCheckout) return;
+
+        setEarlyCheckoutDiscountOpen(false);
         
         const cashier = employees.find(e => e.username === user?.username);
         const cashierName = user?.username === 'admin' 
@@ -1175,7 +1190,7 @@ function PosTrackingContent() {
             checkOutTime: new Date(),
             duration: formatDuration(Date.now() - childToCheckout.checkInTime),
             totalCost: finalCost,
-            amountReceived: finalCost, // Assume amount received is the final cost after discount
+            amountReceived: 0, // Assume nothing received unless entered in next step
             costBeforeDiscount: originalPrice,
             discount: discountValue,
             cashierName: cashierName,
@@ -1184,11 +1199,10 @@ function PosTrackingContent() {
             packageName: childToCheckout.packageName,
             packageDuration: childToCheckout.packageDuration,
             overtimeCost: 0,
-            notes: `خروج مبكر - خصم ${discountValue.toFixed(2)}`,
+            notes: notes,
         };
         
         handleCheckOut(childToCheckout, receiptDetails);
-        setEarlyCheckoutDiscountOpen(false);
   };
 
 
@@ -1941,12 +1955,7 @@ function PosTrackingContent() {
             />
             <EarlyCheckoutDialog
                 open={isEarlyCheckoutDiscountOpen}
-                onOpenChange={(isOpen) => {
-                    if (!isOpen && childToCheckout) {
-                        stopNotificationForSession(childToCheckout.id);
-                    }
-                    setEarlyCheckoutDiscountOpen(isOpen);
-                }}
+                onOpenChange={setEarlyCheckoutDiscountOpen}
                 session={childToCheckout}
                 onConfirm={handleEarlyCheckoutConfirm}
             />
@@ -2061,6 +2070,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
