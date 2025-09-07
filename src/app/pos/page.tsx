@@ -1843,6 +1843,7 @@ function PosTrackingContent() {
                                 <TableRow>
                                     <TableHead className="text-right">{policies?.posLabels?.childColumnTitle || 'الطفل'}</TableHead>
                                     <TableHead className="text-right">{policies?.posLabels?.parentColumnTitle || 'ولي الأمر'}</TableHead>
+                                    <TableHead className="text-center">رقم الهاتف</TableHead>
                                     <TableHead className="text-right">اللعبة</TableHead>
                                     <TableHead className="text-center">الوقت</TableHead>
                                     <TableHead className="text-center">إجراء</TableHead>
@@ -1854,6 +1855,7 @@ function PosTrackingContent() {
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
                                     <TableCell className="font-medium text-right">{session.children.map(c=>c.name).join(', ')}</TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
+                                    <TableCell className="text-center">{(session.phoneNumbers || []).join(' / ')}</TableCell>
                                     <TableCell className="text-right">{session.game}</TableCell>
                                     <TableCell className="text-center">
                                         <TimeCounter 
@@ -2103,5 +2105,6 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
