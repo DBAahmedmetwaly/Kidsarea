@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ref, get, remove, set } from 'firebase/database';
+import { ref, get, remove, set, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -132,9 +132,8 @@ function DataManagementContent() {
   const handleDeleteAllData = async () => {
     setLoadingDelete(true);
     try {
-      // This will delete EVERYTHING except for:
-      // employees, policies, branches, roles, safes, games, gameCategories, products, productCategories, inventory
       const dataPathsToDelete = [
+        'customers',
         'expenses',
         'expenseTypes',
         'openShifts',
@@ -146,12 +145,23 @@ function DataManagementContent() {
         'subscriptions',
         'subscriptionPlans',
       ];
-      const promises = dataPathsToDelete.map(path => remove(ref(db, path)));
-      await Promise.all(promises);
+      const deletePromises = dataPathsToDelete.map(path => remove(ref(db, path)));
+      await Promise.all(deletePromises);
+
+      // Reset all safe balances to 0
+      const safesRef = ref(db, 'safes');
+      const snapshot = await get(safesRef);
+      if (snapshot.exists()) {
+          const updates: any = {};
+          snapshot.forEach((childSnapshot) => {
+              updates[`safes/${childSnapshot.key}/balance`] = 0;
+          });
+          await update(ref(db), updates);
+      }
       
       toast({
         title: 'تم الحذف بنجاح',
-        description: 'تم حذف بيانات المعاملات. تم الاحتفاظ بالبيانات الأساسية (العملاء، الموظفين، الفروع، إلخ).',
+        description: 'تم حذف بيانات المعاملات والعملاء، وتم تصفير أرصدة الخزائن.',
       });
     } catch (error) {
       console.error('Failed to delete data:', error);
@@ -256,7 +266,7 @@ function DataManagementContent() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>إعادة ضبط المصنع (حذف بيانات المعاملات)</AlertTitle>
                     <AlertDescription>
-                       سيؤدي هذا إلى حذف جميع بيانات المعاملات (مثل العملاء، الجلسات، المبيعات، المصروفات، إلخ) مع الاحتفاظ بالبيانات الأساسية مثل (الموظفين، الفروع، المخزون، الألعاب، المنتجات، السياسات، والصلاحيات).
+                       سيؤدي هذا إلى حذف جميع بيانات المعاملات (مثل العملاء، الجلسات، المبيعات، المصروفات، إلخ) وتصفير أرصدة الخزائن، مع الاحتفاظ بالبيانات الأساسية مثل (الموظفين، الفروع، المخزون، الألعاب، المنتجات، السياسات، والصلاحيات).
                     </AlertDescription>
                 </Alert>
               <AlertDialog>
@@ -270,7 +280,7 @@ function DataManagementContent() {
                     ) : (
                         <>
                             <Trash2 className="me-2 h-4 w-4" />
-                            حذف بيانات المعاملات
+                            حذف بيانات المعاملات والعملاء
                         </>
                     )}
                   </Button>
