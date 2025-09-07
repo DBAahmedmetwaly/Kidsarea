@@ -290,6 +290,7 @@ function CustomersContent() {
     const [filter, setFilter] = useState('');
     const [visibleCount, setVisibleCount] = useState(20);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const handleDownloadTemplate = () => {
         const headers = ['ولي الأمر', 'الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع', 'رقم اول', 'رقم ثاني'];
@@ -299,80 +300,88 @@ function CustomersContent() {
         XLSX.writeFile(wb, "Customer_Template.xlsx");
     };
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
+        setIsUploading(true);
+        toast({
+            title: "جاري استيراد العملاء...",
+            description: "قد تستغرق هذه العملية بضع لحظات.",
+        });
 
         const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = e.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+        reader.onload = (e) => {
+            const processData = async () => {
+                try {
+                    const data = e.target?.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-                const newCustomers: Omit<Customer, 'id' | 'createdAt'>[] = [];
-                
-                for (const row of json) {
-                    const parentName = row['ولي الأمر'];
-                    const phone1 = String(row['رقم اول'] || '').trim();
-                    const phone2 = String(row['رقم ثاني'] || '').trim();
+                    const newCustomers: Omit<Customer, 'id' | 'createdAt'>[] = [];
                     
-                    if (!parentName || !phone1) continue;
+                    for (const row of json) {
+                        const parentName = row['ولي الأمر'];
+                        const phone1 = String(row['رقم اول'] || '').trim();
+                        const phone2 = String(row['رقم ثاني'] || '').trim();
+                        
+                        if (!parentName || !phone1) continue;
 
-                    const phoneNumbers = [phone1, phone2].filter(p => p && p !== 'NULL');
+                        const phoneNumbers = [phone1, phone2].filter(p => p && p !== 'NULL');
+                        
+                        const existingCustomer = customers.find(c => c.phoneNumbers.some(p => phoneNumbers.includes(p)));
+                        if (existingCustomer) {
+                            console.warn(`Customer with phone number already exists: ${parentName}`);
+                            continue;
+                        }
+
+                        const children: Omit<CustomerChild, 'id' | 'birthdate'>[] = [];
+                        ['الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع'].forEach(key => {
+                            if (row[key]) {
+                                children.push({ name: String(row[key]), age: 1 });
+                            }
+                        });
+
+                        newCustomers.push({
+                            parentName,
+                            phoneNumbers,
+                            children,
+                        });
+                    }
                     
-                    const existingCustomer = customers.find(c => c.phoneNumbers.some(p => phoneNumbers.includes(p)));
-                    if (existingCustomer) {
-                        console.warn(`Customer with phone number already exists: ${parentName}`);
-                        continue;
+                    if (newCustomers.length > 0) {
+                        await Promise.all(newCustomers.map(cust => {
+                            const newCustomerRef = push(ref(db, 'customers'));
+                            return set(newCustomerRef, { ...cust, createdAt: new Date().toISOString() });
+                        }));
+
+                        toast({
+                            title: "نجاح",
+                            description: `تم استيراد ${newCustomers.length} عميل بنجاح.`,
+                        });
+                    } else {
+                        toast({
+                            title: "لا يوجد عملاء جدد",
+                            description: "لم يتم العثور على عملاء جدد في الملف أو أنهم موجودون بالفعل.",
+                            variant: 'destructive',
+                        });
                     }
 
-                    const children: Omit<CustomerChild, 'id' | 'birthdate'>[] = [];
-                    ['الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع'].forEach(key => {
-                        if (row[key]) {
-                            children.push({ name: String(row[key]), age: 1 });
-                        }
-                    });
-
-                    newCustomers.push({
-                        parentName,
-                        phoneNumbers,
-                        children,
-                    });
-                }
-                
-                if (newCustomers.length > 0) {
-                     await Promise.all(newCustomers.map(cust => {
-                        const newCustomerRef = push(ref(db, 'customers'));
-                        return set(newCustomerRef, { ...cust, createdAt: new Date().toISOString() });
-                    }));
-
+                } catch (error) {
+                    console.error("Error processing file:", error);
                     toast({
-                        title: "نجاح",
-                        description: `تم استيراد ${newCustomers.length} عميل بنجاح.`,
-                    });
-                } else {
-                     toast({
-                        title: "لا يوجد عملاء جدد",
-                        description: "لم يتم العثور على عملاء جدد في الملف أو أنهم موجودون بالفعل.",
+                        title: "خطأ في معالجة الملف",
+                        description: "تأكد من أن الملف بالصيغة الصحيحة.",
                         variant: 'destructive',
                     });
+                } finally {
+                    setIsUploading(false);
+                    if(fileInputRef.current) fileInputRef.current.value = '';
                 }
-
-
-            } catch (error) {
-                console.error("Error processing file:", error);
-                toast({
-                    title: "خطأ في معالجة الملف",
-                    description: "تأكد من أن الملف بالصيغة الصحيحة.",
-                    variant: 'destructive',
-                });
-            } finally {
-                // Reset file input
-                if(fileInputRef.current) fileInputRef.current.value = '';
-            }
+            };
+            // Use setTimeout to make the heavy lifting async and not block the UI
+            setTimeout(processData, 50); 
         };
         reader.readAsBinaryString(file);
     };
@@ -467,9 +476,9 @@ function CustomersContent() {
                 <Download className="me-2 h-4 w-4" />
                 تنزيل القالب
             </Button>
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="me-2 h-4 w-4" />
-                رفع ملف
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                {isUploading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Upload className="me-2 h-4 w-4" />}
+                {isUploading ? 'جاري الرفع...' : 'رفع ملف'}
             </Button>
              <Input 
                 type="file" 
