@@ -352,6 +352,17 @@ function CheckOutDialog({
         
     const isFullySubscribed = child.children.every(c => activeSubscriptions.some(s => s.childName === c.name));
     
+    let finalTotalCost = checkoutData.totalCost;
+    let finalDiscount = checkoutData.discount;
+    let finalAmountReceived = parseFloat(amountReceived) || 0;
+
+    // If no amount is received, consider the whole amount as waived/discounted.
+    if (!amountReceived) {
+        finalDiscount = checkoutData.costBeforeDiscount;
+        finalTotalCost = 0;
+        finalAmountReceived = 0;
+    }
+    
     const receiptDetails: PosReceiptProps = {
         settings: receiptSettings,
         appName: policies?.appName || 'FunTrack',
@@ -363,12 +374,12 @@ function CheckOutDialog({
         checkInTime: new Date(child.checkInTime),
         checkOutTime: new Date(),
         duration: checkoutData.duration,
-        totalCost: checkoutData.totalCost,
-        amountReceived: parseFloat(amountReceived) || 0,
+        totalCost: finalTotalCost,
+        amountReceived: finalAmountReceived,
         costBeforeDiscount: checkoutData.costBeforeDiscount,
         durationCost: checkoutData.durationCost,
         entryFee: checkoutData.entryFee,
-        discount: checkoutData.discount,
+        discount: finalDiscount,
         cashierName: cashierName,
         isSubscription: isFullySubscribed,
         packagePrice: child.packagePrice,
@@ -458,7 +469,7 @@ function CheckOutDialog({
           <DialogClose asChild>
             <Button variant="outline">إلغاء</Button>
           </DialogClose>
-            <Button onClick={handleConfirm} disabled={!canApplyDiscount && checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost)}>
+            <Button onClick={handleConfirm} disabled={isConfirmDisabled}>
                 حفظ
             </Button>
         </DialogFooter>
@@ -1180,7 +1191,7 @@ function PosTrackingContent() {
 
   const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
     if (!child) return;
-  
+
     stopNotificationForSession(child.id);
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
@@ -1205,24 +1216,24 @@ function PosTrackingContent() {
         durationMs: durationMs,
         cost: receiptDetails.totalCost,
         costBeforeDiscount: receiptDetails.costBeforeDiscount,
-        durationCost: receiptDetails.durationCost,
-        entryFee: receiptDetails.entryFee,
-        discount: receiptDetails.discount,
+        durationCost: receiptDetails.durationCost || 0,
+        entryFee: receiptDetails.entryFee || 0,
+        discount: receiptDetails.discount || 0,
         receiptNumber: finalReceiptNumber,
-        overtimeCost: receiptDetails.overtimeCost,
+        overtimeCost: receiptDetails.overtimeCost || 0,
         notes: receiptDetails.notes || '',
     };
-    
+
     // This is a prepaid session that had overtime, so update the original completed session
     if (child.prepaidSessionId) {
         const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
         const originalSessionSnapshot = await get(completedSessionRef);
-        
+
         if (originalSessionSnapshot.exists()) {
             const originalSession = originalSessionSnapshot.val() as CompletedSession;
             const newTotalCost = (originalSession.cost || 0) + sessionToSave.cost;
             const newTotalDiscount = (originalSession.discount || 0) + (sessionToSave.discount || 0);
-            
+
             await update(completedSessionRef, {
                 checkOutTime: sessionToSave.checkOutTime,
                 durationMs: sessionToSave.durationMs,
@@ -1235,7 +1246,7 @@ function PosTrackingContent() {
     } else { // This is a postpaid session or an early checkout of a prepaid session
         await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
     }
-    
+
     // Only print if an amount was actually received.
     if (receiptSettings && receiptDetails.amountReceived && receiptDetails.amountReceived > 0) {
         printReceipt(<PosReceipt {...receiptDetails} receiptId={`${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
@@ -2065,6 +2076,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
