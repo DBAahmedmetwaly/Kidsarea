@@ -38,7 +38,7 @@ import {
 
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { InventoryItem } from '@/lib/types';
+import type { InventoryItem, InventoryMovement } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, push, set, remove, update } from 'firebase/database';
@@ -76,7 +76,7 @@ function InventoryContent() {
     
     const [selectedBranch, setSelectedBranch] = useState(currentUser?.branch === 'كل الفروع' ? branches[0]?.name || '' : currentUser?.branch || '');
 
-     const handleFormSubmit = async (itemData: Omit<InventoryItem, 'id'> | InventoryItem) => {
+     const handleFormSubmit = async (itemData: Omit<InventoryItem, 'id'> | InventoryItem, movement?: Omit<InventoryMovement, 'id'>) => {
         try {
             if ('id' in itemData) { // Edit mode
                 const itemRef = ref(db, `inventory/${itemData.id}`);
@@ -88,6 +88,11 @@ function InventoryContent() {
                 const newItemRef = push(inventoryRef);
                 await set(newItemRef, itemData);
                 toast({ title: 'تمت الإضافة بنجاح', description: `تمت إضافة المنتج "${itemData.productName}" للمخزون.` });
+            }
+
+            if (movement) {
+                const movementRef = push(ref(db, 'inventoryMovements'));
+                await set(movementRef, movement);
             }
         } catch (e) {
             console.error(e);

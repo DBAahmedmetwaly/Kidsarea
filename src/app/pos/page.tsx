@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ExtendSessionCartItem, ProductSaleItem } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ExtendSessionCartItem, ProductSaleItem, InventoryMovement } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction } from 'firebase/database';
@@ -1143,7 +1143,7 @@ function PosTrackingContent() {
 
   const stopNotificationForSession = useCallback((sessionId: string) => {
     if (notificationIntervals.has(sessionId)) {
-        clearInterval(notificationIntervals.get(sessionId));
+        clearInterval(notificationIntervals.get(sessionId)!);
         notificationIntervals.delete(sessionId);
     }
   }, [notificationIntervals]);
@@ -1275,7 +1275,7 @@ function PosTrackingContent() {
              await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
         }
         // Always remove the active session
-        await set(ref(db, `sessions/active/${child.id}`), null);
+        await remove(ref(db, `sessions/active/${child.id}`));
         setActiveChildren(prev => prev.filter(c => c.id !== child.id));
 
 
@@ -1481,6 +1481,22 @@ function PosTrackingContent() {
             for (const item of productItemsInCart) {
                 const inventoryItemRef = ref(db, `inventory/${item.id}/quantity`);
                 await runTransaction(inventoryItemRef, (currentQuantity) => (currentQuantity || 0) - item.cartQuantity);
+                
+                const movementRef = push(ref(db, 'inventoryMovements'));
+                const movement: Omit<InventoryMovement, 'id'> = {
+                    date: new Date().toISOString(),
+                    productId: item.productId,
+                    productName: item.productName,
+                    branchId: item.branchId,
+                    branchName: item.branchName,
+                    type: 'Sale',
+                    change: -item.cartQuantity,
+                    quantityBefore: item.quantity,
+                    quantityAfter: item.quantity - item.cartQuantity,
+                    recordedBy: user.username,
+                    referenceId: saleId,
+                }
+                await set(movementRef, movement);
             }
         }
         
@@ -2127,6 +2143,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 

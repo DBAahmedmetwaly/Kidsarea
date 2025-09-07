@@ -17,10 +17,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import type { InventoryItem, Product, Branch } from '@/lib/types';
+import type { InventoryItem, Product, Branch, InventoryMovement } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/context/FirebaseContext';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function InventoryFormDialog({ 
     open, 
@@ -32,13 +33,14 @@ export default function InventoryFormDialog({
 }: { 
     open: boolean; 
     onOpenChange: (open: boolean) => void; 
-    onSubmit: (item: Omit<InventoryItem, 'id'> | InventoryItem) => void; 
+    onSubmit: (item: Omit<InventoryItem, 'id'> | InventoryItem, movement?: Omit<InventoryMovement, 'id'>) => void; 
     isEditMode: boolean;
     initialData: InventoryItem | null;
     branchName: string;
 }) {
     const { toast } = useToast();
     const { products, branches, inventory } = useFirebase();
+    const { user } = useAuth();
 
     // Form State
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -99,8 +101,42 @@ export default function InventoryFormDialog({
             return;
         }
 
-        const itemData: Omit<InventoryItem, 'id'> = {
-            type: 'product',
+        let movement: Omit<InventoryMovement, 'id'> | undefined = undefined;
+        const newQuantity = parseInt(quantity, 10);
+
+        if (isEditMode && initialData) {
+            const change = newQuantity - initialData.quantity;
+            if (change !== 0) {
+                movement = {
+                    date: new Date().toISOString(),
+                    productId: initialData.productId,
+                    productName: initialData.productName,
+                    branchId: initialData.branchId,
+                    branchName: initialData.branchName,
+                    type: 'Manual Adjustment',
+                    change: change,
+                    quantityBefore: initialData.quantity,
+                    quantityAfter: newQuantity,
+                    recordedBy: user?.username || 'N/A',
+                }
+            }
+        } else {
+            // New item added to inventory
+             movement = {
+                date: new Date().toISOString(),
+                productId: product.id,
+                productName: product.name,
+                branchId: branch.id,
+                branchName: branch.name,
+                type: 'Initial Stock',
+                change: newQuantity,
+                quantityBefore: 0,
+                quantityAfter: newQuantity,
+                recordedBy: user?.username || 'N/A',
+            }
+        }
+
+        const itemData = {
             productId: product.id,
             productName: product.name,
             categoryId: product.categoryId,
@@ -108,12 +144,12 @@ export default function InventoryFormDialog({
             branchId: branch.id,
             branchName: branch.name,
             price: parseFloat(price),
-            quantity: parseInt(quantity, 10),
+            quantity: newQuantity,
         };
 
         const finalData = isEditMode && initialData ? { ...itemData, id: initialData.id } : itemData;
 
-        onSubmit(finalData);
+        onSubmit(finalData, movement);
         onOpenChange(false);
     };
 
