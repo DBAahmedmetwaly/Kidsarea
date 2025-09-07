@@ -896,7 +896,7 @@ function EarlyCheckoutDialog({
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="secondary">إلغاء</Button>
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>إلغاء</Button>
           </DialogClose>
           <Button onClick={handleConfirm}>تأكيد الخصم والخروج</Button>
         </DialogFooter>
@@ -1143,12 +1143,21 @@ function PosTrackingContent() {
     setChildToExtend(session);
     setExtendDialogOpen(true);
   }
+
+  const stopNotificationForSession = useCallback((sessionId: string) => {
+    if (notificationIntervals.has(sessionId)) {
+        clearInterval(notificationIntervals.get(sessionId));
+        notificationIntervals.delete(sessionId);
+    }
+  }, [notificationIntervals]);
   
   const handleCheckoutClick = (session: Child) => {
     setChildToCheckout(session);
     
     const isPackageGame = session?.packageDuration && session.packageDuration > 0;
     if (isPackageGame) {
+        stopNotificationForSession(session.id); // Stop notifications as soon as checkout starts
+        
         const remainingTimeMs = (session.checkInTime + session.packageDuration * 60 * 1000) - Date.now();
         
         // If they leave early and the cashier can apply a discount
@@ -1211,15 +1220,11 @@ function PosTrackingContent() {
 
 
   const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
+    stopNotificationForSession(child.id);
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
 
     if (!child) return;
-
-    if (notificationIntervals.has(child.id)) {
-        clearInterval(notificationIntervals.get(child.id));
-        notificationIntervals.delete(child.id);
-    }
     
     const branch = branches.find(b => b.name === child.branchName);
     let finalReceiptNumber = child.receiptNumber || 0;
@@ -1995,7 +2000,13 @@ function PosTrackingContent() {
             />
             <EarlyCheckoutDialog
                 open={isEarlyCheckoutDiscountOpen}
-                onOpenChange={setEarlyCheckoutDiscountOpen}
+                onOpenChange={(isOpen) => {
+                    if (!isOpen && childToCheckout) {
+                        // If dialog is cancelled, stop notifications
+                        stopNotificationForSession(childToCheckout.id);
+                    }
+                    setEarlyCheckoutDiscountOpen(isOpen);
+                }}
                 session={childToCheckout}
                 onConfirm={handleEarlyCheckoutConfirm}
             />
@@ -2112,6 +2123,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
