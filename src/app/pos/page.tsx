@@ -1347,25 +1347,26 @@ function PosTrackingContent() {
       }
     };
   
-    const handleAddToCart = (item: CartItem) => {
+    const handleAddToCart = (item: InventoryItem) => {
         setCart(prevCart => {
-            const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
+            const itemWithDefaults = { ...item, type: 'product' };
+            const existingItem = prevCart.find(cartItem => cartItem.id === itemWithDefaults.id);
             if (existingItem) {
-                if (item.type === 'product' && 'quantity' in item && existingItem.cartQuantity >= item.quantity) {
+                if ('quantity' in item && existingItem.cartQuantity >= item.quantity) {
                     toast({ title: "الكمية غير كافية", variant: "destructive" });
                     return prevCart;
                 }
                 return prevCart.map(cartItem => 
-                    cartItem.id === item.id 
+                    cartItem.id === itemWithDefaults.id 
                         ? { ...cartItem, cartQuantity: cartItem.cartQuantity + 1 } 
                         : cartItem
                 );
             } else {
-                 if (item.type === 'product' && 'quantity' in item && item.quantity <= 0) {
+                 if ('quantity' in item && item.quantity <= 0) {
                     toast({ title: "نفدت الكمية", variant: "destructive" });
                     return prevCart;
                 }
-                return [...prevCart, { ...item, cartQuantity: 1 }];
+                return [...prevCart, { ...itemWithDefaults, cartQuantity: 1 }];
             }
         });
     };
@@ -2098,6 +2099,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
