@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ExtendSessionCartItem, ProductSaleItem, InventoryMovement } from '@/lib/types';
+import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ProductSaleItem, InventoryMovement } from '@/lib/types';
 import { useSession } from '@/context/SessionContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { ref, set, onValue, push, get, update, runTransaction, remove } from 'firebase/database';
@@ -869,7 +869,7 @@ function CheckInDialog({
     )
 }
 
-type CartItem = (InventoryItem | PrepaidGameCartItem | ExtendSessionCartItem) & { cartQuantity: number };
+type CartItem = (InventoryItem | PrepaidGameCartItem) & { cartQuantity: number };
 
 function EarlyCheckoutDialog({
   open,
@@ -928,94 +928,6 @@ function EarlyCheckoutDialog({
   );
 }
 
-function ExtendSessionDialog({
-  open,
-  onOpenChange,
-  session,
-  onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  session: Child | null;
-  onConfirm: (item: ExtendSessionCartItem) => void;
-}) {
-    const { games } = useFirebase();
-    const { toast } = useToast();
-    const [selectedPackage, setSelectedPackage] = useState<SelectedPackageType | null>(null);
-
-    useEffect(() => {
-        if (!open) {
-            setSelectedPackage(null);
-        }
-    }, [open]);
-
-    const game = useMemo(() => {
-        if (!session) return null;
-        return games.find(g => g.name === session.game);
-    }, [session, games]);
-
-    const handleConfirm = () => {
-        if (!session || !game || !selectedPackage) {
-            toast({ title: 'يرجى اختيار باقة للتمديد', variant: 'destructive' });
-            return;
-        }
-
-        const cartItem: ExtendSessionCartItem = {
-            type: 'extend-session',
-            id: `extend-${session.id}-${Date.now()}`,
-            activeSessionId: session.id,
-            originalSessionId: session.prepaidSessionId || session.id,
-            childName: session.children.map(c => c.name).join(', '),
-            gameName: session.game,
-            packageName: selectedPackage.label,
-            packageDuration: selectedPackage.duration,
-            price: selectedPackage.price,
-            cartQuantity: 1,
-        };
-
-        onConfirm(cartItem);
-        onOpenChange(false);
-    };
-
-    if (!session) return null;
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>تمديد وقت: {session.children.map(c => c.name).join(', ')}</DialogTitle>
-                    <DialogDescription>
-                        اختر باقة وقت إضافية لإضافتها إلى سلة التسوق. سيتم تحديث وقت الجلسة بعد الدفع.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                    <Label>اختر باقة التمديد</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {game?.fixedTimePackages?.map(pkg => (
-                            <button
-                                key={pkg.label}
-                                onClick={() => setSelectedPackage(pkg)}
-                                className={cn(
-                                    "border p-2 rounded-md text-center hover:bg-muted transition-colors h-auto flex flex-col items-center justify-center",
-                                    selectedPackage?.label === pkg.label ? "ring-2 ring-primary" : ""
-                                )}
-                            >
-                                <p className="font-semibold">{pkg.label}</p>
-                                <p className="text-sm">{pkg.duration} دقيقة</p>
-                                <p className="text-xs font-bold">{pkg.price} ج.م</p>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button variant="outline">إلغاء</Button></DialogClose>
-                    <Button onClick={handleConfirm} disabled={!selectedPackage}>إضافة للسلة</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 function PosTrackingContent() {
   const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
   const { user } = useAuth();
@@ -1034,8 +946,6 @@ function PosTrackingContent() {
   const [isZeroCostCheckoutOpen, setZeroCostCheckoutOpen] = useState(false);
   const [childToCheckout, setChildToCheckout] = useState<Child | null>(null);
   
-  const [isExtendDialogOpen, setExtendDialogOpen] = useState(false);
-  const [childToExtend, setChildToExtend] = useState<Child | null>(null);
   
   const [isEarlyCheckoutDiscountOpen, setEarlyCheckoutDiscountOpen] = useState(false);
 
@@ -1160,10 +1070,6 @@ function PosTrackingContent() {
     setCheckInDialogOpen(true);
   }
   
-  const openExtendDialog = (session: Child) => {
-    setChildToExtend(session);
-    setExtendDialogOpen(true);
-  }
 
   const stopNotificationForSession = useCallback((sessionId: string) => {
     if (notificationIntervals.has(sessionId)) {
@@ -1446,8 +1352,6 @@ function PosTrackingContent() {
     if (item.type === 'prepaid-game') {
       price = item.price; // This price is already the total for the game session
       return sum + price;
-    } else if (item.type === 'extend-session') {
-      price = item.price;
     } else if (item.type === 'product') {
       price = item.price;
     }
@@ -1465,7 +1369,6 @@ function PosTrackingContent() {
     
     const productItemsInCart = cart.filter((item): item is InventoryItem & { cartQuantity: number } => item.type === 'product');
     const gameItems = cart.filter((item): item is PrepaidGameCartItem & { cartQuantity: number } => item.type === 'prepaid-game');
-    const extendItems = cart.filter((item): item is ExtendSessionCartItem & { cartQuantity: number } => item.type === 'extend-session');
     
     const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
     const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
@@ -1548,39 +1451,6 @@ function PosTrackingContent() {
             sessionInfoForReceipt = { children: gameItem.sessionDetails.children, checkInTime: checkInDate, expectedCheckOutTime };
         }
         
-        // Handle Extend Session Sales
-        for (const extendItem of extendItems) {
-            const activeSessionRef = ref(db, `sessions/active/${extendItem.activeSessionId}`);
-            const activeSessionData = (await get(activeSessionRef)).val() as Child | null;
-        
-            if (activeSessionData && activeSessionData.prepaidSessionId) {
-                const originalSessionRef = ref(db, `sessions/completed/${activeSessionData.prepaidSessionId}`);
-                
-                await runTransaction(originalSessionRef, (currentSession: CompletedSession) => {
-                    if (currentSession) {
-                        currentSession.cost = (currentSession.cost || 0) + extendItem.price;
-                        currentSession.costBeforeDiscount = (currentSession.costBeforeDiscount || 0) + extendItem.price;
-                        currentSession.packageName = `${currentSession.packageName || ''}, تمديد: ${extendItem.packageName}`;
-                        currentSession.notes = `${currentSession.notes || ''}\nتمديد فاتورة: ${receiptNumber}`.trim();
-                    }
-                    return currentSession;
-                });
-            }
-
-            await runTransaction(ref(db, `sessions/active/${extendItem.activeSessionId}`), (currentSession: Child) => {
-                if (currentSession && currentSession.packageDuration) {
-                    const now = Date.now();
-                    const elapsedMsSinceCheckIn = now - currentSession.checkInTime;
-                    const originalDurationMs = currentSession.packageDuration * 60 * 1000;
-                    const addedDurationMs = (extendItem.packageDuration * extendItem.cartQuantity) * 60 * 1000;
-                    const remainingOriginalMs = Math.max(0, originalDurationMs - elapsedMsSinceCheckIn);
-                    currentSession.packageDuration = (remainingOriginalMs + addedDurationMs) / (60 * 1000);
-                    currentSession.checkInTime = now;
-                }
-                return currentSession;
-            });
-        }
-        
         // Print one combined receipt
         const receiptProps: ProductReceiptProps = { 
             receiptId: `${branch.name.substring(0,3).toUpperCase() || 'DEF'}-${receiptNumber}`, 
@@ -1597,9 +1467,6 @@ function PosTrackingContent() {
                 } else if (item.type === 'prepaid-game') {
                     name = `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`;
                     price = item.cartQuantity > 0 ? item.price / item.cartQuantity : 0; // price per unit
-                } else if (item.type === 'extend-session') {
-                    name = `تمديد: ${item.gameName} (${item.childName})`;
-                    price = item.price;
                 }
                 return { name, quantity: item.cartQuantity, price };
             }), 
@@ -1934,17 +1801,6 @@ function PosTrackingContent() {
                                         />
                                     </TableCell>
                                     <TableCell className="text-center flex gap-2 justify-center">
-                                        {session.packageDuration && (
-                                             <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => openExtendDialog(session)}
-                                                disabled={!hasActiveShift}
-                                                >
-                                                <History className="me-2 h-4 w-4" />
-                                                إضافة وقت
-                                            </Button>
-                                        )}
                                         <Button
                                         variant="destructive"
                                         size="sm"
@@ -2050,12 +1906,6 @@ function PosTrackingContent() {
                 onConfirm={handleCheckOut}
                 canApplyDiscount={canApplyDiscount}
             />
-            <ExtendSessionDialog
-                open={isExtendDialogOpen}
-                onOpenChange={setExtendDialogOpen}
-                session={childToExtend}
-                onConfirm={handleAddToCart}
-            />
             <EarlyCheckoutDialog
                 open={isEarlyCheckoutDiscountOpen}
                 onOpenChange={(isOpen) => {
@@ -2112,8 +1962,6 @@ function PosTrackingContent() {
                                         case 'prepaid-game':
                                             const pricePerUnit = item.cartQuantity > 0 ? item.price / item.cartQuantity : 0;
                                             return { name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, price: pricePerUnit.toFixed(2) };
-                                        case 'extend-session':
-                                             return { name: `تمديد: ${item.gameName} (${item.childName})`, price: item.price.toFixed(2) };
                                         default:
                                             return { name: 'صنف غير معروف', price: '0.00' };
                                     }
