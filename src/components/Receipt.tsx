@@ -129,7 +129,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
     <div ref={ref} className="bg-white p-1 text-black text-xs" style={{ width: `${receiptWidth}mm`, boxSizing: 'border-box' }}>
       {/* Header */}
       <div className="text-center mb-1">
-        {show('showLogo') && <BossBabyLogo className="mx-auto h-12 w-12 text-black" />}
+        {show('showLogo') && <BossBabyLogo className="mx-auto h-8 w-8 text-black" />}
         {show('showAppName') && <h1 className="text-base font-bold">{appName}</h1>}
         {show('showAddress') && <p className="text-xs">{settings?.address}</p>}
         {show('showPhone') && <p className="text-xs font-mono">{settings?.phone}</p>}

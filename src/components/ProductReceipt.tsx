@@ -89,7 +89,7 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
   return (
     <div ref={ref} className="bg-white p-1 text-black" style={{ width: `${receiptWidth}mm`, boxSizing: 'border-box' }}>
       <div className="text-center mb-1">
-        {show('showLogo') && <BossBabyLogo className="mx-auto h-12 w-12 text-black" />}
+        {show('showLogo') && <BossBabyLogo className="mx-auto h-8 w-8 text-black" />}
         {show('showAppName') && <h1 className="text-xl font-bold">{appName}</h1>}
         <p className="text-xs">{branchName}</p>
         <p className="text-xs font-semibold">فاتورة مشتريات</p>
