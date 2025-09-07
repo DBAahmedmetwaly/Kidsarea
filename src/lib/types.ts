@@ -234,6 +234,8 @@ export interface PosReceiptProps {
   checkOutTime: Date;
   duration: string;
   totalCost: number;
+  amountReceived?: number;
+  costBeforeDiscount: number;
   durationCost?: number;
   entryFee?: number;
   discount?: number;

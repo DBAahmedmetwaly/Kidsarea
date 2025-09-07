@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -364,6 +365,7 @@ function CheckOutDialog({
         checkOutTime: new Date(),
         duration: checkoutData.duration,
         totalCost: finalCost,
+        amountReceived: parseFloat(amountReceived) || 0,
         durationCost: checkoutData.durationCost,
         entryFee: checkoutData.entryFee,
         discount: checkoutData.discount,
@@ -382,6 +384,12 @@ function CheckOutDialog({
 
 
   const change = Number(amountReceived) - checkoutData.totalCost;
+  
+  const hasOvertimeCost = checkoutData.overtimeCost > 0;
+  const isConfirmDisabled = hasOvertimeCost 
+      ? false // Always enable for overtime
+      : (checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost || !amountReceived));
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -455,9 +463,9 @@ function CheckOutDialog({
           </DialogClose>
             <Button 
               onClick={handleConfirm} 
-              disabled={checkoutData.totalCost > 0 && (Number(amountReceived) < checkoutData.totalCost || !amountReceived)}
+              disabled={isConfirmDisabled}
             >
-                حفظ و طباعة
+                حفظ
             </Button>
         </DialogFooter>
       </DialogContent>
@@ -469,7 +477,7 @@ function useDebounce<T>(value: T, delay?: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay || 500);
+    const timer = setTimeout(() => setDebouncedValue(value), delay || 300);
 
     return () => {
       clearTimeout(timer);
@@ -1193,21 +1201,31 @@ function PosTrackingContent() {
     const checkOutTime = new Date();
     const durationMs = checkOutTime.getTime() - child.checkInTime;
 
+    let finalCost = receiptDetails.totalCost;
+    let finalDiscount = receiptDetails.discount || 0;
+
+    // If no amount was received, the cost is zero and the discount is the full amount.
+    if (!receiptDetails.amountReceived || receiptDetails.amountReceived <= 0) {
+        finalDiscount = receiptDetails.costBeforeDiscount || finalCost;
+        finalCost = 0;
+    }
+    
     const sessionToSave: Omit<CompletedSession, 'id'> = {
         ...child,
         checkOutTime: checkOutTime.getTime(),
         durationMs: durationMs,
-        cost: receiptDetails.totalCost,
-        costBeforeDiscount: (receiptDetails.totalCost) + (receiptDetails.discount || 0),
+        cost: finalCost,
+        costBeforeDiscount: receiptDetails.costBeforeDiscount,
         durationCost: receiptDetails.durationCost,
         entryFee: receiptDetails.entryFee,
-        discount: receiptDetails.discount,
+        discount: finalDiscount,
         receiptNumber: finalReceiptNumber,
         overtimeCost: receiptDetails.overtimeCost,
         notes: receiptDetails.notes || '',
     };
 
-    if (receiptSettings) {
+    // Only print if an amount was actually received
+    if (receiptSettings && receiptDetails.amountReceived && receiptDetails.amountReceived > 0) {
         printReceipt(<PosReceipt {...receiptDetails} receiptId={`${sessionToSave.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
     }
 
@@ -1218,7 +1236,12 @@ function PosTrackingContent() {
                 if (currentSession) {
                     currentSession.checkOutTime = sessionToSave.checkOutTime;
                     currentSession.durationMs = sessionToSave.durationMs;
-                    currentSession.cost = (currentSession.cost || 0) + (sessionToSave.overtimeCost || 0) - (sessionToSave.discount || 0);
+                    // If no amount received, overtime cost should not increase total. It gets "discounted".
+                    if (!receiptDetails.amountReceived || receiptDetails.amountReceived <= 0) {
+                        currentSession.discount = (currentSession.discount || 0) + (sessionToSave.overtimeCost || 0);
+                    } else {
+                        currentSession.cost = (currentSession.cost || 0) + (sessionToSave.overtimeCost || 0) - (sessionToSave.discount || 0);
+                    }
                     currentSession.discount = (currentSession.discount || 0) + (sessionToSave.discount || 0);
                     currentSession.overtimeCost = (currentSession.overtimeCost || 0) + (sessionToSave.overtimeCost || 0);
                     currentSession.notes = `${currentSession.notes || ''}\nتحديث الخروج: ${receiptDetails.notes || ''}`.trim();
@@ -2053,4 +2076,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
