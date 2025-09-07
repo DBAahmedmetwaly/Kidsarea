@@ -940,6 +940,7 @@ function EarlyCheckoutDialog({
   const handleConfirm = () => {
     const discountValue = parseFloat(discount) || 0;
     onConfirm(discountValue, notes);
+    onOpenChange(false);
   };
 
   return (
@@ -1165,45 +1166,37 @@ function PosTrackingContent() {
     setCheckoutDialogOpen(true);
   };
   
-    const handleEarlyCheckoutConfirm = (discountValue: number, notes: string) => {
-        if (!childToCheckout) return;
+    const handleEarlyCheckoutConfirm = async (discountValue: number, notes: string) => {
+        if (!childToCheckout || !childToCheckout.prepaidSessionId) return;
 
-        setEarlyCheckoutDiscountOpen(false);
+        const originalSessionRef = ref(db, `sessions/completed/${childToCheckout.prepaidSessionId}`);
+        const snapshot = await get(originalSessionRef);
+        if (!snapshot.exists()) {
+            toast({ title: "خطأ", description: "لم يتم العثور على الجلسة الأصلية.", variant: "destructive" });
+            return;
+        }
         
-        const cashier = employees.find(e => e.username === user?.username);
-        const cashierName = user?.username === 'admin' 
-            ? 'Admin' 
-            : cashier?.name || user?.username || 'N/A';
-        
-        const originalPrice = childToCheckout.packagePrice || 0;
-        const finalCost = Math.max(0, originalPrice - discountValue);
+        const originalSession: CompletedSession = snapshot.val();
+        const originalPrice = originalSession.costBeforeDiscount;
+        const newTotalCost = Math.max(0, originalPrice - discountValue);
 
-        const receiptDetails: PosReceiptProps = {
-            settings: receiptSettings,
-            appName: policies?.appName || 'FunTrack',
-            branchName: childToCheckout.branchName,
-            children: childToCheckout.children,
-            parentName: childToCheckout.parentName,
-            phoneNumbers: childToCheckout.phoneNumbers,
-            gameName: childToCheckout.game,
-            checkInTime: new Date(childToCheckout.checkInTime),
-            checkOutTime: new Date(),
-            duration: formatDuration(Date.now() - childToCheckout.checkInTime),
-            totalCost: finalCost,
-            amountReceived: 0, // Assume nothing received unless entered in next step
-            costBeforeDiscount: originalPrice,
+        const updates = {
+            cost: newTotalCost,
             discount: discountValue,
-            cashierName: cashierName,
-            isSubscription: false,
-            packagePrice: childToCheckout.packagePrice,
-            packageName: childToCheckout.packageName,
-            packageDuration: childToCheckout.packageDuration,
-            overtimeCost: 0,
-            notes: notes,
+            notes: `${originalSession.notes || ''} (خروج مبكر: ${notes})`.trim(),
         };
-        
-        handleCheckOut(childToCheckout, receiptDetails);
-  };
+
+        try {
+            await update(originalSessionRef, updates);
+            await remove(ref(db, `sessions/active/${childToCheckout.id}`));
+            
+            toast({ title: "تم تسجيل الخروج المبكر بنجاح" });
+
+        } catch (error) {
+            console.error("Early checkout update failed:", error);
+            toast({ title: "خطأ", description: "فشل تحديث الجلسة الأصلية.", variant: "destructive" });
+        }
+    };
 
 
   const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
@@ -2070,14 +2063,3 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-
-
-
-
-
-
-
-
-
-
