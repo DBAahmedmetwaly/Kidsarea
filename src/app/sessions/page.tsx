@@ -6,6 +6,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import * as XLSX from 'xlsx';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { History, Calendar as CalendarIcon, FilterX, Printer, Star, Loader2, PackageCheck } from 'lucide-react';
+import { History, Calendar as CalendarIcon, FilterX, Printer, Star, Loader2, PackageCheck, Download } from 'lucide-react';
 import { useFirebase } from '@/context/FirebaseContext';
 import type { CompletedSession, PosReceiptProps } from '@/lib/types';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -168,6 +169,27 @@ function SessionsContent() {
     };
     printReceipt(<PosReceipt {...receiptDetails} />);
   }
+  
+  const handleExport = () => {
+    const dataToExport = filteredSessions.map(session => ({
+        'رقم الإيصال': session.receiptNumber ? `${session.branchName.substring(0,3).toUpperCase()}-${session.receiptNumber}` : 'N/A',
+        'اسم الطفل': session.children?.map(c => c.name).join(', ') ?? 'N/A',
+        'ولي الأمر': session.parentName,
+        'رقم الهاتف': (session.phoneNumbers || []).join(', '),
+        'الفرع': session.branchName,
+        'اللعبة': session.game,
+        'الباقة': session.packageName || '-',
+        'مدة اللعب': formatDuration(session.durationMs),
+        'التكلفة': session.cost,
+        'الخصم': session.discount || 0,
+        'وقت الخروج': new Date(session.checkOutTime).toLocaleString('ar-EG'),
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "الجلسات");
+    XLSX.writeFile(workbook, `Sessions_Log_${new Date().toISOString().split('T')[0]}.xlsx`);
+  }
 
 
   const renderContent = () => {
@@ -175,7 +197,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={10}>
+            <TableCell colSpan={11}>
                 <Loader2 className="mx-auto h-6 w-6 animate-spin" />
             </TableCell>
           </TableRow>
@@ -187,7 +209,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={10} className="h-24 text-center">
+            <TableCell colSpan={11} className="h-24 text-center">
               لا توجد جلسات مطابقة للبحث.
             </TableCell>
           </TableRow>
@@ -212,6 +234,7 @@ function SessionsContent() {
                 <TableCell className="text-center whitespace-nowrap">{(session.phoneNumbers || []).join(', ')}</TableCell>
                 <TableCell className="text-right whitespace-nowrap">{session.branchName}</TableCell>
                 <TableCell className="text-right whitespace-nowrap">{session.game}</TableCell>
+                <TableCell className="text-right whitespace-nowrap">{session.packageName || '-'}</TableCell>
                 <TableCell className="text-center whitespace-nowrap">
                 {formatDuration(session.durationMs)}
                 </TableCell>
@@ -259,7 +282,11 @@ function SessionsContent() {
                 <SidebarTrigger />
             </div>
             <History className="h-8 w-8 text-primary" />
-            <h1 className="text-lg font-semibold md:text-2xl">سجل الجلسات</h1>
+            <h1 className="text-lg font-semibold md:text-2xl me-auto">سجل الجلسات</h1>
+             <Button onClick={handleExport} size="sm" variant="outline" disabled={filteredSessions.length === 0}>
+                <Download className="me-2 h-4 w-4" />
+                تصدير إلى Excel
+            </Button>
         </div>
         <Card>
             <CardHeader className="flex-row items-center justify-between">
@@ -367,6 +394,7 @@ function SessionsContent() {
                         <TableHead className="text-center">رقم الهاتف</TableHead>
                         <TableHead className="text-right">الفرع</TableHead>
                         <TableHead className="text-right">اللعبة</TableHead>
+                        <TableHead className="text-right">الباقة</TableHead>
                         <TableHead className="text-center">مدة اللعب</TableHead>
                         <TableHead className="text-center">التكلفة النهائية</TableHead>
                         <TableHead className="text-center">وقت الخروج</TableHead>
@@ -410,3 +438,4 @@ export default function SessionsPage() {
 
 
     
+

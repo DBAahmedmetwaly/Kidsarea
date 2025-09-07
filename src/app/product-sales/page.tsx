@@ -7,6 +7,7 @@ import { useFirebase } from '@/context/FirebaseContext';
 import { useAuth } from '@/components/AuthProvider';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
 
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -29,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Receipt, Calendar as CalendarIcon, FilterX, ShoppingCart, CircleDollarSign } from 'lucide-react';
+import { Receipt, Calendar as CalendarIcon, FilterX, ShoppingCart, CircleDollarSign, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProductSale, ProductSaleItem } from '@/lib/types';
 import { StatCard } from '@/components/StatCard';
@@ -108,13 +109,35 @@ function ProductSalesContent() {
         setFromDate(undefined);
         setToDate(undefined);
     }
+    
+    const handleExport = () => {
+        const dataToExport = filteredSales.map(item => ({
+            'رقم الإيصال': item.receiptNumber ? `${item.branchName.substring(0,3).toUpperCase()}-${item.receiptNumber}` : 'N/A',
+            'التاريخ': new Date(item.createdAt).toLocaleString('ar-EG'),
+            'الفرع': item.branchName,
+            'الكاشير': item.cashierName,
+            'اسم المنتج': item.productName,
+            'الكمية': item.cartQuantity,
+            'سعر الوحدة': item.price,
+            'الإجمالي': item.price * item.cartQuantity,
+        }));
+        
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "مبيعات المنتجات");
+        XLSX.writeFile(workbook, `Product_Sales_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center gap-4">
         <div className="md:hidden"><SidebarTrigger /></div>
         <Receipt className="h-8 w-8 text-primary" />
-        <h1 className="text-lg font-semibold md:text-2xl">تقرير مبيعات المنتجات</h1>
+        <h1 className="text-lg font-semibold md:text-2xl me-auto">تقرير مبيعات المنتجات</h1>
+        <Button onClick={handleExport} size="sm" variant="outline" disabled={filteredSales.length === 0}>
+            <Download className="me-2 h-4 w-4" />
+            تصدير إلى Excel
+        </Button>
       </div>
       
        <Card>

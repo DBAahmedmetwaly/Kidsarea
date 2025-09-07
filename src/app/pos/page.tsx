@@ -1349,7 +1349,7 @@ function PosTrackingContent() {
   
     const handleAddToCart = (item: InventoryItem) => {
         setCart(prevCart => {
-            const itemWithDefaults = { ...item, type: 'product' };
+            const itemWithDefaults = { ...item, type: 'product' as const };
             const existingItem = prevCart.find(cartItem => cartItem.id === itemWithDefaults.id);
             if (existingItem) {
                 if ('quantity' in item && existingItem.cartQuantity >= item.quantity) {
@@ -1915,6 +1915,7 @@ function PosTrackingContent() {
                                             <TableRow>
                                                 <TableHead className="text-right">الطفل</TableHead>
                                                 <TableHead className="text-right">ولي الأمر</TableHead>
+                                                <TableHead className="text-center">الهاتف</TableHead>
                                                 <TableHead className="text-center">وقت الخروج</TableHead>
                                                 <TableHead className="text-center">التكلفة</TableHead>
                                             </TableRow>
@@ -1925,6 +1926,7 @@ function PosTrackingContent() {
                                                     <TableRow key={session.id}>
                                                         <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
                                                         <TableCell className="text-right">{session.parentName}</TableCell>
+                                                        <TableCell className="text-center">{session.phoneNumbers?.join(' / ')}</TableCell>
                                                         <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
                                                         <TableCell className="font-bold text-center">
                                                             <div className='flex items-center justify-center gap-2 whitespace-nowrap'>
@@ -1945,7 +1947,7 @@ function PosTrackingContent() {
                                                 ))
                                             ) : (
                                                 <TableRow>
-                                                    <TableCell colSpan={4} className="h-24 text-center">
+                                                    <TableCell colSpan={5} className="text-center h-24">
                                                         لم تكتمل أي جلسات في ورديتك بعد.
                                                     </TableCell>
                                                 </TableRow>
@@ -2099,6 +2101,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
