@@ -1511,7 +1511,7 @@ function PosTrackingContent() {
                 id: completedSessionId,
                 receiptNumber,
                 checkInTime: checkInTime,
-                checkOutTime: checkInTime,
+                checkOutTime: checkInTime, // Set initial checkout time to check-in time
                 durationMs: 0,
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
@@ -2143,6 +2143,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 

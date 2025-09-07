@@ -320,8 +320,8 @@ export interface InventoryItem {
 }
 
 export interface ProductSaleItem {
-    id: string;
-    productId: string;
+    id: string; // This will be the InventoryItem ID
+    productId: string; // This will be the Product ID
     productName: string;
     categoryId: string;
     categoryName: string;
