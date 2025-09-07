@@ -27,7 +27,7 @@ export interface Child {
 
 export interface CompletedSession extends Child {
     receiptNumber: number;
-    checkOutTime: number;
+    checkOutTime: number; // For prepaid, this might initially be the check-in time
     durationMs: number;
     cost: number; // Total cost
     costBeforeDiscount: number;

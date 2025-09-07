@@ -1483,13 +1483,14 @@ function PosTrackingContent() {
         for (const gameItem of gameItems) {
             const completedSessionRef = push(ref(db, `sessions/completed`));
             const completedSessionId = completedSessionRef.key!;
+            const checkInTime = Date.now();
 
             const completedSession: CompletedSession = {
                 ...gameItem.sessionDetails,
                 id: completedSessionId,
                 receiptNumber,
-                checkInTime: Date.now(),
-                checkOutTime: 0,
+                checkInTime: checkInTime,
+                checkOutTime: checkInTime,
                 durationMs: 0,
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
@@ -1499,9 +1500,9 @@ function PosTrackingContent() {
             await set(completedSessionRef, completedSession);
             await handleStartSession(gameItem.sessionDetails, completedSessionId, receiptNumber);
 
-            const checkInTime = new Date();
-            const expectedCheckOutTime = new Date(checkInTime.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
-            sessionInfoForReceipt = { children: gameItem.sessionDetails.children, checkInTime, expectedCheckOutTime };
+            const checkInDate = new Date(checkInTime);
+            const expectedCheckOutTime = new Date(checkInDate.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
+            sessionInfoForReceipt = { children: gameItem.sessionDetails.children, checkInTime: checkInDate, expectedCheckOutTime };
         }
         
         // Handle Extend Session Sales
@@ -2111,6 +2112,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
