@@ -812,7 +812,7 @@ function CheckInDialog({
                                                 onClick={() => togglePackageSelection(pkg)}
                                                 className={cn(
                                                     "border p-2 rounded-md text-center hover:bg-muted transition-colors h-auto flex flex-col items-center justify-center",
-                                                     selectedPackages[pkg.label] ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-transparent"
+                                                     selectedPackages[pkg.label] ? "ring-2 ring-primary" : "bg-transparent"
                                                 )}
                                             >
                                                 <p className="font-semibold">{pkg.label}</p>
