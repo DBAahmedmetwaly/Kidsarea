@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -21,7 +20,6 @@ import {
   Building2,
   ChevronDown,
   Clock,
-  Gamepad2,
   LayoutDashboard,
   Users,
   Settings,
@@ -72,6 +70,7 @@ import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
+import { BossBabyLogo } from './BossBabyLogo';
 
 
 const mainItems = [
@@ -83,7 +82,7 @@ const mainItems = [
 const managementItems = [
   { href: '/branches', label: 'الفروع', icon: Building2 },
   { href: '/employees', label: 'الموظفين', icon: Users },
-  { href: '/games', label: 'الألعاب', icon: Gamepad2 },
+  { href: '/games', label: 'الألعاب', icon: Layers },
   { href: '/game-categories', label: 'تصنيفات الألعاب', icon: Layers },
   { href: '/products', label: 'كتالوج المنتجات', icon: ShoppingCart },
   { href: '/product-categories', label: 'فئات المنتجات', icon: ShoppingBag },
@@ -295,7 +294,7 @@ function SidebarItems() {
     <div className="flex flex-col h-full overflow-y-auto">
       <SidebarHeader className="justify-between">
          <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
-            <Gamepad2 className="h-6 w-6 text-accent" />
+            <BossBabyLogo className="h-8 w-8" />
             <span className={cn(
                 "duration-200 text-sidebar-foreground",
                 "group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8"
