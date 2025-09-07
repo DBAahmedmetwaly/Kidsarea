@@ -502,7 +502,7 @@ function CustomersContent() {
       <Card>
         <CardHeader>
           <CardTitle>قائمة العملاء</CardTitle>
-          <CardDescription>عرض وإدارة بيانات العملاء المسجلين. انقر على اسم العميل لعرض سجل زياراته.</CardDescription>
+          <CardDescription>إجمالي العملاء: {customers.length}. عرض وإدارة بيانات العملاء المسجلين. انقر على اسم العميل لعرض سجل زياراته.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
