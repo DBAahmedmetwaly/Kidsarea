@@ -942,6 +942,7 @@ function EarlyCheckoutDialog({
   const handleConfirm = () => {
     const discountValue = parseFloat(discount) || 0;
     onConfirm(discountValue, notes);
+    onOpenChange(false);
   };
 
   return (
@@ -1256,20 +1257,36 @@ function PosTrackingContent() {
   };
   
     const handleEarlyCheckoutConfirm = async (discount: number, notes: string) => {
-        if (!childToCheckout) return;
+        if (!childToCheckout || !childToCheckout.prepaidSessionId) return;
 
-        onOpenChange(false);
-        const originalPrice = childToCheckout.packagePrice || 0;
-        const finalCost = Math.max(0, originalPrice - discount);
+        const originalSessionRef = ref(db, `sessions/completed/${childToCheckout.prepaidSessionId}`);
+        const snapshot = await get(originalSessionRef);
+        if (!snapshot.exists()) {
+            toast({ title: "خطأ", description: "لم يتم العثور على الجلسة الأصلية.", variant: "destructive" });
+            return;
+        }
 
-        const receiptDetails: PosReceiptProps = {
-            totalCost: finalCost,
+        const originalSession: CompletedSession = snapshot.val();
+        const originalCost = originalSession.costBeforeDiscount;
+        const finalCost = Math.max(0, originalCost - discount);
+
+        const updates = {
+            cost: finalCost,
             discount: discount,
-            costBeforeDiscount: originalPrice,
-            notes: notes
-        } as PosReceiptProps;
+            notes: `خروج مبكر: ${notes}`,
+            checkOutTime: new Date().getTime(),
+            durationMs: new Date().getTime() - originalSession.checkInTime,
+        };
 
-        handleCheckOut(childToCheckout, receiptDetails);
+        try {
+            await update(originalSessionRef, updates);
+            await remove(ref(db, `sessions/active/${childToCheckout.id}`));
+            toast({ title: "تم تسجيل الخروج بنجاح", description: "تم تحديث الفاتورة الأصلية بالخصم." });
+            setEarlyCheckoutDiscountOpen(false);
+        } catch (error) {
+            console.error("Early checkout update failed:", error);
+            toast({ title: "خطأ", description: "فشل تحديث الجلسة الأصلية.", variant: "destructive" });
+        }
     };
 
     const handleOvertimeCheckout = async (receivedAmount: number) => {
@@ -1285,8 +1302,7 @@ function PosTrackingContent() {
         }
 
         const originalSession: CompletedSession = snapshot.val();
-        const originalCost = originalSession.costBeforeDiscount;
-        const newTotalCost = originalCost + receivedAmount;
+        const newTotalCost = originalSession.costBeforeDiscount + receivedAmount;
 
         const updates: Partial<CompletedSession> = {
             cost: newTotalCost,
@@ -1294,7 +1310,7 @@ function PosTrackingContent() {
             overtimeCost: receivedAmount, // Store the received amount as the overtime cost
             checkOutTime: new Date().getTime(),
             durationMs: new Date().getTime() - originalSession.checkInTime,
-            notes: `وقت إضافي: ${formatDuration(calculateOvertimeCost(childToCheckout) > 0 ? (receivedAmount / (policies?.packageOvertimeRatePerMinute || 1) * 60 * 1000) : 0)}`,
+            notes: (originalSession.notes || '') + ` وقت إضافي: ${formatDuration(calculateOvertimeCost(childToCheckout) > 0 ? (receivedAmount / (policies?.packageOvertimeRatePerMinute || 1) * 60 * 1000) : 0)}`,
         };
 
         try {
@@ -1303,22 +1319,6 @@ function PosTrackingContent() {
             
             toast({ title: "تم تسجيل الخروج بنجاح", description: "تم تحديث الفاتورة الأصلية بقيمة الوقت الإضافي." });
             setOvertimeDialogOpen(false);
-
-            if (receiptSettings && receivedAmount > 0) {
-                const cashier = employees.find(e => e.username === user?.username);
-                const cashierName = user?.username === 'admin' ? 'Admin' : cashier?.name || user?.username || 'N/A';
-                 const receiptDetails: PosReceiptProps = {
-                    ...originalSession,
-                    ...updates,
-                    checkInTime: new Date(originalSession.checkInTime),
-                    checkOutTime: new Date(updates.checkOutTime!),
-                    duration: formatDuration(updates.durationMs!),
-                    cashierName,
-                    settings: receiptSettings,
-                    appName: policies?.appName || 'FunTrack',
-                 };
-                 printReceipt(<PosReceipt {...receiptDetails} />);
-            }
 
         } catch (error) {
              console.error("Overtime checkout update failed:", error);
@@ -1374,7 +1374,7 @@ function PosTrackingContent() {
         overtimeCost: receiptDetails.overtimeCost,
     };
 
-    if (receiptSettings && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || child.prepaidSessionId) ) {
+    if (receiptSettings && !child.prepaidSessionId && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || child.prepaidSessionId) ) {
         printReceipt(<PosReceipt {...finalReceiptDetails} />);
     }
 
@@ -2233,3 +2233,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
