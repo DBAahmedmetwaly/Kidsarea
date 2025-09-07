@@ -498,7 +498,25 @@ function CheckInDialog({
     const [selectedPackages, setSelectedPackages] = useState<SelectedPackagesMap>({});
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     
+    // Sort customers by most recently created
+    const sortedCustomers = useMemo(() => {
+        return [...customers].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [customers]);
+
+    // Show recent customers initially, and search results when typing
+    const displayedCustomers = useMemo(() => {
+        if (searchQuery) {
+            return sortedCustomers.filter(c => 
+                c.parentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (c.phoneNumbers || []).some(p => p.includes(searchQuery))
+            );
+        }
+        return sortedCustomers.slice(0, 20); // Show 20 most recent customers by default
+    }, [sortedCustomers, searchQuery]);
+
+
     useEffect(() => {
         if (!open) {
             setSelectedCustomer(null);
@@ -506,6 +524,7 @@ function CheckInDialog({
             setGuestChildren([]);
             setSelectedPackages({});
             setOpenCombobox(false);
+            setSearchQuery("");
         }
     }, [open]);
 
@@ -699,11 +718,15 @@ function CheckInDialog({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[300px] p-0">
                                         <Command>
-                                            <CommandInput placeholder="ابحث بالرقم أو الاسم..." />
+                                            <CommandInput 
+                                                placeholder="ابحث بالرقم أو الاسم..." 
+                                                value={searchQuery}
+                                                onValueChange={setSearchQuery}
+                                            />
                                             <CommandList>
                                                 <CommandEmpty>لم يتم العثور على عميل.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {customers.map((customer) => (
+                                                    {displayedCustomers.map((customer) => (
                                                     <CommandItem
                                                         key={customer.id}
                                                         value={`${customer.parentName} ${(customer.phoneNumbers || []).join(' ')}`}
