@@ -55,7 +55,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useFirebase } from '@/context/FirebaseContext';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import {
@@ -200,7 +200,7 @@ function SidebarItems() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { policies: allPolicies } = useFirebase();
-  const { permissions, loading } = usePermissions();
+  const { permissions, loading: permissionsLoading } = usePermissions();
   const { setOpenMobile } = useSidebar();
   const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
 
@@ -216,7 +216,7 @@ function SidebarItems() {
   }, [appName]);
 
   const hasPermission = (href: string) => {
-    if (loading || !permissions) return false;
+    if (permissionsLoading || !permissions) return false;
 
     // Allow access to details pages if the main page is accessible
     const detailPaths = [
@@ -267,7 +267,7 @@ function SidebarItems() {
   
   const currentUserName = user ? ('name' in user ? user.name : 'Admin') : 'Guest';
 
-  if (loading) {
+  if (permissionsLoading) {
       return (
         <div className="flex flex-col h-full overflow-y-auto">
           <SidebarHeader className="justify-between">
@@ -331,10 +331,10 @@ function SidebarItems() {
             {renderMenuItems([{ href: '/', label: 'الرئيسية', icon: Home }])}
             {renderMenuItems(mainItems)}
             <SidebarSeparator />
-            <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={loading} />
-            <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={loading} />
-            <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={loading} />
-            <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={loading} />
+            <CollapsibleMenuGroup title="الإدارة" icon={PanelTopOpen} items={managementItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
+            <CollapsibleMenuGroup title="المالية" icon={Landmark} items={financialItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
+            <CollapsibleMenuGroup title="العملاء" icon={Contact} items={customerItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
+            <CollapsibleMenuGroup title="الإعدادات" icon={Settings} items={settingsMenuItems} renderMenuItems={renderMenuItems} loading={permissionsLoading} />
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2 mt-auto">
