@@ -998,6 +998,8 @@ function PosTrackingContent() {
   const { toast } = useToast();
   const { printReceipt } = usePosPrint();
   const { customers } = useCustomers();
+  const { activeChildren, setActiveChildren } = useSession();
+
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
   
@@ -1069,11 +1071,6 @@ function PosTrackingContent() {
     if (!currentUser) return false;
     return currentUser.canApplyDiscount === true;
   }, [currentUser]);
-
-  const activeChildren = useMemo(() => {
-    if (selectedBranchFilter === 'all') return firebaseActiveChildren;
-    return firebaseActiveChildren.filter(child => child.branchName === selectedBranchFilter);
-  }, [firebaseActiveChildren, selectedBranchFilter]);
 
   const searchedActiveChildren = useMemo(() => {
     if (!activeSearch) return activeChildren;
@@ -1279,6 +1276,8 @@ function PosTrackingContent() {
         }
         // Always remove the active session
         await set(ref(db, `sessions/active/${child.id}`), null);
+        setActiveChildren(prev => prev.filter(c => c.id !== child.id));
+
 
     } catch(err) {
         console.error(err);
@@ -2128,6 +2127,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
