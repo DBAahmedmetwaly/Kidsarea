@@ -784,16 +784,18 @@ function CheckInDialog({
                                     <Label>اختر باقة (يمكن اختيار أكثر من باقة)</Label>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                         {selectedGame?.fixedTimePackages?.map(pkg => (
-                                            <Button
+                                            <button
                                                 key={pkg.label}
-                                                variant={selectedPackages[pkg.label] ? 'default' : 'outline'}
                                                 onClick={() => togglePackageSelection(pkg)}
-                                                className="h-auto flex-col"
+                                                className={cn(
+                                                    "border p-2 rounded-md text-center hover:bg-muted transition-colors h-auto flex flex-col items-center justify-center",
+                                                     selectedPackages[pkg.label] ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-transparent"
+                                                )}
                                             >
                                                 <p className="font-semibold">{pkg.label}</p>
                                                 <p className="text-sm">{pkg.duration} دقيقة</p>
                                                 <p className="text-xs font-bold">{pkg.price} ج.م</p>
-                                            </Button>
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
@@ -844,99 +846,6 @@ function CheckInDialog({
     )
 }
 
-function ExtendSessionDialog({
-    open,
-    onOpenChange,
-    session,
-    onConfirm,
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    session: Child | null;
-    onConfirm: (cartItem: ExtendSessionCartItem) => void;
-}) {
-    const { games } = useFirebase();
-    const { toast } = useToast();
-    const [selectedPackage, setSelectedPackage] = useState<SelectedPackageType | null>(null);
-
-    useEffect(() => {
-        if (!open) {
-            setSelectedPackage(null);
-        }
-    }, [open]);
-
-    if (!session) return null;
-
-    const game = games.find(g => g.name === session.game);
-    if (!game || game.paymentModel !== 'prepaid' || !game.fixedTimePackages) {
-        return null; // Should not happen if the button is shown correctly
-    }
-
-    const handleConfirm = () => {
-        if (!selectedPackage) {
-            toast({ title: 'يرجى اختيار باقة', variant: 'destructive' });
-            return;
-        }
-
-        const cartItem: ExtendSessionCartItem = {
-            type: 'extend-session',
-            id: `extend-${session.id}-${selectedPackage.label}-${Date.now()}`,
-            activeSessionId: session.id,
-            childName: session.children.map(c => c.name).join(', '),
-            gameName: session.game,
-            packageName: selectedPackage.label,
-            packageDuration: selectedPackage.duration,
-            price: selectedPackage.price,
-            cartQuantity: 1,
-        };
-
-        onConfirm(cartItem);
-        onOpenChange(false);
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>إضافة وقت لجلسة: {session.children.map(c=>c.name).join(', ')}</DialogTitle>
-                    <DialogDescription>
-                        اختر باقة جديدة لإضافتها إلى الوقت الحالي للجلسة.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <p>اللعبة الحالية: <span className="font-semibold">{session.game}</span></p>
-                    <div className="space-y-2">
-                        <Label>اختر باقة التمديد</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {game.fixedTimePackages.map(pkg => (
-                                <button
-                                    key={pkg.label}
-                                    onClick={() => setSelectedPackage(pkg)}
-                                    className={cn(
-                                        "border p-2 rounded-md text-center hover:bg-muted transition-colors",
-                                        selectedPackage?.label === pkg.label && "bg-primary text-primary-foreground hover:bg-primary/90"
-                                    )}
-                                >
-                                    <p className="font-semibold">{pkg.label}</p>
-                                    <p className="text-sm">{pkg.duration} دقيقة</p>
-                                    <p className="text-xs font-bold">{pkg.price} ج.م</p>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button variant="outline">إلغاء</Button></DialogClose>
-                    <Button onClick={handleConfirm} disabled={!selectedPackage}>
-                        إضافة للسلة
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-// Cart state type
 type CartItem = (InventoryItem | PrepaidGameCartItem | ExtendSessionCartItem) & { cartQuantity: number };
 
 
@@ -1453,7 +1362,7 @@ function PosTrackingContent() {
             const saleRecordRef = push(ref(db, 'productSales'));
             const saleId = saleRecordRef.key!;
             const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({
-                id: item.productId, // Use the actual product ID
+                id: item.productId,
                 productId: item.productId,
                 productName: item.productName,
                 categoryId: item.categoryId,
@@ -2105,6 +2014,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
