@@ -354,13 +354,17 @@ function CheckOutDialog({
     
     let finalTotalCost = checkoutData.totalCost;
     let finalDiscount = checkoutData.discount;
-    let finalAmountReceived = parseFloat(amountReceived) || 0;
-
-    // If no amount is received, consider the whole amount as waived/discounted.
-    if (!amountReceived) {
+    let finalAmountReceived = parseFloat(amountReceived);
+    
+    // If no amount is entered, it means the remaining amount is waived (full discount).
+    if (isNaN(finalAmountReceived)) {
         finalDiscount = checkoutData.costBeforeDiscount;
         finalTotalCost = 0;
         finalAmountReceived = 0;
+    } else if (finalAmountReceived < finalTotalCost) {
+        // If a partial amount is entered, the rest is a discount
+        finalDiscount = checkoutData.costBeforeDiscount - finalAmountReceived;
+        finalTotalCost = finalAmountReceived;
     }
     
     const receiptDetails: PosReceiptProps = {
@@ -396,7 +400,7 @@ function CheckOutDialog({
 
   const change = Number(amountReceived) - checkoutData.totalCost;
   
-  const isConfirmDisabled = checkoutData.totalCost > 0 && !canApplyDiscount && (Number(amountReceived) < checkoutData.totalCost || !amountReceived);
+  const isConfirmDisabled = false; // Always allow checkout
 
 
   return (
@@ -918,7 +922,7 @@ function EarlyCheckoutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   session: Child | null;
-  onConfirm: (discount: number, amountToReceive: number) => void;
+  onConfirm: (discount: number) => void;
 }) {
   const [discount, setDiscount] = useState('');
 
@@ -932,9 +936,7 @@ function EarlyCheckoutDialog({
 
   const handleConfirm = () => {
     const discountValue = parseFloat(discount) || 0;
-    const originalPrice = session.packagePrice || 0;
-    const amountToReceive = Math.max(0, originalPrice - discountValue);
-    onConfirm(discountValue, amountToReceive);
+    onConfirm(discountValue);
     onOpenChange(false);
   };
 
@@ -1150,7 +1152,7 @@ function PosTrackingContent() {
     setCheckoutDialogOpen(true);
   };
   
-    const handleEarlyCheckoutConfirm = (discountValue: number, amountToReceive: number) => {
+    const handleEarlyCheckoutConfirm = (discountValue: number) => {
         if (!childToCheckout) return;
         
         const cashier = employees.find(e => e.username === user?.username);
@@ -1159,6 +1161,7 @@ function PosTrackingContent() {
             : cashier?.name || user?.username || 'N/A';
         
         const originalPrice = childToCheckout.packagePrice || 0;
+        const finalCost = Math.max(0, originalPrice - discountValue);
 
         const receiptDetails: PosReceiptProps = {
             settings: receiptSettings,
@@ -1171,8 +1174,8 @@ function PosTrackingContent() {
             checkInTime: new Date(childToCheckout.checkInTime),
             checkOutTime: new Date(),
             duration: formatDuration(Date.now() - childToCheckout.checkInTime),
-            totalCost: amountToReceive,
-            amountReceived: amountToReceive,
+            totalCost: finalCost,
+            amountReceived: finalCost, // Assume amount received is the final cost after discount
             costBeforeDiscount: originalPrice,
             discount: discountValue,
             cashierName: cashierName,
@@ -1223,38 +1226,20 @@ function PosTrackingContent() {
         overtimeCost: receiptDetails.overtimeCost || 0,
         notes: receiptDetails.notes || '',
     };
-
-    // This is a prepaid session that had overtime, so update the original completed session
-    if (child.prepaidSessionId) {
-        const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
-        const originalSessionSnapshot = await get(completedSessionRef);
-
-        if (originalSessionSnapshot.exists()) {
-            const originalSession = originalSessionSnapshot.val() as CompletedSession;
-            const newTotalCost = (originalSession.cost || 0) + sessionToSave.cost;
-            const newTotalDiscount = (originalSession.discount || 0) + (sessionToSave.discount || 0);
-
-            await update(completedSessionRef, {
-                checkOutTime: sessionToSave.checkOutTime,
-                durationMs: sessionToSave.durationMs,
-                cost: newTotalCost,
-                discount: newTotalDiscount,
-                overtimeCost: (receiptDetails.overtimeCost || 0),
-                notes: `${originalSession.notes || ''} ${sessionToSave.notes || ''}`.trim(),
-            });
-        }
-    } else { // This is a postpaid session or an early checkout of a prepaid session
-        await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
-    }
+    
+    const finalReceiptDetails = {
+        ...receiptDetails,
+        receiptId: `${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`
+    };
 
     // Only print if an amount was actually received.
     if (receiptSettings && receiptDetails.amountReceived && receiptDetails.amountReceived > 0) {
-        printReceipt(<PosReceipt {...receiptDetails} receiptId={`${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
+        printReceipt(<PosReceipt {...finalReceiptDetails} />);
     }
 
     try {
-        const activeSessionRef = ref(db, `sessions/active/${child.id}`);
-        await remove(activeSessionRef);
+        await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
+        await remove(ref(db, `sessions/active/${child.id}`));
     } catch (err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive' });
@@ -2076,6 +2061,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
