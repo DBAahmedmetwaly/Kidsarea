@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ExtendSessionCartItem, ProductSaleItem } from '@/lib/types';
@@ -1222,7 +1222,7 @@ function PosTrackingContent() {
     }
     
     const branch = branches.find(b => b.name === child.branchName);
-    let finalReceiptNumber = receiptDetails.receiptId ? parseInt(receiptDetails.receiptId.split('-')[1], 10) : 0;
+    let finalReceiptNumber = child.receiptNumber || 0;
     
     if (branch?.id && !child.prepaidSessionId) {
         const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
@@ -1235,9 +1235,8 @@ function PosTrackingContent() {
     const checkOutTime = new Date();
     const durationMs = checkOutTime.getTime() - child.checkInTime;
 
-    const sessionToSave: CompletedSession = {
+    const sessionToSave: Omit<CompletedSession, 'id'> = {
         ...child,
-        id: child.id,
         checkOutTime: checkOutTime.getTime(),
         durationMs: durationMs,
         cost: receiptDetails.totalCost,
@@ -1256,27 +1255,32 @@ function PosTrackingContent() {
 
     try {
         if (child.prepaidSessionId) {
+            // This is a prepaid session, update the original completed session record
             const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
+            // We only update the checkout time, duration, and any new costs (overtime/discount)
             await update(completedSessionRef, {
                 checkOutTime: sessionToSave.checkOutTime,
                 durationMs: sessionToSave.durationMs,
-                cost: sessionToSave.cost,
-                discount: sessionToSave.discount,
-                costBeforeDiscount: sessionToSave.costBeforeDiscount,
-                overtimeCost: sessionToSave.overtimeCost,
-                notes: sessionToSave.notes,
+                // Add new costs to the original cost.
+                cost: (child.packagePrice || 0) + (sessionToSave.overtimeCost || 0) - (sessionToSave.discount || 0),
+                discount: (receiptDetails.discount || 0),
+                overtimeCost: (receiptDetails.overtimeCost || 0),
+                notes: receiptDetails.notes || '',
             });
         } else {
+             // This is a regular postpaid session, create a new completed session
              await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
         }
+        // Always remove the active session
         await set(ref(db, `sessions/active/${child.id}`), null);
+
     } catch(err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
     }
   };
 
-  const handleStartSession = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>, prepaidSessionId?: string) => {
+  const handleStartSession = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>, prepaidSessionId?: string, receiptNumber?: number) => {
     const { children } = data;
     
     if (policies && policies.maxCapacity && (firebaseActiveChildren.length + children.length) > policies.maxCapacity) {
@@ -1315,6 +1319,7 @@ function PosTrackingContent() {
       checkInTime: Date.now(),
       cashierUsername: user.username,
       prepaidSessionId: prepaidSessionId || null,
+      receiptNumber: receiptNumber || undefined,
     };
 
     try {
@@ -1492,7 +1497,7 @@ function PosTrackingContent() {
                 notes: cartNotes,
             };
             await set(completedSessionRef, completedSession);
-            await handleStartSession(gameItem.sessionDetails, completedSessionId);
+            await handleStartSession(gameItem.sessionDetails, completedSessionId, receiptNumber);
 
             const checkInTime = new Date();
             const expectedCheckOutTime = new Date(checkInTime.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
@@ -1848,7 +1853,12 @@ function PosTrackingContent() {
                                 searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
                                     <TableCell className="font-medium text-right">{session.children.map(c=>c.name).join(', ')}</TableCell>
-                                    <TableCell className="text-right">{session.parentName}</TableCell>
+                                    <TableCell className="text-right">
+                                        <div className='flex flex-col'>
+                                            <span>{session.parentName}</span>
+                                             {session.receiptNumber && <span className="text-xs text-muted-foreground font-mono flex items-center gap-1"><ReceiptIcon className="h-3 w-3" />{session.receiptNumber}</span>}
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-center">{(session.phoneNumbers || []).join(' / ')}</TableCell>
                                     <TableCell className="text-right">{session.game}</TableCell>
                                     <TableCell className="text-center">
@@ -2101,6 +2111,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 

@@ -22,6 +22,7 @@ export interface Child {
   packageDuration?: number; // in minutes
   packagePrice?: number;
   prepaidSessionId?: string | null; // Links active session to the completed session that paid for it
+  receiptNumber?: number;
 }
 
 export interface CompletedSession extends Child {
