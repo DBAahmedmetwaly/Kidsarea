@@ -203,13 +203,15 @@ function CheckOutDialog({
   open,
   onOpenChange,
   child,
-  onConfirm,
+  onConfirmPostpaid,
+  onConfirmOvertime,
   canApplyDiscount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   child: Child | null;
-  onConfirm: (child: Child, receiptDetails: PosReceiptProps) => void;
+  onConfirmPostpaid: (child: Child, receiptDetails: PosReceiptProps) => void;
+  onConfirmOvertime: (child: Child, receiptDetails: PosReceiptProps) => void;
   canApplyDiscount: boolean;
 }) {
   const { games, policies: allPolicies, employees, receiptSettings, subscriptions, branches } = useFirebase();
@@ -392,7 +394,11 @@ function CheckOutDialog({
         overtimeCost: checkoutData.overtimeCost,
     };
     
-    onConfirm(child, receiptDetails);
+    if (isPackageGame && checkoutData.overtimeCost > 0) {
+        onConfirmOvertime(child, receiptDetails);
+    } else {
+        onConfirmPostpaid(child, receiptDetails);
+    }
   }
 
   if (!child || !checkoutData) return null;
@@ -1166,7 +1172,7 @@ function PosTrackingContent() {
     setCheckoutDialogOpen(true);
   };
   
-    const handleEarlyCheckoutConfirm = async (discountValue: number, notes: string) => {
+    const handleEarlyCheckoutConfirm = async (discount: number, notes: string) => {
         if (!childToCheckout || !childToCheckout.prepaidSessionId) return;
 
         const originalSessionRef = ref(db, `sessions/completed/${childToCheckout.prepaidSessionId}`);
@@ -1177,13 +1183,15 @@ function PosTrackingContent() {
         }
         
         const originalSession: CompletedSession = snapshot.val();
-        const originalPrice = originalSession.costBeforeDiscount;
-        const newTotalCost = Math.max(0, originalPrice - discountValue);
+        const costBeforeDiscount = originalSession.costBeforeDiscount;
+        const newTotalCost = Math.max(0, costBeforeDiscount - discount);
 
         const updates = {
             cost: newTotalCost,
-            discount: discountValue,
-            notes: `${originalSession.notes || ''} (خروج مبكر: ${notes})`.trim(),
+            discount: discount,
+            notes: `${notes} (خصم خروج مبكر)`.trim(),
+            checkOutTime: Date.now(),
+            durationMs: Date.now() - originalSession.checkInTime
         };
 
         try {
@@ -1196,11 +1204,57 @@ function PosTrackingContent() {
             console.error("Early checkout update failed:", error);
             toast({ title: "خطأ", description: "فشل تحديث الجلسة الأصلية.", variant: "destructive" });
         }
+        setEarlyCheckoutDiscountOpen(false);
     };
+
+    const handleOvertimeCheckout = async (child: Child, receiptDetails: PosReceiptProps) => {
+        if (!child.prepaidSessionId) {
+             toast({ title: 'خطأ', description: 'لا يمكن العثور على الفاتورة الأصلية لهذه الجلسة.', variant: 'destructive' });
+             return;
+        }
+        const originalSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
+        const snapshot = await get(originalSessionRef);
+        if (!snapshot.exists()) {
+            toast({ title: "خطأ", description: "لم يتم العثور على الجلسة الأصلية.", variant: "destructive" });
+            return;
+        }
+
+        const originalSession: CompletedSession = snapshot.val();
+        const originalCost = originalSession.costBeforeDiscount; // The initial package price
+        const newTotalCost = originalCost + (receiptDetails.overtimeCost || 0);
+
+        const updates: Partial<CompletedSession> = {
+            cost: newTotalCost,
+            costBeforeDiscount: newTotalCost,
+            overtimeCost: receiptDetails.overtimeCost || 0,
+            checkOutTime: receiptDetails.checkOutTime.getTime(),
+            durationMs: receiptDetails.checkOutTime.getTime() - originalSession.checkInTime,
+            notes: `وقت إضافي: ${formatDuration(receiptDetails.overtimeCost ? receiptDetails.overtimeCost / (policies?.packageOvertimeRatePerMinute || 1) * 60 * 1000 : 0)}`,
+        };
+
+        try {
+            await update(originalSessionRef, updates);
+            await remove(ref(db, `sessions/active/${child.id}`));
+            
+            toast({ title: "تم تسجيل الخروج بنجاح", description: "تم تحديث الفاتورة الأصلية بقيمة الوقت الإضافي." });
+            setCheckoutDialogOpen(false);
+
+            if (receiptSettings && receiptDetails.amountReceived && receiptDetails.amountReceived > 0) {
+                 printReceipt(<PosReceipt {...receiptDetails} totalCost={newTotalCost} />);
+            }
+
+        } catch (error) {
+             console.error("Overtime checkout update failed:", error);
+            toast({ title: "خطأ", description: "فشل تحديث الجلسة الأصلية.", variant: "destructive" });
+        }
+    }
 
 
   const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
     if (!child) return;
+
+    // This function now primarily handles postpaid checkouts or zero-cost prepaid checkouts.
+    // Overtime and early prepaid checkouts are handled by their specific functions.
 
     stopNotificationForSession(child.id);
     setCheckoutDialogOpen(false);
@@ -1209,6 +1263,7 @@ function PosTrackingContent() {
     const branch = branches.find(b => b.name === child.branchName);
     let finalReceiptNumber = child.receiptNumber || 0;
 
+    // Only get a new receipt number for postpaid games. Prepaid games use their original number.
     if (branch?.id && !child.prepaidSessionId) {
         const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
         const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
@@ -1239,14 +1294,21 @@ function PosTrackingContent() {
         receiptId: `${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`
     };
 
-    // Only print if an amount was actually received.
-    if (receiptSettings && receiptDetails.amountReceived && receiptDetails.amountReceived > 0) {
+    // Only print if an amount was actually received or if it's a zero-cost checkout of a package
+    if (receiptSettings && ( (receiptDetails.amountReceived && receiptDetails.amountReceived > 0) || child.prepaidSessionId) ) {
         printReceipt(<PosReceipt {...finalReceiptDetails} />);
     }
 
     try {
-        await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
-        await remove(ref(db, `sessions/active/${child.id}`));
+        if (child.prepaidSessionId) {
+            // This is a zero-cost checkout, just remove the active session.
+            // The completed session is already correct.
+            await remove(ref(db, `sessions/active/${child.id}`));
+        } else {
+            // This is a postpaid checkout, create a new completed session.
+            await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
+            await remove(ref(db, `sessions/active/${child.id}`));
+        }
     } catch (err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive' });
@@ -1943,7 +2005,8 @@ function PosTrackingContent() {
                 open={isCheckoutDialogOpen}
                 onOpenChange={setCheckoutDialogOpen}
                 child={childToCheckout}
-                onConfirm={handleCheckOut}
+                onConfirmPostpaid={handleCheckOut}
+                onConfirmOvertime={handleOvertimeCheckout}
                 canApplyDiscount={canApplyDiscount}
             />
             <EarlyCheckoutDialog
