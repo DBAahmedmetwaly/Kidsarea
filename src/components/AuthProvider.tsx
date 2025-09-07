@@ -31,11 +31,12 @@ export function useAuth() {
 }
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthContextType['user']>(null);
-  const [loading, setLoading] = useState(true); // Start with loading=true
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+
+  const isAuthenticated = !!user;
 
   useEffect(() => {
     try {
@@ -43,13 +44,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
-        setIsAuthenticated(true);
       }
     } catch (error) {
       console.error("Failed to parse user from sessionStorage", error);
       sessionStorage.removeItem('funtrack_user');
     } finally {
-      setLoading(false); // Finished checking storage, stop loading
+      setLoading(false); 
     }
   }, []);
 
@@ -65,13 +65,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (userData: AuthContextType['user']) => {
     sessionStorage.setItem('funtrack_user', JSON.stringify(userData));
-    setIsAuthenticated(true);
     setUser(userData);
+    router.push('/');
   };
 
   const logout = () => {
     sessionStorage.removeItem('funtrack_user');
-    setIsAuthenticated(false)
     setUser(null);
     router.push('/login');
   };
@@ -85,10 +84,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   if (!isAuthenticated && pathname !== '/login') {
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-background w-full">
-            <Loader2 className="h-10 w-10 text-primary animate-spin" />
-        </div>
+     return (
+      <div className="flex items-center justify-center min-h-screen bg-background w-full">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
     );
   }
   
