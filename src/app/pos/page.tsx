@@ -461,7 +461,7 @@ function CheckOutDialog({
           </DialogClose>
             <Button 
               onClick={handleConfirm} 
-              disabled={isConfirmDisabled && checkoutData.totalCost > 0}
+              disabled={checkoutData.totalCost > 0 && Number(amountReceived) < checkoutData.totalCost && !canApplyDiscount}
             >
                 حفظ
             </Button>
@@ -560,8 +560,6 @@ function CheckInDialog({
 
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
-        form.setValue('customerId', customer.id);
-        form.setValue('childNames', []); // Reset child selection
         setGuestChildren([]); // Reset guest children
         setOpenCombobox(false);
     }
@@ -1207,73 +1205,62 @@ function PosTrackingContent() {
     // For prepaid sessions, the final cost should include the original package price.
     // The amountReceived is for the EXTRA charge (overtime).
     if (child.prepaidSessionId) {
-        // The total cost of the transaction is the original package price plus any new charges.
-        // We find the original completed session to get the base price.
-        const originalSessionSnapshot = await get(ref(db, `sessions/completed/${child.prepaidSessionId}`));
+        // Update the original completed session with overtime info and final checkout time
+        const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
+        const originalSessionSnapshot = await get(completedSessionRef);
+        
         if (originalSessionSnapshot.exists()) {
             const originalSession = originalSessionSnapshot.val() as CompletedSession;
-            // The new total cost is the original cost plus the extra amount paid now.
-            // The cost passed in receiptDetails.totalCost is ONLY the overtime part.
-            finalCost = (originalSession.cost || 0) + (amountReceived > 0 ? receiptDetails.totalCost : 0);
-            finalDiscount += (originalSession.discount || 0); // Accumulate discounts
+            // The new total cost is the original cost plus the extra amount paid now for overtime.
+            const newTotalCost = (originalSession.cost || 0) + receiptDetails.totalCost;
+            const newTotalDiscount = (originalSession.discount || 0) + finalDiscount;
+            
+            await update(completedSessionRef, {
+                checkOutTime: checkOutTime.getTime(),
+                durationMs: durationMs,
+                cost: newTotalCost,
+                discount: newTotalDiscount,
+                overtimeCost: (receiptDetails.overtimeCost || 0),
+                notes: `${receiptDetails.notes || ''}`.trim(),
+            });
+            finalCost = newTotalCost;
+            finalDiscount = newTotalDiscount;
         }
-    } else {
-        // For postpaid sessions, or early checkouts of prepaid
+
+    } else { // This handles postpaid sessions and EARLY checkout of prepaid sessions
          if (amountReceived > 0) {
             finalCost = amountReceived;
-            finalDiscount = (receiptDetails.costBeforeDiscount || 0) - amountReceived;
+            finalDiscount += (receiptDetails.costBeforeDiscount || 0) - amountReceived;
         } else {
             // If no amount was received, the cost is zero and the discount is the full amount.
-            finalDiscount = receiptDetails.costBeforeDiscount || finalCost;
+            finalDiscount += receiptDetails.costBeforeDiscount || finalCost;
             finalCost = 0;
         }
+        
+        const sessionToSave: Omit<CompletedSession, 'id'> = {
+            ...child,
+            checkOutTime: checkOutTime.getTime(),
+            durationMs: durationMs,
+            cost: finalCost,
+            costBeforeDiscount: receiptDetails.costBeforeDiscount,
+            durationCost: receiptDetails.durationCost,
+            entryFee: receiptDetails.entryFee,
+            discount: finalDiscount,
+            receiptNumber: finalReceiptNumber,
+            overtimeCost: receiptDetails.overtimeCost,
+            notes: receiptDetails.notes || '',
+        };
+        await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
     }
     
-    const sessionToSave: Omit<CompletedSession, 'id'> = {
-        ...child,
-        checkOutTime: checkOutTime.getTime(),
-        durationMs: durationMs,
-        cost: finalCost,
-        costBeforeDiscount: receiptDetails.costBeforeDiscount,
-        durationCost: receiptDetails.durationCost,
-        entryFee: receiptDetails.entryFee,
-        discount: finalDiscount,
-        receiptNumber: finalReceiptNumber,
-        overtimeCost: receiptDetails.overtimeCost,
-        notes: receiptDetails.notes || '',
-    };
-
     // Only print if an amount was actually received, unless it's an early checkout with a discount.
-    if (receiptSettings && (amountReceived > 0 || (child.prepaidSessionId && finalDiscount > 0))) {
-        printReceipt(<PosReceipt {...receiptDetails} receiptId={`${sessionToSave.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
+    if (receiptSettings && amountReceived > 0) {
+        printReceipt(<PosReceipt {...receiptDetails} receiptId={`${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
     }
 
     try {
-        // Find the active session to remove it
         const activeSessionRef = ref(db, `sessions/active/${child.id}`);
-        const activeSessionSnapshot = await get(activeSessionRef);
-
-        if (activeSessionSnapshot.exists()) {
-            if (child.prepaidSessionId) {
-                // Update the original completed session with overtime info and final checkout time
-                const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
-                await update(completedSessionRef, {
-                    checkOutTime: sessionToSave.checkOutTime,
-                    durationMs: sessionToSave.durationMs,
-                    cost: finalCost, // The new total cost
-                    discount: finalDiscount, // The new total discount
-                    overtimeCost: (receiptDetails.overtimeCost || 0),
-                    notes: `${receiptDetails.notes || ''}`.trim(),
-                });
-            } else {
-                // It's a regular postpaid session or an early prepaid checkout, save as new completed session
-                await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
-            }
-            
-            // Finally, remove the active session
-            await remove(activeSessionRef);
-        }
-
+        await remove(activeSessionRef);
     } catch (err) {
         console.error(err);
         toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive' });
@@ -2095,6 +2082,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
