@@ -44,6 +44,7 @@ const financialItems = [
   { href: '/payroll', label: 'الرواتب'},
   { href: '/reports', label: 'التقارير' },
   { href: '/product-sales', label: 'تقرير مبيعات المنتجات' },
+  { href: '/reports/inventory-log', label: 'تقرير حركة الأصناف' },
 ];
 
 const customerItems = [
@@ -336,6 +337,4 @@ export default function RolesPage() {
     </SidebarProvider>
   );
 }
-
-
 
