@@ -1447,7 +1447,7 @@ function PosTrackingContent() {
             const saleRecordRef = push(ref(db, 'productSales'));
             const saleId = saleRecordRef.key!;
             const saleRecordItems: ProductSaleItem[] = productItemsInCart.map(item => ({
-                id: item.productId,
+                id: item.id,
                 productId: item.productId,
                 productName: item.productName,
                 categoryId: item.categoryId,
@@ -2101,6 +2101,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
