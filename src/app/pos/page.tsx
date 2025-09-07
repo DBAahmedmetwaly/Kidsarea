@@ -509,7 +509,7 @@ function CheckInDialog({
     const displayedCustomers = useMemo(() => {
         if (searchQuery) {
             return sortedCustomers.filter(c => 
-                c.parentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (typeof c.parentName === 'string' && c.parentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 (c.phoneNumbers || []).some(p => p.includes(searchQuery))
             );
         }
