@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { MoreHorizontal, PlusCircle, Trash, Edit, Calendar as CalendarIcon, Loader2, Upload, Download, Trash2, AlertTriangle } from 'lucide-react';
 import { ref, set, remove, update, push, runTransaction } from 'firebase/database';
 import * as XLSX from 'xlsx';
@@ -64,6 +63,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ar } from 'date-fns/locale';
+import { Progress } from '@/components/ui/progress';
 
 type ChildFormField = {
     id: string;
@@ -281,6 +281,106 @@ export function CustomerFormDialog({
     );
 }
 
+const useCustomerUpload = (existingCustomers: Customer[]) => {
+    const { toast } = useToast();
+    const [uploadState, setUploadState] = useState({
+        status: 'idle', // idle, reading, processing, success, error
+        message: '',
+        progress: 0,
+        total: 0,
+    });
+
+    const resetUploadState = () => {
+        setUploadState({ status: 'idle', message: '', progress: 0, total: 0 });
+    };
+
+    const processFile = (file: File) => {
+        setUploadState({ status: 'reading', message: 'جاري قراءة الملف...', progress: 0, total: 0 });
+        const reader = new FileReader();
+
+        reader.onload = async (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+                let childIdCounter = 0;
+                const newCustomers: Omit<Customer, 'id' | 'createdAt'>[] = [];
+                const existingPhones = new Set(existingCustomers.flatMap(c => c.phoneNumbers));
+
+                for (const row of json) {
+                    const parentName = row['ولي الأمر'];
+                    const phone1 = String(row['رقم اول'] || '').trim();
+                    const phone2 = String(row['رقم ثاني'] || '').trim();
+                    
+                    if (!parentName || !phone1) continue;
+
+                    const phoneNumbers = [phone1, phone2].filter(p => p && p !== 'NULL');
+                    if (phoneNumbers.some(p => existingPhones.has(p))) {
+                        continue;
+                    }
+
+                    const children: CustomerChild[] = [];
+                    ['الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع'].forEach(key => {
+                        if (row[key]) {
+                            children.push({ 
+                                id: `${Date.now()}-${childIdCounter++}`,
+                                name: String(row[key]), 
+                                age: 1 
+                            });
+                        }
+                    });
+
+                    newCustomers.push({ parentName, phoneNumbers, children });
+                }
+
+                if (newCustomers.length === 0) {
+                    setUploadState({ status: 'error', message: 'لم يتم العثور على عملاء جدد في الملف.', progress: 100, total: 0 });
+                    return;
+                }
+
+                // Process in chunks
+                const chunkSize = 50;
+                setUploadState(prev => ({ ...prev, status: 'processing', total: newCustomers.length }));
+
+                for (let i = 0; i < newCustomers.length; i += chunkSize) {
+                    const chunk = newCustomers.slice(i, i + chunkSize);
+                    await Promise.all(chunk.map(cust => {
+                        const newCustomerRef = push(ref(db, 'customers'));
+                        return set(newCustomerRef, { ...cust, createdAt: new Date().toISOString() });
+                    }));
+                    
+                    const processedCount = i + chunk.length;
+                    setUploadState(prev => ({
+                        ...prev,
+                        progress: (processedCount / newCustomers.length) * 100,
+                        message: `جاري معالجة الدفعة ${Math.ceil(processedCount / chunkSize)} من ${Math.ceil(newCustomers.length / chunkSize)}... (${processedCount}/${newCustomers.length})`
+                    }));
+                    // Give the browser a chance to repaint
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                }
+
+                setUploadState({ status: 'success', message: `تم استيراد ${newCustomers.length} عميل بنجاح!`, progress: 100, total: newCustomers.length });
+
+            } catch (error) {
+                console.error("Error processing file:", error);
+                setUploadState({ status: 'error', message: 'خطأ في معالجة الملف. تأكد من أن الملف بالصيغة الصحيحة.', progress: 100, total: 0 });
+            }
+        };
+
+        reader.onerror = () => {
+            setUploadState({ status: 'error', message: 'فشل قراءة الملف.', progress: 100, total: 0 });
+        };
+
+        reader.readAsBinaryString(file);
+    };
+
+    return { uploadState, processFile, resetUploadState };
+};
+
+
 function CustomersContent() {
     const { customers, loading: customersLoading } = useCustomers();
     const { toast } = useToast();
@@ -290,7 +390,9 @@ function CustomersContent() {
     const [filter, setFilter] = useState('');
     const [visibleCount, setVisibleCount] = useState(20);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isUploading, setIsUploading] = useState(false);
+    
+    const { uploadState, processFile, resetUploadState } = useCustomerUpload(customers);
+    const isUploading = uploadState.status === 'reading' || uploadState.status === 'processing';
 
     const handleDownloadTemplate = () => {
         const headers = ['ولي الأمر', 'الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع', 'رقم اول', 'رقم ثاني'];
@@ -303,92 +405,8 @@ function CustomersContent() {
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        setIsUploading(true);
-        toast({
-            title: "جاري استيراد العملاء...",
-            description: "قد تستغرق هذه العملية بضع لحظات.",
-        });
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const processData = async () => {
-                try {
-                    const data = e.target?.result;
-                    const workbook = XLSX.read(data, { type: 'binary' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const json: any[] = XLSX.utils.sheet_to_json(worksheet);
-
-                    const newCustomers: Omit<Customer, 'id' | 'createdAt'>[] = [];
-                    let childIdCounter = 0;
-                    
-                    for (const row of json) {
-                        const parentName = row['ولي الأمر'];
-                        const phone1 = String(row['رقم اول'] || '').trim();
-                        const phone2 = String(row['رقم ثاني'] || '').trim();
-                        
-                        if (!parentName || !phone1) continue;
-
-                        const phoneNumbers = [phone1, phone2].filter(p => p && p !== 'NULL');
-                        
-                        const existingCustomer = customers.find(c => c.phoneNumbers.some(p => phoneNumbers.includes(p)));
-                        if (existingCustomer) {
-                            console.warn(`Customer with phone number already exists: ${parentName}`);
-                            continue;
-                        }
-
-                        const children: CustomerChild[] = [];
-                        ['الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع'].forEach(key => {
-                            if (row[key]) {
-                                children.push({ 
-                                    id: `${Date.now()}-${childIdCounter++}`,
-                                    name: String(row[key]), 
-                                    age: 1 
-                                });
-                            }
-                        });
-
-                        newCustomers.push({
-                            parentName,
-                            phoneNumbers,
-                            children,
-                        });
-                    }
-                    
-                    if (newCustomers.length > 0) {
-                        await Promise.all(newCustomers.map(cust => {
-                            const newCustomerRef = push(ref(db, 'customers'));
-                            return set(newCustomerRef, { ...cust, createdAt: new Date().toISOString() });
-                        }));
-
-                        toast({
-                            title: "نجاح",
-                            description: `تم استيراد ${newCustomers.length} عميل بنجاح.`,
-                        });
-                    } else {
-                        toast({
-                            title: "لا يوجد عملاء جدد",
-                            description: "لم يتم العثور على عملاء جدد في الملف أو أنهم موجودون بالفعل.",
-                            variant: 'destructive',
-                        });
-                    }
-
-                } catch (error) {
-                    console.error("Error processing file:", error);
-                    toast({
-                        title: "خطأ في معالجة الملف",
-                        description: "تأكد من أن الملف بالصيغة الصحيحة.",
-                        variant: 'destructive',
-                    });
-                } finally {
-                    setIsUploading(false);
-                    if(fileInputRef.current) fileInputRef.current.value = '';
-                }
-            };
-            // Use setTimeout to make the heavy lifting async and not block the UI
-            setTimeout(processData, 50); 
-        };
-        reader.readAsBinaryString(file);
+        processFile(file);
+        if(fileInputRef.current) fileInputRef.current.value = ''; // Reset file input
     };
 
     const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
@@ -518,6 +536,21 @@ function CustomersContent() {
           </Button>
         </div>
       </div>
+      
+       {uploadState.status !== 'idle' && (
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-sm font-medium">
+                            <span>{uploadState.message}</span>
+                            {uploadState.status === 'success' && <Button size="sm" variant="secondary" onClick={resetUploadState}>إغلاق</Button>}
+                        </div>
+                        <Progress value={uploadState.progress} />
+                    </div>
+                </CardContent>
+            </Card>
+       )}
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-start">
