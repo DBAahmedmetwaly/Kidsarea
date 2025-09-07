@@ -1112,7 +1112,7 @@ function PosTrackingContent() {
         return firebaseCompletedSessions.filter(s => {
             const cashierMatch = s.cashierUsername === user.username;
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
-            const timeMatch = new Date(s.checkOutTime) >= filterStartTime;
+            const timeMatch = new Date(s.checkOutTime).getTime() >= filterStartTime;
             return cashierMatch && branchMatch && timeMatch;
         }).slice(0, 5); // Show last 5
   }, [firebaseCompletedSessions, selectedBranchFilter, user, openShifts]);
@@ -1219,24 +1219,23 @@ function PosTrackingContent() {
 
 
   const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
+    if (!child) return;
+  
     stopNotificationForSession(child.id);
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
 
-
-    if (!child) return;
-    
     const branch = branches.find(b => b.name === child.branchName);
     let finalReceiptNumber = child.receiptNumber || 0;
-    
+
     if (branch?.id && !child.prepaidSessionId) {
         const counterRef = ref(db, `branches/${branch.id}/nextReceiptNumber`);
         const { committed, snapshot } = await runTransaction(counterRef, (currentValue) => (currentValue || 0) + 1);
         if (committed) {
-          finalReceiptNumber = snapshot.val();
+            finalReceiptNumber = snapshot.val();
         }
     }
-    
+
     const checkOutTime = new Date();
     const durationMs = checkOutTime.getTime() - child.checkInTime;
 
@@ -1253,41 +1252,37 @@ function PosTrackingContent() {
         overtimeCost: receiptDetails.overtimeCost,
         notes: receiptDetails.notes || '',
     };
-    
+
     if (receiptSettings) {
         printReceipt(<PosReceipt {...receiptDetails} receiptId={`${sessionToSave.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
     }
 
     try {
         if (child.prepaidSessionId) {
-            // This is a prepaid session, update the original completed session record
             const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
-            // We only update the checkout time, duration, and any new costs (overtime/discount)
-            await update(completedSessionRef, {
-                checkOutTime: sessionToSave.checkOutTime,
-                durationMs: sessionToSave.durationMs,
-                // Add new costs to the original cost.
-                cost: (child.packagePrice || 0) + (sessionToSave.overtimeCost || 0) - (sessionToSave.discount || 0),
-                discount: (receiptDetails.discount || 0),
-                overtimeCost: (receiptDetails.overtimeCost || 0),
-                notes: receiptDetails.notes || '',
+            await runTransaction(completedSessionRef, (currentSession: CompletedSession) => {
+                if (currentSession) {
+                    currentSession.checkOutTime = sessionToSave.checkOutTime;
+                    currentSession.durationMs = sessionToSave.durationMs;
+                    currentSession.cost = (currentSession.cost || 0) + (sessionToSave.overtimeCost || 0) - (sessionToSave.discount || 0);
+                    currentSession.discount = (currentSession.discount || 0) + (sessionToSave.discount || 0);
+                    currentSession.overtimeCost = (currentSession.overtimeCost || 0) + (sessionToSave.overtimeCost || 0);
+                    currentSession.notes = `${currentSession.notes || ''}\nتحديث الخروج: ${receiptDetails.notes || ''}`.trim();
+                }
+                return currentSession;
             });
         } else {
-             // This is a regular postpaid session, create a new completed session
-             await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
+            await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
         }
-        
-        // Always remove the active session after handling its completion record
+
         await remove(ref(db, `sessions/active/${child.id}`));
+        setActiveChildren(prev => prev.filter(c => c.id !== child.id));
 
-    } catch(err) {
+    } catch (err) {
         console.error(err);
-        toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive'})
+        toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive' });
     }
-
-    // Update local state to immediately remove child from UI
-    setActiveChildren(prev => prev.filter(c => c.id !== child.id));
-  };
+};
 
   const handleStartSession = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>, prepaidSessionId?: string, receiptNumber?: number) => {
     const { children } = data;
@@ -1515,7 +1510,7 @@ function PosTrackingContent() {
                 id: completedSessionId,
                 receiptNumber,
                 checkInTime: checkInTime,
-                checkOutTime: checkInTime, // Set initial checkout time to check-in time
+                checkOutTime: checkInTime,
                 durationMs: 0,
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
@@ -1533,9 +1528,8 @@ function PosTrackingContent() {
         // Handle Extend Session Sales
         for (const extendItem of extendItems) {
             const activeSessionRef = ref(db, `sessions/active/${extendItem.activeSessionId}`);
-            const activeSessionSnapshot = await get(activeSessionRef);
-            const activeSessionData: Child | null = activeSessionSnapshot.val();
-
+            const activeSessionData = (await get(activeSessionRef)).val() as Child | null;
+        
             if (activeSessionData && activeSessionData.prepaidSessionId) {
                 const originalSessionRef = ref(db, `sessions/completed/${activeSessionData.prepaidSessionId}`);
                 
@@ -1544,7 +1538,7 @@ function PosTrackingContent() {
                         currentSession.cost = (currentSession.cost || 0) + extendItem.price;
                         currentSession.costBeforeDiscount = (currentSession.costBeforeDiscount || 0) + extendItem.price;
                         currentSession.packageName = `${currentSession.packageName || ''}, تمديد: ${extendItem.packageName}`;
-                        currentSession.notes = `${currentSession.notes || ''}\nتمديد فاتورة: ${receiptNumber}`;
+                        currentSession.notes = `${currentSession.notes || ''}\nتمديد فاتورة: ${receiptNumber}`.trim();
                     }
                     return currentSession;
                 });
@@ -1606,6 +1600,13 @@ function PosTrackingContent() {
 
     const handleTimeEnd = useCallback((session: Child) => {
         const showToast = () => {
+            // Check if the session is still active before showing the toast
+            const isSessionActive = activeChildren.some(child => child.id === session.id);
+            if (!isSessionActive) {
+                stopNotificationForSession(session.id); // Clean up the interval
+                return;
+            }
+            
             toast({
                 title: "🔔 انتهى الوقت!",
                 description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c => c.name).join(', ')}.`,
@@ -1619,7 +1620,7 @@ function PosTrackingContent() {
         const intervalSeconds = policies?.packageOvertimeNotificationInterval || 60;
         const intervalId = setInterval(showToast, intervalSeconds * 1000);
         notificationIntervals.set(session.id, intervalId);
-    }, [policies, toast, notificationIntervals]);
+    }, [policies, toast, notificationIntervals, activeChildren, stopNotificationForSession]);
 
   const hasTimeExpired = (session: Child) => {
     if (!session.packageDuration) return false;
