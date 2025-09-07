@@ -521,11 +521,21 @@ function CheckInDialog({
 
     // Show recent customers initially, and search results when typing
     const displayedCustomers = useMemo(() => {
+        const isNumericSearch = /^\d+$/.test(debouncedSearchQuery);
+
         if (debouncedSearchQuery) {
-            return sortedCustomers.filter(c => 
-                (typeof c.parentName === 'string' && c.parentName.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
-                (c.phoneNumbers || []).some(p => p.includes(debouncedSearchQuery))
-            );
+            // Optimization: Only search by phone if it's a numeric string of 6+ digits
+            if (isNumericSearch && debouncedSearchQuery.length < 6) {
+                return sortedCustomers.slice(0, 20); // Not enough digits, show recents
+            }
+
+            return sortedCustomers.filter(c => {
+                const nameMatch = typeof c.parentName === 'string' && c.parentName.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+                const phoneMatch = (c.phoneNumbers || []).some(p => p.includes(debouncedSearchQuery));
+                
+                // If it looks like a phone number, prioritize that. Otherwise, check both.
+                return isNumericSearch ? phoneMatch : (nameMatch || phoneMatch);
+            });
         }
         return sortedCustomers.slice(0, 20); // Show 20 most recent customers by default
     }, [sortedCustomers, debouncedSearchQuery]);
@@ -2043,3 +2053,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
