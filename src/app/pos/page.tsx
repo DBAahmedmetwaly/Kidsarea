@@ -560,6 +560,7 @@ function CheckInDialog({
 
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
+        setSelectedChildren([]); // Reset child selection
         setGuestChildren([]); // Reset guest children
         setOpenCombobox(false);
     }
@@ -1161,8 +1162,9 @@ function PosTrackingContent() {
             checkOutTime: new Date(),
             duration: formatDuration(Date.now() - childToCheckout.checkInTime),
             totalCost: finalCost,
-            discount: discount,
+            amountReceived: finalCost, // Assume the final cost is what's received
             costBeforeDiscount: originalPrice,
+            discount: discount,
             cashierName: cashierName,
             isSubscription: false,
             packagePrice: childToCheckout.packagePrice,
@@ -2082,6 +2084,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
