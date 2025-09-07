@@ -207,6 +207,7 @@ export interface ReceiptSettings {
     showCheckOutTime: boolean;
     showParentName: boolean;
     showChildName: boolean;
+    showCustomerPhone?: boolean;
     showGameName: boolean;
     showDuration: boolean;
     showDurationCost: boolean;
