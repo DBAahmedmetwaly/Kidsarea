@@ -12,39 +12,60 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Settings, VenetianMask } from 'lucide-react';
+import { Shield, Settings, VenetianMask, PanelTopOpen, Landmark, Contact, Home } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PasswordDialog from '../branches/_components/PasswordDialog';
 import { useFirebase } from '@/context/FirebaseContext';
 import { Separator } from '@/components/ui/separator';
 
-const STATIC_SCREENS = [
-  { href: '/', label: 'الرئيسية' },
+const mainItems = [
   { href: '/dashboard', label: 'لوحة التحكم' },
   { href: '/pos', label: 'يلا نلعب' },
   { href: '/sessions', label: 'سجل الجلسات' },
-  { href: '/shift-closing', label: 'إدارة الورديات' },
-  { href: '/expenses', label: 'المصروفات والصيانة'},
-  { href: '/reports', label: 'التقارير' },
-  { href: '/product-sales', label: 'تقرير مبيعات المنتجات' },
+];
+
+const managementItems = [
+  { href: '/branches', label: 'الفروع' },
   { href: '/employees', label: 'الموظفين' },
   { href: '/games', label: 'الألعاب' },
   { href: '/game-categories', label: 'تصنيفات الألعاب' },
   { href: '/products', label: 'كتالوج المنتجات' },
+  { href: '/product-categories', label: 'فئات المنتجات' },
   { href: '/inventory', label: 'المخزون' },
   { href: '/safes', label: 'الخزائن' },
-  { href: '/policies', label: 'السياسات' },
-  { href: '/receipt-designer', label: 'تصميم الإيصال' },
-  { href: '/transactions', label: 'سجل الحركات'},
-  { href: '/payroll', label: 'الرواتب'},
-  { href: '/customers', label: 'العملاء' },
-  { href: '/birthdays', label: 'أعياد الميلاد' },
-  { href: '/subscriptions', label: 'الاشتراكات' },
-  { href: '/subscription-plans', label: 'باقات الاشتراكات' },
-  { href: '/data-management', label: 'إدارة البيانات' },
-  { href: '/branches', label: 'الفروع' },
-  { href: '/roles', label: 'الصلاحيات' },
+  { href: '/subscriptions', label: 'الاشتراكات طويلة الأمد' },
+  { href: '/subscription-plans', label: 'باقات اللعب' },
 ];
+
+const financialItems = [
+  { href: '/shift-closing', label: 'إدارة الورديات' },
+  { href: '/expenses', label: 'المصروفات والصيانة'},
+  { href: '/transactions', label: 'سجل الحركات المالية'},
+  { href: '/payroll', label: 'الرواتب'},
+  { href: '/reports', label: 'التقارير' },
+  { href: '/product-sales', label: 'تقرير مبيعات المنتجات' },
+];
+
+const customerItems = [
+    { href: '/customers', label: 'العملاء' },
+    { href: '/birthdays', label: 'أعياد الميلاد' },
+]
+
+const settingsMenuItems = [
+    { href: '/roles', label: 'الصلاحيات' },
+    { href: '/policies', label: 'السياسات' },
+    { href: '/receipt-designer', label: 'تصميم الإيصال' },
+    { href: '/data-management', label: 'إدارة البيانات' },
+];
+
+const STATIC_SCREENS = {
+    "الرئيسية": [{ href: '/', label: 'الرئيسية' }, ...mainItems],
+    "الإدارة": managementItems,
+    "المالية": financialItems,
+    "العملاء": customerItems,
+    "الإعدادات": settingsMenuItems
+};
+
 
 const SPECIAL_PERMISSIONS: { href: string; label: string }[] = [
     // This is now managed per-employee
@@ -74,12 +95,15 @@ function RolesContent() {
     const defaultPolicies = allPolicies?.find(p => p.id === 'default');
     const posScreenTitle = defaultPolicies?.posLabels?.screenTitle;
 
+    const updatedStaticScreens = JSON.parse(JSON.stringify(STATIC_SCREENS));
     if (posScreenTitle) {
-        return STATIC_SCREENS.map(screen => 
-            screen.href === '/pos' ? { ...screen, label: posScreenTitle } : screen
-        );
+       const mainGroup = updatedStaticScreens['الرئيسية'];
+       const posItem = mainGroup.find((item: any) => item.href === '/pos');
+       if (posItem) {
+           posItem.label = posScreenTitle;
+       }
     }
-    return STATIC_SCREENS;
+    return updatedStaticScreens;
   }, [allPolicies]);
 
   useEffect(() => {
@@ -106,14 +130,14 @@ function RolesContent() {
         // Initialize default permissions if none exist
         const defaultPermissions: any = {};
          ROLES.forEach(role => {
-            const screens = [...allScreens, ...SPECIAL_PERMISSIONS];
+            const screens = Object.values(allScreens).flat();
             defaultPermissions[role] = screens.reduce((acc, screen) => ({ ...acc, [encodeKey(screen.href)]: true }), {});
         });
         set(rolesRef, defaultPermissions);
         
         const decodedForState: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
          ROLES.forEach(role => {
-            const screens = [...allScreens, ...SPECIAL_PERMISSIONS];
+             const screens = Object.values(allScreens).flat();
             decodedForState[role] = screens.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {});
         });
         setPermissions(decodedForState);
@@ -260,18 +284,25 @@ function RolesContent() {
                             <Separator />
                         </>
                     )}
-                    <h4 className="font-semibold text-muted-foreground flex items-center gap-2 my-4"><Settings className="h-4 w-4"/> صلاحيات الوصول للشاشات</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {allScreens.map(screen => (
-                            <div key={screen.href} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`${selectedRole}-${screen.href}`}
-                                    checked={permissions?.[selectedRole]?.[screen.href] || false}
-                                    onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
-                                />
-                                <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    {screen.label}
-                                </Label>
+
+                    <div className="space-y-6">
+                        {Object.entries(allScreens).map(([groupName, screens]) => (
+                            <div key={groupName}>
+                                <h4 className="font-semibold text-muted-foreground mb-3">{groupName}</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {(screens as {href: string, label: string}[]).map(screen => (
+                                    <div key={screen.href} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`${selectedRole}-${screen.href}`}
+                                            checked={permissions?.[selectedRole]?.[screen.href] || false}
+                                            onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
+                                        />
+                                        <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {screen.label}
+                                        </Label>
+                                    </div>
+                                ))}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -305,5 +336,6 @@ export default function RolesPage() {
     </SidebarProvider>
   );
 }
+
 
 
