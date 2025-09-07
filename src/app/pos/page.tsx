@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -558,6 +559,18 @@ function CheckInDialog({
         });
     };
     
+    const togglePackageSelection = (pkg: SelectedPackageType) => {
+        setSelectedPackages(prev => {
+            const newPackages = { ...prev };
+            if (newPackages[pkg.label]) {
+                delete newPackages[pkg.label];
+            } else {
+                newPackages[pkg.label] = { package: pkg, quantity: 1 };
+            }
+            return newPackages;
+        });
+    };
+    
     const { totalDuration, totalPrice } = useMemo(() => {
         let duration = 0;
         let price = 0;
@@ -772,8 +785,8 @@ function CheckInDialog({
                                         {selectedGame?.fixedTimePackages?.map(pkg => (
                                             <Button
                                                 key={pkg.label}
-                                                variant="outline"
-                                                onClick={() => handlePackageQuantityChange(pkg, 1)}
+                                                variant={selectedPackages[pkg.label] ? 'default' : 'outline'}
+                                                onClick={() => togglePackageSelection(pkg)}
                                                 className="h-auto flex-col"
                                             >
                                                 <p className="font-semibold">{pkg.label}</p>
@@ -1530,10 +1543,10 @@ function PosTrackingContent() {
                     name = item.productName;
                     price = item.price;
                 } else if (item.type === 'prepaid-game') {
-                    name = `باقة: ${item.sessionDetails.game}`;
+                    name = `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`;
                     price = item.price / item.cartQuantity; // price per unit
                 } else if (item.type === 'extend-session') {
-                    name = `تمديد: ${item.gameName}`;
+                    name = `تمديد: ${item.gameName} (${item.childName})`;
                     price = item.price;
                 }
                 return { name, quantity: item.cartQuantity, price };
@@ -2089,3 +2102,4 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
