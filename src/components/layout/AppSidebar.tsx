@@ -52,6 +52,7 @@ import {
   Receipt,
   Phone,
   UserCircle2,
+  KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -68,6 +69,7 @@ import { usePermissions } from '@/context/PermissionsContext';
 import { onValue, ref } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import dynamic from 'next/dynamic';
 
 
 const mainItems = [
@@ -119,6 +121,11 @@ export const allMenuItems = [
     ...customerItems, 
     ...settingsMenuItems,
 ];
+
+
+const ChangePasswordDialog = dynamic(() => import('./ChangePasswordDialog'), {
+    loading: () => <Skeleton className="w-full h-80" />,
+});
 
 
 function CollapsibleMenuGroup({
@@ -193,6 +200,7 @@ function SidebarItems() {
   const { policies: allPolicies } = useFirebase();
   const { permissions, loading } = usePermissions();
   const { setOpenMobile } = useSidebar();
+  const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
 
 
   const defaultPolicies = allPolicies?.find(p => p.id === 'default');
@@ -280,6 +288,7 @@ function SidebarItems() {
   }
 
   return (
+    <>
     <div className="flex flex-col h-full overflow-y-auto">
       <SidebarHeader className="justify-between">
          <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary px-2">
@@ -302,11 +311,16 @@ function SidebarItems() {
         <div className="flex items-center gap-2 p-2 rounded-md bg-sidebar-accent">
           <UserCircle2 className="h-8 w-8 text-sidebar-accent-foreground" />
           <div className={cn(
-                "duration-200 text-sidebar-accent-foreground group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8"
+                "duration-200 text-sidebar-accent-foreground group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-8 flex-grow"
             )}>
             <p className="font-semibold text-sm">{currentUserName}</p>
             {user && 'role' in user && <p className="text-xs text-sidebar-foreground/70">{(user as Employee).role}</p>}
           </div>
+            {user && 'role' in user && (
+                 <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 group-data-[collapsible=icon]:hidden" onClick={() => setPasswordDialogOpen(true)}>
+                    <KeyRound className="h-4 w-4" />
+                </Button>
+            )}
         </div>
       </div>
 
@@ -333,6 +347,13 @@ function SidebarItems() {
           </SidebarMenu>
       </SidebarFooter>
     </div>
+    {isPasswordDialogOpen && (
+        <ChangePasswordDialog 
+            open={isPasswordDialogOpen}
+            onOpenChange={setPasswordDialogOpen}
+        />
+    )}
+    </>
   );
 }
 
