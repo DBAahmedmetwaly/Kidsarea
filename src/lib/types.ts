@@ -370,6 +370,7 @@ export interface ExtendSessionCartItem {
     type: 'extend-session';
     id: string; // Unique cart item ID
     activeSessionId: string;
+    originalSessionId: string; // ID of the initial completedSession
     childName: string;
     gameName: string;
     packageName: string;

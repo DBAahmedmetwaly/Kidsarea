@@ -941,6 +941,7 @@ function ExtendSessionDialog({
             type: 'extend-session',
             id: `extend-${session.id}-${Date.now()}`,
             activeSessionId: session.id,
+            originalSessionId: session.prepaidSessionId || session.id,
             childName: session.children.map(c => c.name).join(', '),
             gameName: session.game,
             packageName: selectedPackage.label,
@@ -1221,6 +1222,8 @@ function PosTrackingContent() {
     stopNotificationForSession(child.id);
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
+    setActiveChildren(prev => prev.filter(c => c.id !== child.id));
+
 
     if (!child) return;
     
@@ -1276,8 +1279,6 @@ function PosTrackingContent() {
         }
         // Always remove the active session
         await remove(ref(db, `sessions/active/${child.id}`));
-        setActiveChildren(prev => prev.filter(c => c.id !== child.id));
-
 
     } catch(err) {
         console.error(err);
@@ -1528,7 +1529,25 @@ function PosTrackingContent() {
         
         // Handle Extend Session Sales
         for (const extendItem of extendItems) {
-             await runTransaction(ref(db, `sessions/active/${extendItem.activeSessionId}`), (currentSession: Child) => {
+            const activeSessionRef = ref(db, `sessions/active/${extendItem.activeSessionId}`);
+            const activeSessionSnapshot = await get(activeSessionRef);
+            const activeSessionData: Child | null = activeSessionSnapshot.val();
+
+            if (activeSessionData && activeSessionData.prepaidSessionId) {
+                const originalSessionRef = ref(db, `sessions/completed/${activeSessionData.prepaidSessionId}`);
+                
+                await runTransaction(originalSessionRef, (currentSession: CompletedSession) => {
+                    if (currentSession) {
+                        currentSession.cost = (currentSession.cost || 0) + extendItem.price;
+                        currentSession.costBeforeDiscount = (currentSession.costBeforeDiscount || 0) + extendItem.price;
+                        currentSession.packageName = `${currentSession.packageName || ''}, تمديد: ${extendItem.packageName}`;
+                        currentSession.notes = `${currentSession.notes || ''}\nتمديد فاتورة: ${receiptNumber}`;
+                    }
+                    return currentSession;
+                });
+            }
+
+            await runTransaction(ref(db, `sessions/active/${extendItem.activeSessionId}`), (currentSession: Child) => {
                 if (currentSession && currentSession.packageDuration) {
                     const now = Date.now();
                     const elapsedMsSinceCheckIn = now - currentSession.checkInTime;
@@ -1539,15 +1558,7 @@ function PosTrackingContent() {
                     currentSession.checkInTime = now;
                 }
                 return currentSession;
-             });
-
-             const extendRecordRef = push(ref(db, 'sessions/completed'));
-             const originalSession = firebaseActiveChildren.find(s => s.id === extendItem.activeSessionId);
-             if (originalSession) {
-                const extendRecordData: Partial<CompletedSession> = { ...originalSession, id: extendRecordRef.key!, checkOutTime: Date.now(), durationMs: 0, cost: extendItem.price * extendItem.cartQuantity, costBeforeDiscount: extendItem.price * extendItem.cartQuantity, receiptNumber, packageName: `تمديد: ${extendItem.packageName}`, notes: cartNotes };
-                delete extendRecordData.prepaidSessionId;
-                await set(extendRecordRef, extendRecordData);
-             }
+            });
         }
         
         // Print one combined receipt
@@ -2022,7 +2033,6 @@ function PosTrackingContent() {
                 open={isEarlyCheckoutDiscountOpen}
                 onOpenChange={(isOpen) => {
                     if (!isOpen && childToCheckout) {
-                        // If dialog is cancelled, stop notifications
                         stopNotificationForSession(childToCheckout.id);
                     }
                     setEarlyCheckoutDiscountOpen(isOpen);
@@ -2143,6 +2153,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
