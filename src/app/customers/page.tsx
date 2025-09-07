@@ -2,9 +2,10 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { MoreHorizontal, PlusCircle, Trash, Edit, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { ref, set, remove, update, push } from 'firebase/database';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { MoreHorizontal, PlusCircle, Trash, Edit, Calendar as CalendarIcon, Loader2, Upload, Download } from 'lucide-react';
+import { ref, set, remove, update, push, runTransaction } from 'firebase/database';
+import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
 import { useCustomers } from '@/context/CustomerContext';
 import { Button } from '@/components/ui/button';
@@ -288,6 +289,93 @@ function CustomersContent() {
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [filter, setFilter] = useState('');
     const [visibleCount, setVisibleCount] = useState(20);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleDownloadTemplate = () => {
+        const headers = ['ولي الأمر', 'الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع', 'رقم اول', 'رقم ثاني'];
+        const ws = XLSX.utils.aoa_to_sheet([headers]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Customers");
+        XLSX.writeFile(wb, "Customer_Template.xlsx");
+    };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+                const newCustomers: Omit<Customer, 'id' | 'createdAt'>[] = [];
+                
+                for (const row of json) {
+                    const parentName = row['ولي الأمر'];
+                    const phone1 = String(row['رقم اول'] || '').trim();
+                    const phone2 = String(row['رقم ثاني'] || '').trim();
+                    
+                    if (!parentName || !phone1) continue;
+
+                    const phoneNumbers = [phone1, phone2].filter(p => p && p !== 'NULL');
+                    
+                    const existingCustomer = customers.find(c => c.phoneNumbers.some(p => phoneNumbers.includes(p)));
+                    if (existingCustomer) {
+                        console.warn(`Customer with phone number already exists: ${parentName}`);
+                        continue;
+                    }
+
+                    const children: Omit<CustomerChild, 'id' | 'birthdate'>[] = [];
+                    ['الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع'].forEach(key => {
+                        if (row[key]) {
+                            children.push({ name: String(row[key]), age: 1 });
+                        }
+                    });
+
+                    newCustomers.push({
+                        parentName,
+                        phoneNumbers,
+                        children,
+                    });
+                }
+                
+                if (newCustomers.length > 0) {
+                     await Promise.all(newCustomers.map(cust => {
+                        const newCustomerRef = push(ref(db, 'customers'));
+                        return set(newCustomerRef, { ...cust, createdAt: new Date().toISOString() });
+                    }));
+
+                    toast({
+                        title: "نجاح",
+                        description: `تم استيراد ${newCustomers.length} عميل بنجاح.`,
+                    });
+                } else {
+                     toast({
+                        title: "لا يوجد عملاء جدد",
+                        description: "لم يتم العثور على عملاء جدد في الملف أو أنهم موجودون بالفعل.",
+                        variant: 'destructive',
+                    });
+                }
+
+
+            } catch (error) {
+                console.error("Error processing file:", error);
+                toast({
+                    title: "خطأ في معالجة الملف",
+                    description: "تأكد من أن الملف بالصيغة الصحيحة.",
+                    variant: 'destructive',
+                });
+            } finally {
+                // Reset file input
+                if(fileInputRef.current) fileInputRef.current.value = '';
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
 
     const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
         try {
@@ -375,6 +463,21 @@ function CustomersContent() {
          <div className="md:hidden"><SidebarTrigger /></div>
         <h1 className="text-lg font-semibold md:text-2xl">العملاء</h1>
         <div className="ms-auto flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                <Download className="me-2 h-4 w-4" />
+                تنزيل القالب
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="me-2 h-4 w-4" />
+                رفع ملف
+            </Button>
+             <Input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                className="hidden" 
+                accept=".xlsx, .xls"
+            />
           <Input 
             placeholder="ابحث بالاسم أو الرقم..."
             value={filter}
