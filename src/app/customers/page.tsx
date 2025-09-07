@@ -320,6 +320,7 @@ function CustomersContent() {
                     const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
                     const newCustomers: Omit<Customer, 'id' | 'createdAt'>[] = [];
+                    let childIdCounter = 0;
                     
                     for (const row of json) {
                         const parentName = row['ولي الأمر'];
@@ -336,10 +337,14 @@ function CustomersContent() {
                             continue;
                         }
 
-                        const children: Omit<CustomerChild, 'id' | 'birthdate'>[] = [];
+                        const children: CustomerChild[] = [];
                         ['الطفل الأول', 'الطفل الثاني', 'الطفل الثالث', 'الطفل الرابع'].forEach(key => {
                             if (row[key]) {
-                                children.push({ name: String(row[key]), age: 1 });
+                                children.push({ 
+                                    id: `${Date.now()}-${childIdCounter++}`,
+                                    name: String(row[key]), 
+                                    age: 1 
+                                });
                             }
                         });
 
