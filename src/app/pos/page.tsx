@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ExtendSessionCartItem, ProductSaleItem } from '@/lib/types';
@@ -1319,7 +1319,7 @@ function PosTrackingContent() {
       branchName: data.branchName === 'كل الفروع' ? currentUser!.branch : data.branchName,
       checkInTime: Date.now(),
       cashierUsername: user.username,
-      prepaidSessionId: prepaidSessionId,
+      prepaidSessionId: prepaidSessionId || null,
     };
 
     try {
@@ -1352,29 +1352,29 @@ function PosTrackingContent() {
       }
     };
   
-  const handleAddToCart = (item: InventoryItem) => {
-      const productItem = { ...item, type: 'product' as const };
-      setCart(prevCart => {
-          const existingItem = prevCart.find(cartItem => cartItem.id === productItem.id);
-          if (existingItem) {
-               if ('quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
+    const handleAddToCart = (item: InventoryItem) => {
+        const productItem = { ...item, type: 'product' as const };
+        setCart(prevCart => {
+            const existingItem = prevCart.find(cartItem => cartItem.type === 'product' && cartItem.id === productItem.id);
+            if (existingItem) {
+                if ('quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
                     toast({ title: "الكمية غير كافية", variant: "destructive" });
                     return prevCart;
                 }
-                 return prevCart.map(cartItem => 
+                return prevCart.map(cartItem => 
                     cartItem.id === productItem.id 
                         ? { ...cartItem, cartQuantity: cartItem.cartQuantity + 1 } 
                         : cartItem
                 );
-          } else {
-               if ('quantity' in productItem && productItem.quantity <= 0) {
-                   toast({ title: "نفدت الكمية", variant: "destructive" });
-                   return prevCart;
-               }
-               return [...prevCart, { ...productItem, cartQuantity: 1 }];
-          }
-      });
-  };
+            } else {
+                if ('quantity' in productItem && productItem.quantity <= 0) {
+                    toast({ title: "نفدت الكمية", variant: "destructive" });
+                    return prevCart;
+                }
+                return [...prevCart, { ...productItem, cartQuantity: 1 }];
+            }
+        });
+    };
   
     const handleConfirmPrepaid = (cartItem: PrepaidGameCartItem) => {
         let finalCartQuantity = 1;
@@ -1404,8 +1404,8 @@ function PosTrackingContent() {
               }
               
               if (item.type === 'prepaid-game' && policies?.packagePricingModel === 'per_child') {
-                  const basePrice = item.price / item.cartQuantity;
-                  const newPrice = basePrice * newQuantity;
+                  const basePricePerChild = (item.price / item.cartQuantity); // price was for N children
+                  const newPrice = basePricePerChild * newQuantity;
                   return { ...item, cartQuantity: newQuantity, price: newPrice };
               }
 
@@ -2033,7 +2033,8 @@ function PosTrackingContent() {
                                         case 'product':
                                             return { name: item.productName, price: item.price.toFixed(2) };
                                         case 'prepaid-game':
-                                            return { name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, price: (item.price / item.cartQuantity).toFixed(2) };
+                                            const pricePerUnit = item.cartQuantity > 0 ? item.price / item.cartQuantity : 0;
+                                            return { name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, price: pricePerUnit.toFixed(2) };
                                         case 'extend-session':
                                              return { name: `تمديد: ${item.gameName} (${item.childName})`, price: item.price.toFixed(2) };
                                         default:
@@ -2102,4 +2103,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
