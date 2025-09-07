@@ -350,7 +350,6 @@ function CheckOutDialog({
         ? 'Admin' 
         : cashier?.name || user?.username || 'N/A';
         
-    const finalCost = checkoutData.totalCost;
     const isFullySubscribed = child.children.every(c => activeSubscriptions.some(s => s.childName === c.name));
     
     const receiptDetails: PosReceiptProps = {
@@ -364,7 +363,7 @@ function CheckOutDialog({
         checkInTime: new Date(child.checkInTime),
         checkOutTime: new Date(),
         duration: checkoutData.duration,
-        totalCost: finalCost,
+        totalCost: checkoutData.totalCost,
         amountReceived: parseFloat(amountReceived) || 0,
         costBeforeDiscount: checkoutData.costBeforeDiscount,
         durationCost: checkoutData.durationCost,
@@ -540,7 +539,8 @@ function CheckInDialog({
                 const phoneMatch = (c.phoneNumbers || []).some(p => p.includes(debouncedSearchQuery));
                 
                 // If it looks like a phone number, prioritize that. Otherwise, check both.
-                return isNumericSearch ? phoneMatch : (nameMatch || phoneMatch);
+                if (isNumericSearch) return phoneMatch;
+                return nameMatch || phoneMatch;
             });
         }
         return sortedCustomers.slice(0, 20); // Show 20 most recent customers by default
@@ -1162,7 +1162,7 @@ function PosTrackingContent() {
             checkOutTime: new Date(),
             duration: formatDuration(Date.now() - childToCheckout.checkInTime),
             totalCost: finalCost,
-            amountReceived: finalCost, // Assume the final cost is what's received
+            amountReceived: finalCost,
             costBeforeDiscount: originalPrice,
             discount: discount,
             cashierName: cashierName,
@@ -1170,7 +1170,7 @@ function PosTrackingContent() {
             packagePrice: childToCheckout.packagePrice,
             packageName: childToCheckout.packageName,
             packageDuration: childToCheckout.packageDuration,
-            overtimeCost: 0, // No overtime on early checkout
+            overtimeCost: 0,
             notes: `خروج مبكر - خصم ${discount.toFixed(2)}`,
         };
         
@@ -1204,17 +1204,14 @@ function PosTrackingContent() {
     let finalDiscount = receiptDetails.discount || 0;
     const amountReceived = receiptDetails.amountReceived || 0;
 
-    // For prepaid sessions, the final cost should include the original package price.
-    // The amountReceived is for the EXTRA charge (overtime).
     if (child.prepaidSessionId) {
-        // Update the original completed session with overtime info and final checkout time
+        // This is a prepaid session that had overtime.
         const completedSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
         const originalSessionSnapshot = await get(completedSessionRef);
         
         if (originalSessionSnapshot.exists()) {
             const originalSession = originalSessionSnapshot.val() as CompletedSession;
-            // The new total cost is the original cost plus the extra amount paid now for overtime.
-            const newTotalCost = (originalSession.cost || 0) + receiptDetails.totalCost;
+            const newTotalCost = (originalSession.cost || 0) + finalCost;
             const newTotalDiscount = (originalSession.discount || 0) + finalDiscount;
             
             await update(completedSessionRef, {
@@ -1223,20 +1220,19 @@ function PosTrackingContent() {
                 cost: newTotalCost,
                 discount: newTotalDiscount,
                 overtimeCost: (receiptDetails.overtimeCost || 0),
-                notes: `${receiptDetails.notes || ''}`.trim(),
+                notes: `${originalSession.notes || ''} ${receiptDetails.notes || ''}`.trim(),
             });
             finalCost = newTotalCost;
             finalDiscount = newTotalDiscount;
         }
 
-    } else { // This handles postpaid sessions and EARLY checkout of prepaid sessions
-         if (amountReceived > 0) {
-            finalCost = amountReceived;
-            finalDiscount += (receiptDetails.costBeforeDiscount || 0) - amountReceived;
-        } else {
-            // If no amount was received, the cost is zero and the discount is the full amount.
-            finalDiscount += receiptDetails.costBeforeDiscount || finalCost;
+    } else { // This is a postpaid session or an early checkout of a prepaid session
+         if (!amountReceived) { // No payment received, waive the cost
+            finalDiscount += finalCost;
             finalCost = 0;
+         } else if(amountReceived < finalCost) { // Partial payment, rest is discount
+            finalDiscount += (finalCost - amountReceived);
+            finalCost = amountReceived;
         }
         
         const sessionToSave: Omit<CompletedSession, 'id'> = {
@@ -1255,7 +1251,7 @@ function PosTrackingContent() {
         await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
     }
     
-    // Only print if an amount was actually received, unless it's an early checkout with a discount.
+    // Only print if an amount was actually received.
     if (receiptSettings && amountReceived > 0) {
         printReceipt(<PosReceipt {...receiptDetails} receiptId={`${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`} />);
     }
@@ -2084,6 +2080,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
