@@ -53,6 +53,7 @@ import {
   Phone,
   UserCircle2,
   KeyRound,
+  PackageSearch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -99,6 +100,7 @@ const financialItems = [
   { href: '/payroll', label: 'الرواتب', icon: UserCog },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
   { href: '/product-sales', label: 'تقرير مبيعات المنتجات', icon: Receipt },
+  { href: '/reports/inventory-log', label: 'تقرير حركة الأصناف', icon: PackageSearch },
 ];
 
 const customerItems = [

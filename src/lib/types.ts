@@ -298,7 +298,6 @@ export interface ProductCategory {
 // Represents a product in the global catalog
 export interface Product {
     id: string;
-    type: 'product';
     name: string;
     categoryId: string;
     categoryName: string;
@@ -339,6 +338,22 @@ export interface ProductSale {
     createdAt: string; // ISO String
     notes?: string;
 }
+
+export interface InventoryMovement {
+    id: string;
+    date: string; // ISO string
+    productId: string;
+    productName: string;
+    branchId: string;
+    branchName: string;
+    type: 'Sale' | 'Manual Adjustment' | 'Initial Stock';
+    change: number; // e.g., -5 for sale, +10 for manual increase
+    quantityBefore: number;
+    quantityAfter: number;
+    recordedBy: string;
+    referenceId?: string; // e.g., productSaleId
+}
+
 
 // Represents a prepaid game session ready to be added to the cart
 export interface PrepaidGameCartItem {
