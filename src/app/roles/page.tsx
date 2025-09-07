@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, Settings, VenetianMask, PanelTopOpen, Landmark, Contact, Home } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import PasswordDialog from '../branches/_components/PasswordDialog';
 import { useFirebase } from '@/context/FirebaseContext';
 import { Separator } from '@/components/ui/separator';
 
@@ -88,8 +87,6 @@ function RolesContent() {
   const [selectedRole, setSelectedRole] = useState<Role>('مدير فرع');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [permissionChange, setPermissionChange] = useState<{ screenHref: string, checked: boolean } | null>(null);
   const { policies: allPolicies } = useFirebase();
 
   const allScreens = useMemo(() => {
@@ -152,42 +149,17 @@ function RolesContent() {
     return () => unsubscribe();
   }, [allScreens]);
 
-  const handlePermissionChangeAttempt = (screenHref: string, checked: boolean) => {
-    if (checked) {
-        setPermissions(prev => {
-            if (!prev) return null;
-            const newPermissions = JSON.parse(JSON.stringify(prev));
-            if (!newPermissions[selectedRole]) {
-                newPermissions[selectedRole] = {};
-            }
-            newPermissions[selectedRole][screenHref] = checked;
-            return newPermissions;
-        });
-    } else {
-        setPermissionChange({ screenHref, checked });
-        setPasswordDialogOpen(true);
-    }
-  };
-  
-  const handlePasswordConfirm = (password: string) => {
-    if (password === 'metoomar') {
-        if (permissionChange) {
-            setPermissions(prev => {
-                if (!prev) return null;
-                const newPermissions = JSON.parse(JSON.stringify(prev));
-                if (!newPermissions[selectedRole]) {
-                    newPermissions[selectedRole] = {};
-                }
-                newPermissions[selectedRole][permissionChange.screenHref] = permissionChange.checked;
-                return newPermissions;
-            });
+  const handlePermissionChange = (screenHref: string, checked: boolean) => {
+    setPermissions(prev => {
+        if (!prev) return null;
+        const newPermissions = JSON.parse(JSON.stringify(prev));
+        if (!newPermissions[selectedRole]) {
+            newPermissions[selectedRole] = {};
         }
-    } else {
-        toast({ title: 'كلمة مرور خاطئة', variant: 'destructive' });
-    }
-    setPermissionChange(null);
+        newPermissions[selectedRole][screenHref] = checked;
+        return newPermissions;
+    });
   };
-
 
   const handleSaveChanges = async () => {
     if (!permissions) return;
@@ -274,7 +246,7 @@ function RolesContent() {
                                         <Checkbox
                                             id={`${selectedRole}-${screen.href}`}
                                             checked={permissions?.[selectedRole]?.[screen.href] || false}
-                                            onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
+                                            onCheckedChange={(checked) => handlePermissionChange(screen.href, !!checked)}
                                         />
                                         <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                             {screen.label}
@@ -296,7 +268,7 @@ function RolesContent() {
                                         <Checkbox
                                             id={`${selectedRole}-${screen.href}`}
                                             checked={permissions?.[selectedRole]?.[screen.href] || false}
-                                            onCheckedChange={(checked) => handlePermissionChangeAttempt(screen.href, !!checked)}
+                                            onCheckedChange={(checked) => handlePermissionChange(screen.href, !!checked)}
                                         />
                                         <Label htmlFor={`${selectedRole}-${screen.href}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                             {screen.label}
@@ -316,11 +288,6 @@ function RolesContent() {
           </div>
         </CardContent>
       </Card>
-       <PasswordDialog 
-        open={isPasswordDialogOpen} 
-        onOpenChange={setPasswordDialogOpen} 
-        onConfirm={handlePasswordConfirm} 
-       />
     </div>
   );
 }
@@ -337,4 +304,5 @@ export default function RolesPage() {
     </SidebarProvider>
   );
 }
+
 
