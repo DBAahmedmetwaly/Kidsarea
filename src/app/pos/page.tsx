@@ -848,7 +848,6 @@ function CheckInDialog({
 
 type CartItem = (InventoryItem | PrepaidGameCartItem | ExtendSessionCartItem) & { cartQuantity: number };
 
-
 function EarlyCheckoutDialog({
   open,
   onOpenChange,
@@ -906,6 +905,92 @@ function EarlyCheckoutDialog({
   );
 }
 
+function ExtendSessionDialog({
+  open,
+  onOpenChange,
+  session,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: Child | null;
+  onConfirm: (item: ExtendSessionCartItem) => void;
+}) {
+    const { games } = useFirebase();
+    const { toast } = useToast();
+    const [selectedPackage, setSelectedPackage] = useState<SelectedPackageType | null>(null);
+
+    useEffect(() => {
+        if (!open) {
+            setSelectedPackage(null);
+        }
+    }, [open]);
+
+    const game = useMemo(() => {
+        if (!session) return null;
+        return games.find(g => g.name === session.game);
+    }, [session, games]);
+
+    const handleConfirm = () => {
+        if (!session || !game || !selectedPackage) {
+            toast({ title: 'يرجى اختيار باقة للتمديد', variant: 'destructive' });
+            return;
+        }
+
+        const cartItem: ExtendSessionCartItem = {
+            type: 'extend-session',
+            id: `extend-${session.id}-${Date.now()}`,
+            activeSessionId: session.id,
+            childName: session.children.map(c => c.name).join(', '),
+            gameName: session.game,
+            packageName: selectedPackage.label,
+            packageDuration: selectedPackage.duration,
+            price: selectedPackage.price,
+            cartQuantity: 1,
+        };
+
+        onConfirm(cartItem);
+        onOpenChange(false);
+    };
+
+    if (!session) return null;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>تمديد وقت: {session.children.map(c => c.name).join(', ')}</DialogTitle>
+                    <DialogDescription>
+                        اختر باقة وقت إضافية لإضافتها إلى سلة التسوق. سيتم تحديث وقت الجلسة بعد الدفع.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <Label>اختر باقة التمديد</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {game?.fixedTimePackages?.map(pkg => (
+                            <button
+                                key={pkg.label}
+                                onClick={() => setSelectedPackage(pkg)}
+                                className={cn(
+                                    "border p-2 rounded-md text-center hover:bg-muted transition-colors h-auto flex flex-col items-center justify-center",
+                                    selectedPackage?.label === pkg.label ? "ring-2 ring-primary" : ""
+                                )}
+                            >
+                                <p className="font-semibold">{pkg.label}</p>
+                                <p className="text-sm">{pkg.duration} دقيقة</p>
+                                <p className="text-xs font-bold">{pkg.price} ج.م</p>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">إلغاء</Button></DialogClose>
+                    <Button onClick={handleConfirm} disabled={!selectedPackage}>إضافة للسلة</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function PosTrackingContent() {
   const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
@@ -1262,26 +1347,25 @@ function PosTrackingContent() {
       }
     };
   
-    const handleAddToCart = (item: InventoryItem) => {
-        const productItem = { ...item, type: 'product' as const };
+    const handleAddToCart = (item: CartItem) => {
         setCart(prevCart => {
-            const existingItem = prevCart.find(cartItem => cartItem.type === 'product' && cartItem.id === productItem.id);
+            const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
             if (existingItem) {
-                if ('quantity' in existingItem && existingItem.cartQuantity >= existingItem.quantity) {
+                if (item.type === 'product' && 'quantity' in item && existingItem.cartQuantity >= item.quantity) {
                     toast({ title: "الكمية غير كافية", variant: "destructive" });
                     return prevCart;
                 }
                 return prevCart.map(cartItem => 
-                    cartItem.id === productItem.id 
+                    cartItem.id === item.id 
                         ? { ...cartItem, cartQuantity: cartItem.cartQuantity + 1 } 
                         : cartItem
                 );
             } else {
-                if ('quantity' in productItem && productItem.quantity <= 0) {
+                 if (item.type === 'product' && 'quantity' in item && item.quantity <= 0) {
                     toast({ title: "نفدت الكمية", variant: "destructive" });
                     return prevCart;
                 }
-                return [...prevCart, { ...productItem, cartQuantity: 1 }];
+                return [...prevCart, { ...item, cartQuantity: 1 }];
             }
         });
     };
@@ -2014,6 +2098,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
