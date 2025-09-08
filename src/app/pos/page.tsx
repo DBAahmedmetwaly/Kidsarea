@@ -1704,7 +1704,7 @@ function PosTrackingContent() {
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
                 cashierUsername: user.username,
-                notes: gameItem.sessionDetails.notes,
+                notes: `${gameItem.sessionDetails.notes || ''} ${cartNotes}`.trim(),
             };
             await set(completedSessionRef, completedSession);
             await handleStartSession(gameItem.sessionDetails, completedSessionId, receiptNumber);
@@ -2335,5 +2335,6 @@ export default function PosTrackingPage() {
 }
 
     
+
 
 
