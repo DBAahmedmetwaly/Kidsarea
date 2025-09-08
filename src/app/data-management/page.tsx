@@ -143,6 +143,7 @@ function DataManagementContent() {
         'shiftRecords',
         'subscriptions',
         'subscriptionPlans',
+        'inventoryMovements',
       ];
       const deletePromises = dataPathsToDelete.map(path => remove(ref(db, path)));
       await Promise.all(deletePromises);
