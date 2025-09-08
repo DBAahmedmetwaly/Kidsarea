@@ -64,6 +64,8 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ar } from 'date-fns/locale';
 import { Progress } from '@/components/ui/progress';
+import PasswordDialog from './_components/PasswordDialog';
+
 
 type ChildFormField = {
     id: string;
@@ -405,6 +407,8 @@ function CustomersContent() {
     const debouncedFilter = useDebounce(filter, 300);
     const [visibleCount, setVisibleCount] = useState(20);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [isDeleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
     
     const { uploadState, processFile, resetUploadState } = useCustomerUpload(customers);
     const isUploading = uploadState.status === 'reading' || uploadState.status === 'processing';
@@ -469,6 +473,18 @@ function CustomersContent() {
         }
     }
     
+    const handleDeleteAllCustomersRequest = () => {
+        setPasswordDialogOpen(true);
+    };
+
+    const handleDeleteAllPasswordConfirm = (password: string) => {
+        if (password === 'metoomar') {
+            setDeleteAllConfirmOpen(true);
+        } else {
+            toast({ title: "كلمة مرور خاطئة", variant: "destructive" });
+        }
+    };
+    
     const handleDeleteAllCustomers = async () => {
         try {
             await remove(ref(db, 'customers'));
@@ -476,6 +492,8 @@ function CustomersContent() {
         } catch(e) {
             console.error(e);
             toast({ title: "خطأ", description: "فشل حذف جميع العملاء.", variant: 'destructive' });
+        } finally {
+            setDeleteAllConfirmOpen(false);
         }
     }
 
@@ -573,26 +591,12 @@ function CustomersContent() {
               <CardTitle>قائمة العملاء</CardTitle>
               <CardDescription>إجمالي العملاء: {customers.length} | إجمالي الأطفال: {totalChildren}. انقر على اسم العميل لعرض سجل زياراته.</CardDescription>
             </div>
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" disabled={customers.length === 0}>
-                        <Trash2 className="me-2 h-4 w-4"/>
-                        حذف كل العملاء
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
-                    <AlertDialogDescription>
-                       <span className="font-bold text-red-600">هذا الإجراء لا يمكن التراجع عنه.</span> سيؤدي هذا إلى حذف جميع العملاء وبياناتهم بشكل دائم من قاعدة البيانات.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteAllCustomers}>نعم، أحذف كل شيء</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            
+            <Button variant="destructive" size="sm" disabled={customers.length === 0} onClick={handleDeleteAllCustomersRequest}>
+                <Trash2 className="me-2 h-4 w-4"/>
+                حذف كل العملاء
+            </Button>
+
           </div>
         </CardHeader>
         <CardContent>
@@ -669,6 +673,27 @@ function CustomersContent() {
         isEditMode={isEditMode}
         initialData={selectedCustomer}
       />
+      {isPasswordDialogOpen && (
+          <PasswordDialog 
+            open={isPasswordDialogOpen}
+            onOpenChange={setPasswordDialogOpen}
+            onConfirm={handleDeleteAllPasswordConfirm}
+          />
+      )}
+       <AlertDialog open={isDeleteAllConfirmOpen} onOpenChange={setDeleteAllConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
+              <AlertDialogDescription>
+                <span className="font-bold text-red-600">هذا الإجراء لا يمكن التراجع عنه.</span> سيؤدي هذا إلى حذف جميع العملاء وبياناتهم بشكل دائم من قاعدة البيانات.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAllCustomers}>نعم، أحذف كل شيء</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
