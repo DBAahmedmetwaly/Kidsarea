@@ -11,7 +11,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings, Child, CompletedSession, ShiftRecord, Expense, ExpenseType, Product, ProductCategory, InventoryItem, ProductSale, InventoryMovement } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
@@ -40,6 +40,7 @@ interface FirebaseContextType {
   loading: boolean;
   isInitialLoad: boolean; // To track the very first load
   error: Error | null;
+  findEmployeeByUsername: (username: string) => Promise<Employee | null>;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
@@ -154,6 +155,19 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       unsubscribes.forEach((unsub) => unsub());
     };
   }, [isInitialLoad, isAuthenticated]);
+  
+  const findEmployeeByUsername = async (username: string): Promise<Employee | null> => {
+    const employeesRef = ref(db, 'employees');
+    const employeeQuery = query(employeesRef, orderByChild('username'), equalTo(username));
+    const snapshot = await get(employeeQuery);
+
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      const employeeId = Object.keys(data)[0];
+      return { id: employeeId, ...data[employeeId] };
+    }
+    return null;
+  }
 
   const value = {
     games,
@@ -177,6 +191,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     loading,
     isInitialLoad,
     error,
+    findEmployeeByUsername
   };
 
 

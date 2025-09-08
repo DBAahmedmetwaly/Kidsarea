@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,47 +28,47 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { login } = useAuth();
-  const { employees, policies, loading: dataLoading } = useFirebase();
+  const { policies, loading: dataLoading, findEmployeeByUsername } = useFirebase();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const user = employees.find(
-        (emp) => emp.username === username && emp.password === password
-    );
+    if (username === 'admin' && password === '123456') {
+        login({ username: 'admin' });
+        toast({
+        title: 'تم تسجيل الدخول بنجاح',
+        description: 'مرحباً بعودتك!',
+        });
+        setLoading(false);
+        return;
+    }
 
-    if (user) {
+    const user = await findEmployeeByUsername(username);
+
+    if (user && user.password === password) {
         if (user.status === 'Disabled') {
             toast({
                 title: 'الحساب معطل',
                 description: 'تم تعطيل هذا الحساب. يرجى مراجعة المدير.',
                 variant: 'destructive',
             });
-            setLoading(false);
-            return;
-        }
-
-        const allowedRoles = ['كاشير', 'مدير فرع', 'مشرف'];
-        if (user.role && allowedRoles.includes(user.role)) {
-            login(user);
-            toast({
-            title: 'تم تسجيل الدخول بنجاح',
-            description: `مرحباً بعودتك، ${user.name}!`,
-            });
         } else {
-             toast({
-                title: 'فشل تسجيل الدخول',
-                description: 'هذا المستخدم ليس لديه صلاحية للدخول.',
-                variant: 'destructive',
-            });
+            const allowedRoles = ['كاشير', 'مدير فرع', 'مشرف'];
+            if (user.role && allowedRoles.includes(user.role)) {
+                login(user);
+                toast({
+                    title: 'تم تسجيل الدخول بنجاح',
+                    description: `مرحباً بعودتك، ${user.name}!`,
+                });
+            } else {
+                toast({
+                    title: 'فشل تسجيل الدخول',
+                    description: 'هذا المستخدم ليس لديه صلاحية للدخول.',
+                    variant: 'destructive',
+                });
+            }
         }
-    } else if (username === 'admin' && password === '123456') {
-        login({ username: 'admin' });
-        toast({
-        title: 'تم تسجيل الدخول بنجاح',
-        description: 'مرحباً بعودتك!',
-        });
     } else {
         toast({
         title: 'فشل تسجيل الدخول',
