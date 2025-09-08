@@ -5,7 +5,7 @@ import { getDatabase } from 'firebase/database';
 const firebaseConfig = {
   projectId: "funtrack-manager",
   appId: "1:251373291254:web:baa6647ccb8630f8028ed7",
-  storageBucket: "funtrack-manager.firebasestorage.app",
+  storageBucket: "funtrack-manager.appspot.com",
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "funtrack-manager.firebaseapp.com",
   measurementId: "",
