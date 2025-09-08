@@ -1241,7 +1241,7 @@ function PosTrackingContent() {
   }, [firebaseCompletedSessions, selectedBranchFilter, user, openShifts]);
 
     const dailyStats = useMemo(() => {
-        const activeCount = activeChildren.length;
+        const activeCount = activeChildren.filter(child => selectedBranchFilter === 'all' || child.branchName === selectedBranchFilter).length;
         
         const todaysSessions = firebaseCompletedSessions.filter(s => {
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
@@ -1346,12 +1346,11 @@ function PosTrackingContent() {
         const finalCost = Math.max(0, originalCost - discount);
         
         const receiptDetails: Partial<PosReceiptProps> = {
-            cost: finalCost,
-            costBeforeDiscount: originalCost,
             totalCost: finalCost,
+            costBeforeDiscount: originalCost,
             discount: discount,
             notes: `خروج مبكر: ${notes}`,
-        }
+        };
 
         handleCheckOut(childToCheckout, receiptDetails as PosReceiptProps, true);
         setEarlyCheckoutDiscountOpen(false);
@@ -1443,7 +1442,7 @@ function PosTrackingContent() {
         notes: receiptDetails.notes,
     };
     
-    const printCondition = receiptSettings && !isPrepaidModification && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || child.prepaidSessionId);
+    const printCondition = receiptSettings && !isPrepaidModification && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || (child.prepaidSessionId && !isPrepaidModification));
     
     if (printCondition) {
         printReceipt(<PosReceipt {...finalReceiptDetails} />);
@@ -1762,11 +1761,15 @@ function PosTrackingContent() {
 
     const handleTimeEnd = useCallback((session: Child) => {
         const showToast = () => {
-            // Check if the session is still active before showing the toast
-            const isSessionActive = activeChildren.some(child => child.id === session.id);
-            if (!isSessionActive) {
+            const isSessionStillActive = activeChildren.some(child => child.id === session.id);
+            const isUserInCorrectBranch = !currentUser || currentUser.branch === 'كل الفروع' || currentUser.branch === session.branchName;
+            
+            if (!isSessionStillActive) {
                 stopNotificationForSession(session.id); // Clean up the interval
                 return;
+            }
+            if (!isUserInCorrectBranch) {
+                return; // Don't show toast if user is in a different branch
             }
             
             toast({
@@ -1782,7 +1785,7 @@ function PosTrackingContent() {
         const intervalSeconds = policies?.packageOvertimeNotificationInterval || 60;
         const intervalId = setInterval(showToast, intervalSeconds * 1000);
         notificationIntervals.set(session.id, intervalId);
-    }, [policies, toast, notificationIntervals, activeChildren, stopNotificationForSession]);
+    }, [policies, toast, notificationIntervals, activeChildren, stopNotificationForSession, currentUser]);
 
   const hasTimeExpired = (session: Child) => {
     if (!session.packageDuration) return false;
@@ -2055,18 +2058,9 @@ function PosTrackingContent() {
                                     <TableCell className="font-medium text-right align-top">
                                         <div className="flex items-start gap-2">
                                             <div>
-                                                {session.children.map(c=>c.name).join(', ')}
+                                                <p>{session.children.map(c=>c.name).join(', ')}</p>
                                                 {session.notes && (
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => handleShowNote(session.notes!)}>
-                                                                    <Eye className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent><p>عرض الملاحظات</p></TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
+                                                     <p className='text-xs text-muted-foreground'>{session.notes}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -2238,9 +2232,9 @@ function PosTrackingContent() {
             <CustomerFormDialog 
                 open={isCustomerFormOpen} 
                 onOpenChange={setCustomerFormOpen} 
-                onSubmit={() => {}}
-                isEditMode={false}
-                initialData={null}
+                onSubmit={handleCustomerFormSubmit}
+                isEditMode={customerFormIsEditMode}
+                initialData={customerFormIsEditMode ? selectedCustomer : null}
             />
              <SubscriptionFormDialog
                 open={isSubscriptionFormOpen}
