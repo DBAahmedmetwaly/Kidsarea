@@ -368,7 +368,7 @@ function SessionsContent() {
         </Card>
         <Card>
             <CardHeader>
-                <CardTitle>جميع الجلسات المنتهية</CardTitle>
+                <CardTitle>جميع جلسات المنتهية و الغير منتهية</CardTitle>
                 <CardDescription>عرض لجميع جلسات اللعب التي تمت في الفروع.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -426,6 +426,7 @@ export default function SessionsPage() {
 
 
     
+
 
 
 
