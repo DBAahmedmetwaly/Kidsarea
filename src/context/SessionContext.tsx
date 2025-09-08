@@ -70,8 +70,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         completedUnsubscribe = onValue(completedRef, (snapshot) => {
             const data = snapshot.val();
             const sessionsArray: CompletedSession[] = data 
-                ? Object.values(data).sort((a: any,b: any) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime())
+                ? Object.values(data)
                 : [];
+            
+            // Sort the array every time new data is received to ensure order is always correct
+            sessionsArray.sort((a: any, b: any) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime());
+            
             setCompletedSessions(sessionsArray);
             handleLoad();
         });
