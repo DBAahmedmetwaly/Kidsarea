@@ -1152,13 +1152,20 @@ function PosTrackingContent() {
   }, [currentUser]);
 
   const searchedActiveChildren = useMemo(() => {
-    if (!activeSearch) return activeChildren;
-    return activeChildren.filter(child => 
+    let filtered = activeChildren;
+
+    if (selectedBranchFilter !== 'all') {
+      filtered = filtered.filter(child => child.branchName === selectedBranchFilter);
+    }
+
+    if (!activeSearch) return filtered;
+
+    return filtered.filter(child => 
         child.parentName.toLowerCase().includes(activeSearch.toLowerCase()) ||
         child.children.some(c => c.name.toLowerCase().includes(activeSearch.toLowerCase())) ||
         (child.phoneNumbers || []).some(p => p.includes(activeSearch))
     );
-  }, [activeChildren, activeSearch]);
+  }, [activeChildren, activeSearch, selectedBranchFilter]);
 
   const branchInventory = useMemo(() => {
       if (selectedBranchFilter === 'all') return [];
@@ -2263,5 +2270,6 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
