@@ -10,7 +10,7 @@ const firebaseConfig = {
   authDomain: "funtrack-manager.firebaseapp.com",
   measurementId: "",
   messagingSenderId: "251373291254",
-  databaseURL: "https://kids-aria-default-rtdb.firebaseio.com/",
+  databaseURL: "https://funtrack-manager-default-rtdb.firebaseio.com/",
 };
 
 // Initialize Firebase
