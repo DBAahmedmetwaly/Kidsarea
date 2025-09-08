@@ -166,6 +166,7 @@ function SessionsContent() {
         packageName: session.packageName,
         packageDuration: session.packageDuration,
         overtimeCost: session.overtimeCost,
+        notes: session.notes,
     };
     printReceipt(<PosReceipt {...receiptDetails} />);
   }
@@ -197,7 +198,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={11}>
+            <TableCell colSpan={12}>
                 <Loader2 className="mx-auto h-6 w-6 animate-spin" />
             </TableCell>
           </TableRow>
@@ -209,7 +210,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={11} className="h-24 text-center">
+            <TableCell colSpan={12} className="h-24 text-center">
               لا توجد جلسات مطابقة للبحث.
             </TableCell>
           </TableRow>
@@ -238,6 +239,7 @@ function SessionsContent() {
                 <TableCell className="text-center whitespace-nowrap">
                 {formatDuration(session.durationMs)}
                 </TableCell>
+                 <TableCell className="text-right whitespace-nowrap">{session.notes || '-'}</TableCell>
                 <TableCell className="font-bold text-center">
                     <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                         {session.discount ? (
@@ -396,6 +398,7 @@ function SessionsContent() {
                         <TableHead className="text-right">اللعبة</TableHead>
                         <TableHead className="text-right">الباقة</TableHead>
                         <TableHead className="text-center">مدة اللعب</TableHead>
+                        <TableHead className="text-right">الملاحظات</TableHead>
                         <TableHead className="text-center">التكلفة النهائية</TableHead>
                         <TableHead className="text-center">وقت الخروج</TableHead>
                         <TableHead className="text-center">إجراء</TableHead>
@@ -438,4 +441,5 @@ export default function SessionsPage() {
 
 
     
+
 

@@ -17,6 +17,7 @@ export interface Child {
   branchName: string;
   checkInTime: number;
   cashierUsername: string; // Added to track who checked the child in
+  notes?: string;
   // For package based games
   packageName?: string;
   packageDuration?: number; // in minutes
@@ -36,7 +37,6 @@ export interface CompletedSession extends Child {
     discount?: number;
     subscriptionId?: string; // To link to a subscription if applicable
     overtimeCost?: number;
-    notes?: string;
 }
 
 export interface Game {

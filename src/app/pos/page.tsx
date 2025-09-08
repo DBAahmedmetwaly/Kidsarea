@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon, FileText } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ProductSaleItem, InventoryMovement } from '@/lib/types';
@@ -54,6 +54,7 @@ import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onTimeEnd }: { startTime: number, packageDuration?: number, gracePeriodInMinutes?: number, onTimeEnd?: () => void }) => {
@@ -217,6 +218,7 @@ function CheckOutDialog({
   const { games, policies: allPolicies, employees, receiptSettings, subscriptions, branches } = useFirebase();
   const [amountReceived, setAmountReceived] = useState('');
   const [discount, setDiscount] = useState('');
+  const [notes, setNotes] = useState('');
   const [activeSubscriptions, setActiveSubscriptions] = useState<Subscription[]>([]);
   const { user } = useAuth();
   const { printReceipt } = usePosPrint();
@@ -338,11 +340,12 @@ function CheckOutDialog({
     if (open) {
         setAmountReceived('');
         setDiscount('');
+        setNotes(child?.notes || '');
         setTimeout(() => {
             amountReceivedInputRef.current?.focus();
         }, 100);
     }
-  }, [open]);
+  }, [open, child]);
 
   const handleConfirm = async () => {
     if(!child || !checkoutData) return;
@@ -392,6 +395,7 @@ function CheckOutDialog({
         packageName: child.packageName,
         packageDuration: child.packageDuration,
         overtimeCost: checkoutData.overtimeCost,
+        notes: notes,
     };
     
     onConfirmPostpaid(child, receiptDetails);
@@ -464,6 +468,15 @@ function CheckOutDialog({
                     />
                 </div>
             </div>
+             <div className="space-y-2">
+                <Label htmlFor="checkout-notes">ملاحظات الفاتورة</Label>
+                <Textarea
+                id="checkout-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="أي ملاحظات إضافية على الفاتورة (اختياري)..."
+                />
+            </div>
             {amountReceived && (
                 <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                     <span className="font-medium">الباقي:</span>
@@ -528,6 +541,7 @@ function CheckInDialog({
     const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
     const [guestChildren, setGuestChildren] = useState<CustomerChild[]>([]);
     const [selectedPackages, setSelectedPackages] = useState<SelectedPackagesMap>({});
+    const [notes, setNotes] = useState('');
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -569,6 +583,7 @@ function CheckInDialog({
             setSelectedPackages({});
             setOpenCombobox(false);
             setSearchQuery("");
+            setNotes("");
         }
     }, [open]);
 
@@ -686,6 +701,7 @@ function CheckInDialog({
                     packageDuration: totalPackageDuration,
                     packagePrice: finalPrice, // Store the final total price here
                     packageName: Object.values(selectedPackages).map(item => `${item.quantity}x ${item.package.label}`).join(', '),
+                    notes: notes,
                 },
                 price: finalPrice,
                 cartQuantity: cartQuantity,
@@ -699,6 +715,7 @@ function CheckInDialog({
                 branchName: selectedGame.branch,
                 parentName: selectedCustomer.parentName,
                 phoneNumbers: selectedCustomer.phoneNumbers,
+                notes: notes,
             };
             onConfirmPostpaid(sessionDetails);
         }
@@ -891,6 +908,15 @@ function CheckInDialog({
                                 )}
                             </div>
                         )}
+                        <div className="space-y-2">
+                            <Label htmlFor="session-notes">ملاحظات على الجلسة (اختياري)</Label>
+                            <Textarea 
+                                id="session-notes"
+                                placeholder="اكتب ملاحظات مثل (حساسية، حالة طبية، ...)"
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                            />
+                        </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>
@@ -1269,24 +1295,15 @@ function PosTrackingContent() {
         const originalSession: CompletedSession = snapshot.val();
         const originalCost = originalSession.costBeforeDiscount;
         const finalCost = Math.max(0, originalCost - discount);
-
-        const updates = {
-            cost: finalCost,
+        
+        const receiptDetails = {
+            totalCost: finalCost,
             discount: discount,
             notes: `خروج مبكر: ${notes}`,
-            checkOutTime: new Date().getTime(),
-            durationMs: new Date().getTime() - originalSession.checkInTime,
-        };
-
-        try {
-            await update(originalSessionRef, updates);
-            await remove(ref(db, `sessions/active/${childToCheckout.id}`));
-            toast({ title: "تم تسجيل الخروج بنجاح", description: "تم تحديث الفاتورة الأصلية بالخصم." });
-            setEarlyCheckoutDiscountOpen(false);
-        } catch (error) {
-            console.error("Early checkout update failed:", error);
-            toast({ title: "خطأ", description: "فشل تحديث الجلسة الأصلية.", variant: "destructive" });
         }
+
+        handleCheckOut(childToCheckout, receiptDetails as PosReceiptProps, true);
+        setEarlyCheckoutDiscountOpen(false);
     };
 
     const handleOvertimeCheckout = async (receivedAmount: number) => {
@@ -1327,7 +1344,7 @@ function PosTrackingContent() {
     }
 
 
-  const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps) => {
+  const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps, isPrepaidModification: boolean = false) => {
     if (!child) return;
 
     stopNotificationForSession(child.id);
@@ -1374,7 +1391,7 @@ function PosTrackingContent() {
         overtimeCost: receiptDetails.overtimeCost,
     };
 
-    if (receiptSettings && !child.prepaidSessionId && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || child.prepaidSessionId) ) {
+    if (receiptSettings && !isPrepaidModification && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || child.prepaidSessionId) ) {
         printReceipt(<PosReceipt {...finalReceiptDetails} />);
     }
 
@@ -1643,7 +1660,6 @@ function PosTrackingContent() {
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
                 cashierUsername: user.username,
-                notes: cartNotes,
             };
             await set(completedSessionRef, completedSession);
             await handleStartSession(gameItem.sessionDetails, completedSessionId, receiptNumber);
@@ -1982,7 +1998,21 @@ function PosTrackingContent() {
                                 {searchedActiveChildren.length > 0 ? (
                                 searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
-                                    <TableCell className="font-medium text-right">{session.children.map(c=>c.name).join(', ')}</TableCell>
+                                    <TableCell className="font-medium text-right flex items-center gap-2">
+                                        {session.children.map(c=>c.name).join(', ')}
+                                        {session.notes && (
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <FileText className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{session.notes}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
                                     <TableCell className="text-center">{(session.phoneNumbers || []).join(' / ')}</TableCell>
                                     <TableCell className="text-center font-mono">
@@ -2233,4 +2263,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
