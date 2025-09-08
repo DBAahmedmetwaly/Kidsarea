@@ -1469,18 +1469,20 @@ function PosTrackingContent() {
         return;
     }
 
-    if (!user || !user.username) {
+    if (!user || !user.username || !currentUser) {
         toast({ title: 'خطأ', description: 'لم يتم تحديد الكاشير الحالي.', variant: 'destructive' });
         return;
     }
     
+    const sessionBranch = currentUser.branch === 'كل الفروع' ? selectedBranchFilter : currentUser.branch;
+
     const newSessionRef = push(ref(db, 'sessions/active'));
     const newSessionId = newSessionRef.key!;
 
     const newSession: Child = {
       ...data,
       id: newSessionId,
-      branchName: data.branchName === 'كل الفروع' ? currentUser!.branch : data.branchName,
+      branchName: sessionBranch,
       checkInTime: Date.now(),
       cashierUsername: user.username,
       prepaidSessionId: prepaidSessionId || null,
@@ -1567,6 +1569,9 @@ function PosTrackingContent() {
     };
   
     const handleConfirmPrepaid = (cartItem: PrepaidGameCartItem) => {
+        if (!currentUser) return;
+        const sessionBranch = currentUser.branch === 'كل الفروع' ? selectedBranchFilter : currentUser.branch;
+
         let finalCartQuantity = 1;
         if (policies?.packagePricingModel === 'per_child') {
             finalCartQuantity = cartItem.sessionDetails.children.length;
@@ -1574,6 +1579,7 @@ function PosTrackingContent() {
         
         const updatedCartItem = {
             ...cartItem,
+            sessionDetails: { ...cartItem.sessionDetails, branchName: sessionBranch },
             price: cartItem.price,
             cartQuantity: finalCartQuantity
         };
@@ -2329,4 +2335,5 @@ export default function PosTrackingPage() {
 }
 
     
+
 
