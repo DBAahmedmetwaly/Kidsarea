@@ -1385,7 +1385,7 @@ function PosTrackingContent() {
         ...receiptDetails,
         receiptId: `${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`,
         settings: receiptSettings,
-        appName: allPolicies.find(p => p.id === 'default')?.appName || 'FunTrack',
+        appName: allPolicies?.find(p => p.id === 'default')?.appName || 'FunTrack',
         children: child.children,
         parentName: child.parentName,
         phoneNumbers: child.phoneNumbers,
@@ -1704,7 +1704,7 @@ function PosTrackingContent() {
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
                 cashierUsername: user.username,
-                notes: `${gameItem.sessionDetails.notes || ''} ${cartNotes}`.trim(),
+                notes: [gameItem.sessionDetails.notes, cartNotes].filter(Boolean).join(' - '),
             };
             await set(completedSessionRef, completedSession);
             await handleStartSession(gameItem.sessionDetails, completedSessionId, receiptNumber);
@@ -2335,6 +2335,7 @@ export default function PosTrackingPage() {
 }
 
     
+
 
 
 
