@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -1692,6 +1693,8 @@ function PosTrackingContent() {
             const completedSessionRef = push(ref(db, `sessions/completed`));
             const completedSessionId = completedSessionRef.key!;
             const checkInTime = Date.now();
+            
+            const combinedNotes = [gameItem.sessionDetails.notes, cartNotes].filter(Boolean).join(' - ');
 
             const completedSession: CompletedSession = {
                 ...gameItem.sessionDetails,
@@ -1703,10 +1706,13 @@ function PosTrackingContent() {
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
                 cashierUsername: user.username,
-                notes: [gameItem.sessionDetails.notes, cartNotes].filter(Boolean).join(' - '),
+                notes: combinedNotes,
             };
             await set(completedSessionRef, completedSession);
-            await handleStartSession(gameItem.sessionDetails, completedSessionId, receiptNumber);
+
+            // Pass combined notes to the active session as well
+            const sessionDataForActive = { ...gameItem.sessionDetails, notes: combinedNotes };
+            await handleStartSession(sessionDataForActive, completedSessionId, receiptNumber);
 
             const checkInDate = new Date(checkInTime);
             const expectedCheckOutTime = new Date(checkInDate.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
