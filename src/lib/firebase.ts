@@ -3,14 +3,14 @@ import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
-  projectId: "funtrack-manager",
-  appId: "1:251373291254:web:baa6647ccb8630f8028ed7",
-  storageBucket: "funtrack-manager.appspot.com",
-  apiKey: "AIzaSyBf0jW0P5BsoVyx62NIE9DK3FI11uIRynU",
-  authDomain: "funtrack-manager.firebaseapp.com",
-  measurementId: "",
-  messagingSenderId: "251373291254",
-  databaseURL: "https://funtrack-manager-default-rtdb.firebaseio.com/",
+  apiKey: "AIzaSyA0r91-Fpc3bkIh-1yAGtegCJtXOcY-HKA",
+  authDomain: "kids-aria.firebaseapp.com",
+  databaseURL: "https://kids-aria-default-rtdb.firebaseio.com",
+  projectId: "kids-aria",
+  storageBucket: "kids-aria.firebasestorage.app",
+  messagingSenderId: "711487865094",
+  appId: "1:711487865094:web:744939809e46b38a361e87",
+  measurementId: "G-T1SR0E84N5"
 };
 
 // Initialize Firebase
