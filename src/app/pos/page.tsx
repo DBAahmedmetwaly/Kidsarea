@@ -2005,19 +2005,10 @@ function PosTrackingContent() {
                                 {searchedActiveChildren.length > 0 ? (
                                 searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
-                                    <TableCell className="font-medium text-right flex items-center gap-2">
-                                        {session.children.map(c=>c.name).join(', ')}
+                                    <TableCell className="font-medium text-right align-top">
+                                        <div>{session.children.map(c=>c.name).join(', ')}</div>
                                         {session.notes && (
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <FileText className="h-4 w-4 text-muted-foreground cursor-pointer" />
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{session.notes}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-[150px] whitespace-pre-wrap">{session.notes}</p>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
@@ -2270,6 +2261,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
