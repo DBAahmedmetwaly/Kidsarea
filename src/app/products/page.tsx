@@ -54,7 +54,7 @@ const ProductFormDialog = dynamic(() => import('./_components/ProductFormDialog'
 });
 
 function ProductsContent() {
-    const { products } = useFirebase();
+    const { products, inventory } = useFirebase();
     const { toast } = useToast();
     const [isFormOpen, setFormOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -63,10 +63,25 @@ function ProductsContent() {
     const handleFormSubmit = async (productData: Omit<Product, 'id'> | Product) => {
         try {
             if ('id' in productData) { // Edit mode
-                const productRef = ref(db, `products/${productData.id}`);
                 const { id, ...dataToUpdate } = productData;
-                await update(productRef, dataToUpdate);
-                toast({ title: 'تم التعديل بنجاح', description: `تم تحديث المنتج "${productData.name}".` });
+                
+                const updates: { [key: string]: any } = {};
+
+                // 1. Update the main product entry
+                updates[`/products/${id}`] = dataToUpdate;
+
+                // 2. Find and update corresponding inventory items
+                const inventoryItemsToUpdate = inventory.filter(item => item.productId === id);
+                inventoryItemsToUpdate.forEach(item => {
+                    updates[`/inventory/${item.id}/productName`] = dataToUpdate.name;
+                    updates[`/inventory/${item.id}/categoryId`] = dataToUpdate.categoryId;
+                    updates[`/inventory/${item.id}/categoryName`] = dataToUpdate.categoryName;
+                });
+                
+                await update(ref(db), updates);
+
+                toast({ title: 'تم التعديل بنجاح', description: `تم تحديث المنتج "${productData.name}" في الكتالوج والمخزون.` });
+
             } else { // Add mode
                 const productsRef = ref(db, 'products');
                 const newProductRef = push(productsRef);
