@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -526,6 +525,7 @@ function CheckInDialog({
     onConfirmPostpaid,
     onConfirmPrepaid,
     policies,
+    handleCustomerFormSubmit,
 } : {
     open: boolean,
     onOpenChange: (open: boolean) => void,
@@ -533,6 +533,7 @@ function CheckInDialog({
     onConfirmPostpaid: (childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => void,
     onConfirmPrepaid: (cartItem: PrepaidGameCartItem) => void,
     policies: Policies | null,
+    handleCustomerFormSubmit: (customerData: Omit<Customer, 'id' | 'createdAt'> | Customer) => void,
 }) {
     const { customers } = useCustomers();
     const { toast } = useToast();
@@ -723,52 +724,6 @@ function CheckInDialog({
 
         onOpenChange(false);
     }
-    
-    const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
-      try {
-          const existingCustomer = customers.find(c => (c.phoneNumbers || []).some(p => newCustomerData.phoneNumbers.includes(p)));
-          if (existingCustomer) {
-                toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
-                return;
-          }
-          const customersRef = ref(db, 'customers');
-          const newCustomerRef = push(customersRef);
-          const finalData = { ...newCustomerData, createdAt: new Date().toISOString() };
-          await set(newCustomerRef, finalData);
-          toast({
-                title: "تمت الإضافة بنجاح",
-                description: `تمت إضافة العميل "${newCustomerData.parentName}".`,
-          });
-          setCustomerFormOpen(false); // Close dialog on success
-      } catch(e) {
-          console.error(e);
-      }
-    };
-    
-    const handleEditCustomer = async (customerToUpdate: Customer) => {
-        try {
-            const customerRef = ref(db, `customers/${customerToUpdate.id}`);
-            const { id, ...customerData } = customerToUpdate;
-            await update(customerRef, customerData);
-            toast({ title: "تم التعديل بنجاح" });
-            // Update the selected customer in the dialog state
-            if (selectedCustomer && selectedCustomer.id === customerToUpdate.id) {
-                setSelectedCustomer(customerToUpdate);
-            }
-        } catch (e) {
-            console.error(e);
-            toast({ title: "خطأ في التعديل", variant: 'destructive' });
-        }
-    };
-
-    const handleCustomerFormSubmit = (customerData: Omit<Customer, 'id' | 'createdAt'> | Customer) => {
-        if ('id' in customerData) {
-            handleEditCustomer(customerData as Customer);
-        } else {
-            handleAddCustomer(customerData as Omit<Customer, 'id' | 'createdAt'>);
-        }
-        setCustomerFormOpen(false);
-    };
 
     const openCustomerForm = (isEdit: boolean) => {
         setCustomerFormIsEditMode(isEdit);
@@ -1146,6 +1101,8 @@ function PosTrackingContent() {
   const [currentTime, setCurrentTime] = useState<string>('');
 
   const notificationIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map()).current;
+  const [customerFormIsEditMode, setCustomerFormIsEditMode] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
 
   const currentUser = useMemo(() => {
@@ -1556,6 +1513,31 @@ function PosTrackingContent() {
           console.error(e);
       }
     };
+
+    const handleEditCustomer = async (customerToUpdate: Customer) => {
+        try {
+            const customerRef = ref(db, `customers/${customerToUpdate.id}`);
+            const { id, ...customerData } = customerToUpdate;
+            await update(customerRef, customerData);
+            toast({ title: "تم التعديل بنجاح" });
+            // Update the selected customer in the dialog state
+            if (selectedCustomer && selectedCustomer.id === customerToUpdate.id) {
+                setSelectedCustomer(customerToUpdate);
+            }
+        } catch (e) {
+            console.error(e);
+            toast({ title: "خطأ في التعديل", variant: 'destructive' });
+        }
+    };
+
+    const handleCustomerFormSubmit = (customerData: Omit<Customer, 'id' | 'createdAt'> | Customer) => {
+        if ('id' in customerData) {
+            handleEditCustomer(customerData as Customer);
+        } else {
+            handleAddCustomer(customerData as Omit<Customer, 'id' | 'createdAt'>);
+        }
+        setCustomerFormOpen(false);
+    };
   
     const handleAddToCart = (item: InventoryItem) => {
         setCart(prevCart => {
@@ -1713,6 +1695,7 @@ function PosTrackingContent() {
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
                 cashierUsername: user.username,
+                notes: gameItem.sessionDetails.notes,
             };
             await set(completedSessionRef, completedSession);
             await handleStartSession(gameItem.sessionDetails, completedSessionId, receiptNumber);
@@ -1878,7 +1861,11 @@ function PosTrackingContent() {
                     <span className="font-mono font-bold text-lg" suppressHydrationWarning>{currentTime}</span>
                 </div>
                 <div className="ms-auto flex items-center gap-2">
-                     <Button size="sm" variant="outline" onClick={() => setCustomerFormOpen(true)}>
+                     <Button size="sm" variant="outline" onClick={() => {
+                        setCustomerFormOpen(true);
+                        setCustomerFormIsEditMode(false);
+                        setSelectedCustomer(null);
+                     }}>
                         <UserPlus className="me-2 h-4 w-4" />
                         إضافة عميل
                     </Button>
@@ -2060,7 +2047,18 @@ function PosTrackingContent() {
                                             <div>
                                                 <p>{session.children.map(c=>c.name).join(', ')}</p>
                                                 {session.notes && (
-                                                     <p className='text-xs text-muted-foreground'>{session.notes}</p>
+                                                      <TooltipProvider>
+                                                        <Tooltip>
+                                                          <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-500" onClick={() => handleShowNote(session.notes!)}>
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                          </TooltipTrigger>
+                                                          <TooltipContent>
+                                                            <p>عرض الملاحظات</p>
+                                                          </TooltipContent>
+                                                        </Tooltip>
+                                                      </TooltipProvider>
                                                 )}
                                             </div>
                                         </div>
@@ -2182,6 +2180,7 @@ function PosTrackingContent() {
                 onConfirmPostpaid={handleStartSession}
                 onConfirmPrepaid={handleConfirmPrepaid}
                 policies={policies}
+                handleCustomerFormSubmit={handleCustomerFormSubmit}
             />
             <CheckOutDialog 
                 open={isCheckoutDialogOpen}
@@ -2326,11 +2325,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-
-
-
-
-
 
     
