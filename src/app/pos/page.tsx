@@ -1067,12 +1067,12 @@ function OvertimeDialog({
 }
 
 function PosTrackingContent() {
-  const { activeChildren: firebaseActiveChildren, completedSessions: firebaseCompletedSessions, subscriptions, games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings, loading: firebaseLoading } = useFirebase();
+  const { games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
   const { printReceipt } = usePosPrint();
   const { customers } = useCustomers();
-  const { activeChildren, setActiveChildren } = useSession();
+  const { activeChildren, completedSessions, subscriptions } = useSession();
 
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
@@ -1192,18 +1192,18 @@ function PosTrackingContent() {
         const openShift = openShifts.find(s => s.cashierUsername === user.username);
         const filterStartTime = openShift ? new Date(openShift.startTime) : todayStart;
 
-        return firebaseCompletedSessions.filter(s => {
+        return completedSessions.filter(s => {
             const cashierMatch = s.cashierUsername === user.username;
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
             const timeMatch = new Date(s.checkOutTime).getTime() >= filterStartTime;
             return cashierMatch && branchMatch && timeMatch;
         }).slice(0, 5); // Show last 5
-  }, [firebaseCompletedSessions, selectedBranchFilter, user, openShifts]);
+  }, [completedSessions, selectedBranchFilter, user, openShifts]);
 
     const dailyStats = useMemo(() => {
         const activeCount = activeChildren.filter(child => selectedBranchFilter === 'all' || child.branchName === selectedBranchFilter).length;
         
-        const todaysSessions = firebaseCompletedSessions.filter(s => {
+        const todaysSessions = completedSessions.filter(s => {
             const branchMatch = selectedBranchFilter === 'all' || s.branchName === selectedBranchFilter;
             return branchMatch && isToday(new Date(s.checkOutTime));
         });
@@ -1213,7 +1213,7 @@ function PosTrackingContent() {
 
         return { activeCount, visitorsToday, sessionsToday };
 
-    }, [activeChildren, firebaseCompletedSessions, selectedBranchFilter]);
+    }, [activeChildren, completedSessions, selectedBranchFilter]);
 
   const openCheckInDialog = (game: Game) => {
     setSelectedGame(game);
@@ -1448,7 +1448,7 @@ function PosTrackingContent() {
   const handleStartSession = async (data: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>, prepaidSessionId?: string, receiptNumber?: number) => {
     const { children } = data;
     
-    if (policies && policies.maxCapacity && (firebaseActiveChildren.length + children.length) > policies.maxCapacity) {
+    if (policies && policies.maxCapacity && (activeChildren.length + children.length) > policies.maxCapacity) {
         toast({
             title: 'تم الوصول للحد الأقصى',
             description: `لا يمكن إضافة المزيد من الأطفال. السعة القصوى هي ${policies.maxCapacity} طفل.`,
@@ -1457,7 +1457,7 @@ function PosTrackingContent() {
         return;
     }
 
-    const activeChildIds = firebaseActiveChildren.flatMap(ac => ac.children.map(c => c.id));
+    const activeChildIds = activeChildren.flatMap(ac => ac.children.map(c => c.id));
     const alreadyActiveChildren = children.filter(c => c.id && activeChildIds.includes(c.id));
 
     if (alreadyActiveChildren.length > 0) {
@@ -2050,10 +2050,19 @@ function PosTrackingContent() {
                                             <div>
                                                 <p>{session.children.map(c=>c.name).join(', ')}</p>
                                                 {session.notes && (
-                                                    <div className="flex items-center gap-1 mt-1">
-                                                        <Eye className="h-3 w-3 text-blue-500" />
-                                                        <p className="text-xs text-muted-foreground">{session.notes}</p>
-                                                    </div>
+                                                     <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button onClick={() => handleShowNote(session.notes!)} className="flex items-center gap-1 mt-1 text-blue-500 hover:underline">
+                                                                     <Eye className="h-4 w-4" />
+                                                                     <span className="text-xs">عرض الملاحظات</span>
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>{session.notes}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
                                                 )}
                                             </div>
                                         </div>

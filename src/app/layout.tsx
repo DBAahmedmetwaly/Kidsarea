@@ -39,8 +39,8 @@ export default function RootLayout({
           'min-h-screen bg-background font-body antialiased'
         )}
       >
-        <FirebaseProvider>
-            <AuthProvider>
+        <AuthProvider>
+          <FirebaseProvider>
               <PermissionsProvider>
                 <CustomerProvider>
                   <SessionProvider>
@@ -53,8 +53,8 @@ export default function RootLayout({
                   </SessionProvider>
                 </CustomerProvider>
               </PermissionsProvider>
-            </AuthProvider>
-        </FirebaseProvider>
+          </FirebaseProvider>
+        </AuthProvider>
       </body>
     </html>
   );

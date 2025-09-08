@@ -16,6 +16,7 @@ import { db } from '@/lib/firebase';
 import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings, Child, CompletedSession, ShiftRecord, Expense, ExpenseType, Product, ProductCategory, InventoryItem, ProductSale, InventoryMovement } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider';
 
 interface FirebaseContextType {
   games: Game[];
@@ -33,8 +34,6 @@ interface FirebaseContextType {
   productCategories: ProductCategory[];
   inventory: InventoryItem[];
   productSales: ProductSale[];
-  activeChildren: Child[];
-  completedSessions: CompletedSession[];
   shiftRecords: ShiftRecord[];
   expenses: Expense[];
   expenseTypes: ExpenseType[];
@@ -69,17 +68,21 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [productCategories, setProductCategories] = useState<ProductCategory[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [productSales, setProductSales] = useState<ProductSale[]>([]);
-  const [activeChildren, setActiveChildren] = useState<Child[]>([]);
-  const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
   const [shiftRecords, setShiftRecords] = useState<ShiftRecord[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const pathname = usePathname();
+  const { isAuthenticated } = useAuth(); // Use auth status to delay fetch
 
   useEffect(() => {
+    // Only subscribe if the user is authenticated
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     const dataRefs = [
       { key: 'games', setter: setGames, isArray: true },
       { key: 'employees', setter: setEmployees, isArray: true },
@@ -96,8 +99,6 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       { key: 'productCategories', setter: setProductCategories, isArray: true },
       { key: 'inventory', setter: setInventory, isArray: true },
       { key: 'productSales', setter: setProductSales, isArray: true },
-      { key: 'sessions/active', setter: setActiveChildren, isArray: true },
-      { key: 'sessions/completed', setter: setCompletedSessions, isArray: true, sort: (a: any, b: any) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime() },
       { key: 'shiftRecords', setter: setShiftRecords, isArray: true, sort: (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime() },
       { key: 'expenses', setter: setExpenses, isArray: true, sort: (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime() },
       { key: 'expenseTypes', setter: setExpenseTypes, isArray: true },
@@ -152,7 +153,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       unsubscribes.forEach((unsub) => unsub());
     };
-  }, [isInitialLoad]);
+  }, [isInitialLoad, isAuthenticated]);
 
   const value = {
     games,
@@ -170,8 +171,6 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     productCategories,
     inventory,
     productSales,
-    activeChildren,
-    completedSessions,
     shiftRecords,
     expenses,
     expenseTypes,

@@ -59,8 +59,7 @@ function formatDuration(durationMs: number) {
 
 function SessionsContent() {
   const { branches, employees, policies, receiptSettings } = useFirebase();
-  const { completedSessions: allCompletedSessions, setCompletedSessions } = useSession();
-  const [loading, setLoading] = useState(true);
+  const { completedSessions, loading } = useSession();
   const { user } = useAuth();
   const { printReceipt } = usePosPrint();
 
@@ -83,23 +82,9 @@ function SessionsContent() {
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    const sessionsRef = ref(db, 'sessions/completed');
-    const unsubscribe = onValue(sessionsRef, (snapshot) => {
-        const data = snapshot.val();
-        const sessionsArray: CompletedSession[] = data 
-            ? Object.values(data).sort((a: any,b: any) => new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime())
-            : [];
-        setCompletedSessions(sessionsArray);
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [setCompletedSessions]);
-
 
   const filteredSessions = useMemo(() => {
-    let sessions = [...allCompletedSessions];
+    let sessions = [...completedSessions];
     
     if (selectedBranch !== 'all') {
       sessions = sessions.filter(s => s.branchName === selectedBranch);
@@ -118,7 +103,7 @@ function SessionsContent() {
     }
 
     return sessions;
-  }, [allCompletedSessions, selectedBranch, phoneFilter, fromDate, toDate]);
+  }, [completedSessions, selectedBranch, phoneFilter, fromDate, toDate]);
   
   const visibleSessions = useMemo(() => {
     return filteredSessions.slice(0, visibleCount);
@@ -441,5 +426,6 @@ export default function SessionsPage() {
 
 
     
+
 
 

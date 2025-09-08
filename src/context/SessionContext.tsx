@@ -13,6 +13,7 @@ import {
 import type { Child, CompletedSession } from '@/lib/types';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/components/AuthProvider';
 
 interface SessionContextType {
   activeChildren: Child[];
@@ -36,8 +37,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [activeChildren, setActiveChildren] = useState<Child[]>([]);
   const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isAuthenticated } = useAuth(); // Use auth status to delay fetch
 
   useEffect(() => {
+      // Only subscribe if the user is authenticated
+      if (!isAuthenticated) {
+          setLoading(false);
+          return;
+      }
+      
       let activeUnsubscribe: () => void;
       let completedUnsubscribe: () => void;
       
@@ -77,7 +85,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           activeUnsubscribe?.();
           completedUnsubscribe?.();
       }
-  }, []);
+  }, [isAuthenticated]); // Rerun when authentication status changes
 
   return (
     <SessionContext.Provider
