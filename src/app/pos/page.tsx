@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon, FileText, Eye } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon, FileText, Eye, Edit } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ProductSaleItem, InventoryMovement } from '@/lib/types';
@@ -544,6 +544,7 @@ function CheckInDialog({
     const [notes, setNotes] = useState('');
     const [openCombobox, setOpenCombobox] = useState(false);
     const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
+    const [customerFormIsEditMode, setCustomerFormIsEditMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
     
@@ -744,6 +745,36 @@ function CheckInDialog({
       }
     };
     
+    const handleEditCustomer = async (customerToUpdate: Customer) => {
+        try {
+            const customerRef = ref(db, `customers/${customerToUpdate.id}`);
+            const { id, ...customerData } = customerToUpdate;
+            await update(customerRef, customerData);
+            toast({ title: "تم التعديل بنجاح" });
+            // Update the selected customer in the dialog state
+            if (selectedCustomer && selectedCustomer.id === customerToUpdate.id) {
+                setSelectedCustomer(customerToUpdate);
+            }
+        } catch (e) {
+            console.error(e);
+            toast({ title: "خطأ في التعديل", variant: 'destructive' });
+        }
+    };
+
+    const handleCustomerFormSubmit = (customerData: Omit<Customer, 'id' | 'createdAt'> | Customer) => {
+        if ('id' in customerData) {
+            handleEditCustomer(customerData as Customer);
+        } else {
+            handleAddCustomer(customerData as Omit<Customer, 'id' | 'createdAt'>);
+        }
+        setCustomerFormOpen(false);
+    };
+
+    const openCustomerForm = (isEdit: boolean) => {
+        setCustomerFormIsEditMode(isEdit);
+        setCustomerFormOpen(true);
+    }
+    
     const totalChildren = selectedChildren.length + guestChildren.filter(g => g.name).length;
 
     return (
@@ -807,9 +838,14 @@ function CheckInDialog({
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <Button type="button" variant="outline" size="icon" onClick={() => setCustomerFormOpen(true)}>
+                                <Button type="button" variant="outline" size="icon" onClick={() => openCustomerForm(false)}>
                                     <PlusCircle className="h-4 w-4"/>
                                 </Button>
+                                {selectedCustomer && (
+                                     <Button type="button" variant="outline" size="icon" onClick={() => openCustomerForm(true)}>
+                                        <Edit className="h-4 w-4"/>
+                                    </Button>
+                                )}
                             </div>
                         </div>
                         {selectedCustomer && (
@@ -931,9 +967,9 @@ function CheckInDialog({
             <CustomerFormDialog 
                 open={isCustomerFormOpen} 
                 onOpenChange={setCustomerFormOpen} 
-                onSubmit={handleAddCustomer}
-                isEditMode={false}
-                initialData={null}
+                onSubmit={handleCustomerFormSubmit}
+                isEditMode={customerFormIsEditMode}
+                initialData={customerFormIsEditMode ? selectedCustomer : null}
             />
         </>
     )
@@ -1309,7 +1345,7 @@ function PosTrackingContent() {
         const originalCost = originalSession.costBeforeDiscount;
         const finalCost = Math.max(0, originalCost - discount);
         
-        const receiptDetails = {
+        const receiptDetails: Partial<PosReceiptProps> = {
             cost: finalCost,
             costBeforeDiscount: originalCost,
             totalCost: finalCost,
@@ -1404,6 +1440,7 @@ function PosTrackingContent() {
         packageName: child.packageName,
         packageDuration: child.packageDuration,
         overtimeCost: receiptDetails.overtimeCost,
+        notes: receiptDetails.notes,
     };
     
     const printCondition = receiptSettings && !isPrepaidModification && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || child.prepaidSessionId);
@@ -2020,7 +2057,16 @@ function PosTrackingContent() {
                                             <div>
                                                 {session.children.map(c=>c.name).join(', ')}
                                                 {session.notes && (
-                                                    <p className="text-xs text-muted-foreground whitespace-pre-wrap">{session.notes}</p>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => handleShowNote(session.notes!)}>
+                                                                    <Eye className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>عرض الملاحظات</p></TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
                                                 )}
                                             </div>
                                         </div>
@@ -2192,7 +2238,7 @@ function PosTrackingContent() {
             <CustomerFormDialog 
                 open={isCustomerFormOpen} 
                 onOpenChange={setCustomerFormOpen} 
-                onSubmit={handleAddCustomer}
+                onSubmit={() => {}}
                 isEditMode={false}
                 initialData={null}
             />
