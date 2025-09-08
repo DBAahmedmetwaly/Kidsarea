@@ -38,7 +38,7 @@ export default function LoginPage() {
     );
 
     if (user) {
-        if(user.status && user.status === 'Disabled') {
+        if (user.status === 'Disabled') {
             toast({
                 title: 'الحساب معطل',
                 description: 'تم تعطيل هذا الحساب. يرجى مراجعة المدير.',
