@@ -72,8 +72,8 @@ function SessionsContent() {
   // Filters
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [phoneFilter, setPhoneFilter] = useState('');
-  const [fromDate, setFromDate] = useState<Date | undefined>();
-  const [toDate, setToDate] = useState<Date | undefined>();
+  const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
+  const [toDate, setToDate] = useState<Date | undefined>(new Date());
   const [visibleCount, setVisibleCount] = useState(20);
 
   useEffect(() => {
@@ -426,6 +426,7 @@ export default function SessionsPage() {
 
 
     
+
 
 
 
