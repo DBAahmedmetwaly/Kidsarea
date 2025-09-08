@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -2039,6 +2038,7 @@ function PosTrackingContent() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="text-right">{policies?.posLabels?.childColumnTitle || 'الطفل'}</TableHead>
+                                    <TableHead className="text-right">الملاحظات</TableHead>
                                     <TableHead className="text-right">{policies?.posLabels?.parentColumnTitle || 'ولي الأمر'}</TableHead>
                                     <TableHead className="text-center">رقم الهاتف</TableHead>
                                     <TableHead className="text-center">رقم الإيصال</TableHead>
@@ -2052,25 +2052,23 @@ function PosTrackingContent() {
                                 searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
                                     <TableCell className="font-medium text-right align-top">
-                                        <div className="flex items-start gap-2">
-                                            <div>
-                                                <p>{session.children.map(c=>c.name).join(', ')}</p>
-                                                {session.notes && (
-                                                     <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <button onClick={() => handleShowNote(session.notes!)} className="flex items-center gap-1 mt-1 text-blue-500 hover:underline">
-                                                                     <Eye className="h-4 w-4" />
-                                                                </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>{session.notes}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                )}
-                                            </div>
-                                        </div>
+                                        <p>{session.children.map(c=>c.name).join(', ')}</p>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        {session.notes && (
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <button onClick={() => handleShowNote(session.notes!)} className="flex items-center gap-1 text-blue-500 hover:underline">
+                                                                <Eye className="h-4 w-4" />
+                                                        </button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{session.notes}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
                                     <TableCell className="text-center">{(session.phoneNumbers || []).join(' / ')}</TableCell>
@@ -2106,7 +2104,7 @@ function PosTrackingContent() {
                                 ))
                                 ) : (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center">
+                                    <TableCell colSpan={8} className="h-24 text-center">
                                     لا يوجد أطفال نشطون حاليًا يطابقون بحثك.
                                     </TableCell>
                                 </TableRow>
@@ -2339,4 +2337,4 @@ export default function PosTrackingPage() {
 
 
 
-
+    
