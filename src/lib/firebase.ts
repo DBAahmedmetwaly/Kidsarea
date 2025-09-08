@@ -6,7 +6,7 @@ const firebaseConfig = {
   projectId: "funtrack-manager",
   appId: "1:251373291254:web:baa6647ccb8630f8028ed7",
   storageBucket: "funtrack-manager.firebasestorage.app",
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  apiKey: "YOUR_API_KEY",
   authDomain: "funtrack-manager.firebaseapp.com",
   measurementId: "",
   messagingSenderId: "251373291254",
