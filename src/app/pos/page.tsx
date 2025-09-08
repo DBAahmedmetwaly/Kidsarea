@@ -2016,22 +2016,13 @@ function PosTrackingContent() {
                                 searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
                                     <TableCell className="font-medium text-right align-top">
-                                        <div className="flex items-center gap-2">
-                                            <span>{session.children.map(c=>c.name).join(', ')}</span>
-                                            {session.notes && (
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleShowNote(session.notes!)}>
-                                                                <Eye className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                        <p>عرض الملاحظات</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            )}
+                                        <div className="flex items-start gap-2">
+                                            <div>
+                                                {session.children.map(c=>c.name).join(', ')}
+                                                {session.notes && (
+                                                    <p className="text-xs text-muted-foreground whitespace-pre-wrap">{session.notes}</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
@@ -2300,3 +2291,6 @@ export default function PosTrackingPage() {
 
 
 
+
+
+    
