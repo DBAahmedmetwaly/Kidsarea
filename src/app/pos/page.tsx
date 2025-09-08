@@ -2055,7 +2055,6 @@ function PosTrackingContent() {
                                                             <TooltipTrigger asChild>
                                                                 <button onClick={() => handleShowNote(session.notes!)} className="flex items-center gap-1 mt-1 text-blue-500 hover:underline">
                                                                      <Eye className="h-4 w-4" />
-                                                                     <span className="text-xs">عرض الملاحظات</span>
                                                                 </button>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
@@ -2330,3 +2329,4 @@ export default function PosTrackingPage() {
 }
 
     
+
