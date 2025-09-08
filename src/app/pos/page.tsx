@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -373,7 +374,7 @@ function CheckOutDialog({
     
     const receiptDetails: PosReceiptProps = {
         settings: receiptSettings,
-        appName: policies?.appName || 'FunTrack',
+        appName: allPolicies?.find(p => p.id === 'default')?.appName || 'FunTrack',
         branchName: child.branchName,
         children: child.children,
         parentName: child.parentName,
@@ -525,7 +526,6 @@ function CheckInDialog({
     onConfirmPostpaid,
     onConfirmPrepaid,
     policies,
-    handleCustomerFormSubmit,
 } : {
     open: boolean,
     onOpenChange: (open: boolean) => void,
@@ -533,7 +533,6 @@ function CheckInDialog({
     onConfirmPostpaid: (childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => void,
     onConfirmPrepaid: (cartItem: PrepaidGameCartItem) => void,
     policies: Policies | null,
-    handleCustomerFormSubmit: (customerData: Omit<Customer, 'id' | 'createdAt'> | Customer) => void,
 }) {
     const { customers } = useCustomers();
     const { toast } = useToast();
@@ -731,6 +730,10 @@ function CheckInDialog({
     }
     
     const totalChildren = selectedChildren.length + guestChildren.filter(g => g.name).length;
+
+    const handleCustomerFormSubmit = (customerData: Omit<Customer, 'id' | 'createdAt'> | Customer) => {
+        // This function will be passed from the parent component
+    };
 
     return (
         <>
@@ -1382,7 +1385,7 @@ function PosTrackingContent() {
         ...receiptDetails,
         receiptId: `${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`,
         settings: receiptSettings,
-        appName: policies?.find(p => p.id === 'default')?.appName || 'FunTrack',
+        appName: allPolicies.find(p => p.id === 'default')?.appName || 'FunTrack',
         children: child.children,
         parentName: child.parentName,
         phoneNumbers: child.phoneNumbers,
@@ -2047,18 +2050,10 @@ function PosTrackingContent() {
                                             <div>
                                                 <p>{session.children.map(c=>c.name).join(', ')}</p>
                                                 {session.notes && (
-                                                      <TooltipProvider>
-                                                        <Tooltip>
-                                                          <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-500" onClick={() => handleShowNote(session.notes!)}>
-                                                                <Eye className="h-4 w-4" />
-                                                            </Button>
-                                                          </TooltipTrigger>
-                                                          <TooltipContent>
-                                                            <p>عرض الملاحظات</p>
-                                                          </TooltipContent>
-                                                        </Tooltip>
-                                                      </TooltipProvider>
+                                                    <div className="flex items-center gap-1 mt-1">
+                                                        <Eye className="h-3 w-3 text-blue-500" />
+                                                        <p className="text-xs text-muted-foreground">{session.notes}</p>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -2180,7 +2175,6 @@ function PosTrackingContent() {
                 onConfirmPostpaid={handleStartSession}
                 onConfirmPrepaid={handleConfirmPrepaid}
                 policies={policies}
-                handleCustomerFormSubmit={handleCustomerFormSubmit}
             />
             <CheckOutDialog 
                 open={isCheckoutDialogOpen}
