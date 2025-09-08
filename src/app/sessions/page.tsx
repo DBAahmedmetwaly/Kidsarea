@@ -75,6 +75,8 @@ function SessionsContent() {
   const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
   const [visibleCount, setVisibleCount] = useState(20);
+  const [sortBy, setSortBy] = useState<'newest' | 'receiptNumber'>('newest');
+
 
   useEffect(() => {
     if (currentUser && currentUser.branch !== 'كل الفروع') {
@@ -102,8 +104,16 @@ function SessionsContent() {
         });
     }
 
+    sessions.sort((a, b) => {
+        if (sortBy === 'receiptNumber') {
+            return (a.receiptNumber || 0) - (b.receiptNumber || 0);
+        }
+        // Default to newest first
+        return new Date(b.checkOutTime).getTime() - new Date(a.checkOutTime).getTime();
+    });
+
     return sessions;
-  }, [completedSessions, selectedBranch, phoneFilter, fromDate, toDate]);
+  }, [completedSessions, selectedBranch, phoneFilter, fromDate, toDate, sortBy]);
   
   const visibleSessions = useMemo(() => {
     return filteredSessions.slice(0, visibleCount);
@@ -289,7 +299,7 @@ function SessionsContent() {
                 </Button>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
                         <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
@@ -363,6 +373,18 @@ function SessionsContent() {
                             </PopoverContent>
                         </Popover>
                     </div>
+                     <div className="space-y-2">
+                        <label className="text-sm font-medium">ترتيب حسب</label>
+                        <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="اختر الترتيب" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="newest">الأحدث أولاً</SelectItem>
+                                <SelectItem value="receiptNumber">رقم الإيصال</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             </CardContent>
         </Card>
@@ -426,6 +448,7 @@ export default function SessionsPage() {
 
 
     
+
 
 
 
