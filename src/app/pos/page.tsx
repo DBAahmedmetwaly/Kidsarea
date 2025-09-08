@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon, FileText } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon, FileText, Eye } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ProductSaleItem, InventoryMovement } from '@/lib/types';
@@ -1099,6 +1099,8 @@ function PosTrackingContent() {
   // Dialog control
   const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
   const [isSubscriptionFormOpen, setSubscriptionFormOpen] = useState(false);
+  const [isNoteViewerOpen, setNoteViewerOpen] = useState(false);
+  const [noteToView, setNoteToView] = useState('');
   
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -1222,6 +1224,10 @@ function PosTrackingContent() {
     setCheckInDialogOpen(true);
   }
   
+  const handleShowNote = (note: string) => {
+      setNoteToView(note);
+      setNoteViewerOpen(true);
+  }
 
   const stopNotificationForSession = useCallback((sessionId: string) => {
     if (notificationIntervals.has(sessionId)) {
@@ -1304,6 +1310,8 @@ function PosTrackingContent() {
         const finalCost = Math.max(0, originalCost - discount);
         
         const receiptDetails = {
+            cost: finalCost,
+            costBeforeDiscount: originalCost,
             totalCost: finalCost,
             discount: discount,
             notes: `خروج مبكر: ${notes}`,
@@ -1397,15 +1405,17 @@ function PosTrackingContent() {
         packageDuration: child.packageDuration,
         overtimeCost: receiptDetails.overtimeCost,
     };
-
-    if (receiptSettings && !isPrepaidModification && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || child.prepaidSessionId) ) {
+    
+    const printCondition = receiptSettings && !isPrepaidModification && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || child.prepaidSessionId);
+    
+    if (printCondition) {
         printReceipt(<PosReceipt {...finalReceiptDetails} />);
     }
 
     try {
         if (child.prepaidSessionId) {
             const originalSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
-            const updates = {
+            const updates: Partial<CompletedSession> = {
                 cost: finalReceiptDetails.totalCost,
                 costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
                 discount: finalReceiptDetails.discount,
@@ -1421,7 +1431,7 @@ function PosTrackingContent() {
                 checkOutTime: checkOutTime.getTime(),
                 durationMs: durationMs,
                 cost: finalReceiptDetails.totalCost,
-                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
+                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount || 0,
                 durationCost: finalReceiptDetails.durationCost || 0,
                 entryFee: finalReceiptDetails.entryFee || 0,
                 discount: finalReceiptDetails.discount || 0,
@@ -2006,10 +2016,23 @@ function PosTrackingContent() {
                                 searchedActiveChildren.map((session) => (
                                     <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
                                     <TableCell className="font-medium text-right align-top">
-                                        <div>{session.children.map(c=>c.name).join(', ')}</div>
-                                        {session.notes && (
-                                            <p className="text-xs text-muted-foreground mt-1 max-w-[150px] whitespace-pre-wrap">{session.notes}</p>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <span>{session.children.map(c=>c.name).join(', ')}</span>
+                                            {session.notes && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleShowNote(session.notes!)}>
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                        <p>عرض الملاحظات</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
                                     <TableCell className="text-center">{(session.phoneNumbers || []).join(' / ')}</TableCell>
@@ -2160,10 +2183,21 @@ function PosTrackingContent() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { totalCost: 0 } as PosReceiptProps)}>تأكيد الخروج</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { totalCost: 0 } as PosReceiptProps, true)}>تأكيد الخروج</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <Dialog open={isNoteViewerOpen} onOpenChange={setNoteViewerOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>ملاحظات الجلسة</DialogTitle>
+                    </DialogHeader>
+                    <p className="py-4 whitespace-pre-wrap">{noteToView}</p>
+                    <DialogFooter>
+                        <Button onClick={() => setNoteViewerOpen(false)}>إغلاق</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <CustomerFormDialog 
                 open={isCustomerFormOpen} 
                 onOpenChange={setCustomerFormOpen} 
@@ -2261,6 +2295,7 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
+
 
 
 
