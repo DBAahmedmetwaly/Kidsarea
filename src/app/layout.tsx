@@ -9,6 +9,7 @@ import { CustomerProvider } from '@/context/CustomerContext';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { FirebaseProvider } from '@/context/FirebaseContext';
 import { PermissionsProvider } from '@/context/PermissionsContext';
+import { InventoryMovementProvider } from '@/context/InventoryMovementContext';
 
 
 export const metadata: Metadata = {
@@ -43,10 +44,12 @@ export default function RootLayout({
               <PermissionsProvider>
                 <CustomerProvider>
                   <SessionProvider>
-                    <SidebarProvider>
-                        {children}
-                        <Toaster />
-                    </SidebarProvider>
+                    <InventoryMovementProvider>
+                        <SidebarProvider>
+                            {children}
+                            <Toaster />
+                        </SidebarProvider>
+                    </InventoryMovementProvider>
                   </SessionProvider>
                 </CustomerProvider>
               </PermissionsProvider>

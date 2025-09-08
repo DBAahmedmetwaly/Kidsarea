@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings, Child, CompletedSession, ShiftRecord, Expense, ExpenseType, Product, ProductCategory, InventoryItem, ProductSale } from '@/lib/types';
+import type { Game, Employee, Branch, Safe, Policies, OpenShift, SafeTransaction, Subscription, SubscriptionPlan, GameCategory, ReceiptSettings, Child, CompletedSession, ShiftRecord, Expense, ExpenseType, Product, ProductCategory, InventoryItem, ProductSale, InventoryMovement } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 

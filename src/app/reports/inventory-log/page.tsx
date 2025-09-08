@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useInventoryMovements } from '@/context/InventoryMovementContext';
 import { useFirebase } from '@/context/FirebaseContext';
 import { useAuth } from '@/components/AuthProvider';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -33,7 +34,8 @@ import { PackageSearch, Calendar as CalendarIcon, FilterX, Download } from 'luci
 import { cn } from '@/lib/utils';
 
 function InventoryLogContent() {
-    const { inventoryMovements, employees, branches, products, loading } = useFirebase();
+    const { inventoryMovements, loading } = useInventoryMovements();
+    const { employees, branches, products } = useFirebase();
     const { user } = useAuth();
 
     // Filters
