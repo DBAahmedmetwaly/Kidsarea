@@ -796,7 +796,7 @@ function CheckInDialog({
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <Button type="button" variant="outline" size="icon" onClick={() => openCustomerForm(false)}>
+                                <Button type="button" variant="destructive" size="icon" onClick={() => openCustomerForm(false)}>
                                     <PlusCircle className="h-4 w-4"/>
                                 </Button>
                                 {selectedCustomer && (
@@ -2342,5 +2342,7 @@ export default function PosTrackingPage() {
 
 
 
+
+    
 
     
