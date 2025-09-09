@@ -1525,8 +1525,9 @@ function PosTrackingContent() {
             const { id, ...customerData } = customerToUpdate;
             await update(customerRef, customerData);
             toast({ title: "تم التعديل بنجاح" });
-            // Update the selected customer in the dialog state
-            if (selectedCustomer && selectedCustomer.id === customerToUpdate.id) {
+            setCustomerFormOpen(false); // Close dialog on success
+            // Update the selected customer in the check-in dialog if it's open
+            if (isCheckInDialogOpen && selectedCustomer?.id === customerToUpdate.id) {
                 setSelectedCustomer(customerToUpdate);
             }
         } catch (e) {
@@ -1541,7 +1542,6 @@ function PosTrackingContent() {
         } else {
             handleAddCustomer(customerData as Omit<Customer, 'id' | 'createdAt'>);
         }
-        setCustomerFormOpen(false);
     };
   
     const handleAddToCart = (item: InventoryItem) => {
@@ -2346,3 +2346,4 @@ export default function PosTrackingPage() {
     
 
     
+
