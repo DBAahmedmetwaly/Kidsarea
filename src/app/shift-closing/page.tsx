@@ -534,10 +534,23 @@ function DayEndClosing() {
     const { toast } = useToast();
     const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const currentUser = useMemo(() => employees.find(e => e.username === user?.username), [employees, user]);
+
+    const closedShifts = useMemo(() => {
+        const userBranch = currentUser?.branch;
+        const allClosed = allShiftRecords.filter(r => r.status === 'Closed');
+
+        if (!currentUser || user?.username === 'admin' || userBranch === 'كل الفروع') {
+            return allClosed;
+        }
+        
+        return allClosed.filter(s => s.branchName === userBranch);
+
+    }, [allShiftRecords, currentUser, user]);
     
     const shiftsToSettle = useMemo(() => {
-        return allShiftRecords.filter(s => selectedShiftIds.includes(s.id) && s.status === 'Closed');
-    }, [allShiftRecords, selectedShiftIds]);
+        return closedShifts.filter(s => selectedShiftIds.includes(s.id));
+    }, [closedShifts, selectedShiftIds]);
 
     const settlementBranch = useMemo(() => {
         if (shiftsToSettle.length === 0) return null;
@@ -550,11 +563,6 @@ function DayEndClosing() {
         if (!settlementBranch || settlementBranch === 'multiple') return null;
         return safes.find(s => s.branchName === settlementBranch) || null;
     }, [safes, settlementBranch]);
-
-    const closedShifts = useMemo(() => {
-        return allShiftRecords.filter(r => r.status === 'Closed');
-    }, [allShiftRecords]);
-
 
     const totalToSettle = useMemo(() => {
         return shiftsToSettle.reduce((sum, s) => sum + s.actualRevenue, 0);
@@ -921,5 +929,6 @@ export default function ShiftManagementPage() {
         </SidebarProvider>
     );
 }
+
 
 
