@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -55,7 +56,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useFirebase } from '@/context/FirebaseContext';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import {
@@ -215,25 +216,30 @@ function SidebarItems() {
     }
   }, [appName]);
 
-  const hasPermission = (href: string) => {
+  const hasPermission = useCallback((href: string) => {
     if (permissionsLoading || !permissions) return false;
 
-    // Allow access to details pages if the main page is accessible
+    // Direct permission for the href
+    if (permissions[href]) {
+      return true;
+    }
+    
     const detailPaths = [
-        {detail: '/subscriptions/[subscriptionId]', main: '/subscriptions'},
-        {detail: '/customers/[customerId]', main: '/customers'},
-        {detail: '/games/[gameName]', main: '/games'},
-        {detail: '/safes/[safeId]', main: '/safes'},
+      { main: '/subscriptions', pattern: /^\/subscriptions\/[^/]+$/ },
+      { main: '/customers', pattern: /^\/customers\/[^/]+$/ },
+      { main: '/games', pattern: /^\/games\/[^/]+$/ },
+      { main: '/safes', pattern: /^\/safes\/[^/]+$/ },
     ];
     
     for (const path of detailPaths) {
-        if (pathname.startsWith(path.main) && permissions[path.main]) {
-            return true;
-        }
+      if (path.pattern.test(href) && permissions[path.main]) {
+        return true;
+      }
     }
     
-    return !!permissions[href];
-  };
+    return false;
+  }, [permissions, permissionsLoading]);
+
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
