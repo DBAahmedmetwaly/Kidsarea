@@ -263,7 +263,7 @@ function SidebarItems() {
                 >
                 <Link href={item.href}>
                     <item.icon />
-                    <span>{item.href === '/pos' ? posScreenTitle : item.label}</span>
+                    <span className={cn(item.href === '/data-management' && 'text-yellow-400')}>{item.href === '/pos' ? posScreenTitle : item.label}</span>
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
