@@ -526,6 +526,12 @@ function CheckInDialog({
     onConfirmPostpaid,
     onConfirmPrepaid,
     policies,
+    isCustomerFormOpen,
+    setCustomerFormOpen,
+    customerFormIsEditMode,
+    setCustomerFormIsEditMode,
+    selectedCustomer,
+    setSelectedCustomer,
 } : {
     open: boolean,
     onOpenChange: (open: boolean) => void,
@@ -533,18 +539,21 @@ function CheckInDialog({
     onConfirmPostpaid: (childData: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>) => void,
     onConfirmPrepaid: (cartItem: PrepaidGameCartItem) => void,
     policies: Policies | null,
+    isCustomerFormOpen: boolean,
+    setCustomerFormOpen: (open: boolean) => void,
+    customerFormIsEditMode: boolean,
+    setCustomerFormIsEditMode: (isEdit: boolean) => void,
+    selectedCustomer: Customer | null,
+    setSelectedCustomer: (customer: Customer | null) => void,
 }) {
     const { customers } = useCustomers();
     const { toast } = useToast();
 
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedChildren, setSelectedChildren] = useState<CustomerChild[]>([]);
     const [guestChildren, setGuestChildren] = useState<CustomerChild[]>([]);
     const [selectedPackages, setSelectedPackages] = useState<SelectedPackagesMap>({});
     const [notes, setNotes] = useState('');
     const [openCombobox, setOpenCombobox] = useState(false);
-    const [isCustomerFormOpen, setCustomerFormOpen] = useState(false);
-    const [customerFormIsEditMode, setCustomerFormIsEditMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
     
@@ -730,10 +739,6 @@ function CheckInDialog({
     }
     
     const totalChildren = selectedChildren.length + guestChildren.filter(g => g.name).length;
-
-    const handleCustomerFormSubmit = (customerData: Omit<Customer, 'id' | 'createdAt'> | Customer) => {
-        // This function will be passed from the parent component
-    };
 
     return (
         <>
@@ -922,13 +927,6 @@ function CheckInDialog({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <CustomerFormDialog 
-                open={isCustomerFormOpen} 
-                onOpenChange={setCustomerFormOpen} 
-                onSubmit={handleCustomerFormSubmit}
-                isEditMode={customerFormIsEditMode}
-                initialData={customerFormIsEditMode ? selectedCustomer : null}
-            />
         </>
     )
 }
@@ -2193,6 +2191,12 @@ function PosTrackingContent() {
                 onConfirmPostpaid={handleStartSession}
                 onConfirmPrepaid={handleConfirmPrepaid}
                 policies={policies}
+                isCustomerFormOpen={isCustomerFormOpen}
+                setCustomerFormOpen={setCustomerFormOpen}
+                customerFormIsEditMode={customerFormIsEditMode}
+                setCustomerFormIsEditMode={setCustomerFormIsEditMode}
+                selectedCustomer={selectedCustomer}
+                setSelectedCustomer={setSelectedCustomer}
             />
             <CheckOutDialog 
                 open={isCheckoutDialogOpen}
@@ -2346,4 +2350,5 @@ export default function PosTrackingPage() {
     
 
     
+
 
