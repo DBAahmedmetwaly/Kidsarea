@@ -202,7 +202,7 @@ function SidebarItems() {
   const { policies: allPolicies } = useFirebase();
   const { permissions, loading: permissionsLoading } = usePermissions();
   const { setOpenMobile } = useSidebar();
-  const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [isChangePasswordOpen, setChangePasswordOpen] = useState(false);
 
 
   const defaultPolicies = allPolicies?.find(p => p.id === 'default');
@@ -319,7 +319,7 @@ function SidebarItems() {
             {user && 'role' in user && <p className="text-xs text-sidebar-foreground/70">{(user as Employee).role}</p>}
           </div>
             {user && 'role' in user && (
-                 <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 group-data-[collapsible=icon]:hidden" onClick={() => setPasswordDialogOpen(true)}>
+                 <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 group-data-[collapsible=icon]:hidden" onClick={() => setChangePasswordOpen(true)}>
                     <KeyRound className="h-4 w-4" />
                 </Button>
             )}
@@ -349,10 +349,10 @@ function SidebarItems() {
           </SidebarMenu>
       </SidebarFooter>
     </div>
-    {isPasswordDialogOpen && (
+    {isChangePasswordOpen && (
         <ChangePasswordDialog 
-            open={isPasswordDialogOpen}
-            onOpenChange={setPasswordDialogOpen}
+            open={isChangePasswordOpen}
+            onOpenChange={setChangePasswordOpen}
         />
     )}
     </>
