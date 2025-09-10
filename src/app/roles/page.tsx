@@ -72,7 +72,7 @@ const SPECIAL_PERMISSIONS: { href: string; label: string }[] = [
     // { href: '/permissions/apply-discount', label: 'إمكانية عمل خصم' }
 ];
 
-type Role = 'مدير فرع' | 'كاشير' | 'مدير عام الفرع';
+type Role = 'مدير عام الفرع' | 'كاشير' | 'مدير فرع';
 const ROLES: Role[] = ['مدير عام الفرع', 'كاشير', 'مدير فرع'];
 
 type Permissions = Record<string, boolean>;
