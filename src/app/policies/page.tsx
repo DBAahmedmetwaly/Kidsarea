@@ -95,6 +95,7 @@ const policiesSchema = z.object({
   toastDuration: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
   buyOneHourGetXFreeMinutes: z.coerce.number().optional(),
   enableNotifications: z.boolean().optional(),
+  enablePackageOvertimeNotification: z.boolean().optional(),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -143,6 +144,7 @@ const defaultPolicies: PoliciesFormValues = {
       toastDuration: 5,
       buyOneHourGetXFreeMinutes: 0,
       enableNotifications: true,
+      enablePackageOvertimeNotification: true,
 }
 
 function PoliciesContent() {
@@ -575,6 +577,28 @@ function PoliciesContent() {
 
               {form.watch('enablePackageOvertime') && (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pl-4 border-s-2">
+                    <FormField
+                        control={form.control}
+                        name="enablePackageOvertimeNotification"
+                        render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 col-span-full">
+                            <div className="space-y-0.5">
+                            <FormLabel className="text-base">
+                                تفعيل إشعار انتهاء وقت الباقة
+                            </FormLabel>
+                            <FormDescription>
+                                هل تريد إظهار إشعار عند انتهاء الوقت المحدد للباقة؟
+                            </FormDescription>
+                            </div>
+                            <FormControl>
+                            <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                            />
+                            </FormControl>
+                        </FormItem>
+                        )}
+                    />
                      <FormField
                         control={form.control}
                         name="packageOvertimeRatePerMinute"

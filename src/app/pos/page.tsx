@@ -892,7 +892,7 @@ function CheckInDialog({
                                                       <p className="text-xs text-muted-foreground">{pkg.price} ج.م</p>
                                                   </div>
                                                   <div className="flex items-center gap-2">
-                                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handlePackageQuantityChange(pkg, -1)}><Minus className="h-4 w-4" /></Button>
+                                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handlePackageQuantityChange(pkg, -1)}><Minus className="h-3 w-3" /></Button>
                                                       <span className="font-bold">{quantity}</span>
                                                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handlePackageQuantityChange(pkg, 1)}><PlusCircle className="h-4 w-4" /></Button>
                                                   </div>
@@ -1752,6 +1752,8 @@ function PosTrackingContent() {
 
 
     const handleTimeEnd = useCallback((session: Child) => {
+        if (!policies?.enablePackageOvertimeNotification) return;
+
         const isSessionStillActive = activeChildren.some(child => child.id === session.id);
         if (!isSessionStillActive) {
             stopNotificationForSession(session.id); // Clean up the interval
@@ -1770,9 +1772,6 @@ function PosTrackingContent() {
             variant: "destructive",
             duration: (policies?.toastDuration || 5) * 1000,
         });
-
-        // The interval is no longer needed, we show the toast once.
-        stopNotificationForSession(session.id);
 
     }, [policies, toast, activeChildren, stopNotificationForSession, currentUser]);
 
@@ -2344,6 +2343,7 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
 

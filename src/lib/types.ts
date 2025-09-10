@@ -158,6 +158,7 @@ export interface Policies {
     toastDuration: number;
     buyOneHourGetXFreeMinutes: number; // 0 for disabled, or 15, 30, 60 etc.
     enableNotifications?: boolean;
+    enablePackageOvertimeNotification?: boolean;
 }
 
 export interface Customer {
