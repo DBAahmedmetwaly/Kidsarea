@@ -54,7 +54,7 @@ export default function LoginPage() {
                 variant: 'destructive',
             });
         } else {
-            const allowedRoles = ['كاشير', 'مدير فرع', 'مشرف'];
+            const allowedRoles = ['كاشير', 'مدير عام الفرع', 'مشرف'];
             if (user.role && allowedRoles.includes(user.role)) {
                 login(user);
                 toast({

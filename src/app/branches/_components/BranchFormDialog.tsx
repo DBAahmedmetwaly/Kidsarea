@@ -38,7 +38,7 @@ export default function BranchFormDialog({
     const [manager, setManager] = useState('');
     const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
     
-    const branchManagers = employees.filter(emp => emp.role === 'مدير فرع');
+    const branchManagers = employees.filter(emp => emp.role === 'مدير عام الفرع');
 
     useEffect(() => {
         if (isEditMode && initialData) {
@@ -130,5 +130,3 @@ export default function BranchFormDialog({
         </Dialog>
     );
 }
-
-    

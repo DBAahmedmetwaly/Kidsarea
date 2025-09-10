@@ -72,8 +72,8 @@ const SPECIAL_PERMISSIONS: { href: string; label: string }[] = [
     // { href: '/permissions/apply-discount', label: 'إمكانية عمل خصم' }
 ];
 
-type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
-const ROLES: Role[] = ['مدير فرع', 'كاشير', 'مشرف'];
+type Role = 'مشرف' | 'كاشير' | 'مدير عام الفرع';
+const ROLES: Role[] = ['مدير عام الفرع', 'كاشير', 'مشرف'];
 
 type Permissions = Record<string, boolean>;
 type RolePermissions = Record<Role, Permissions>;
@@ -84,7 +84,7 @@ const decodeKey = (key: string) => key.replace(/__slash__/g, '/');
 
 function RolesContent() {
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
-  const [selectedRole, setSelectedRole] = useState<Role>('مدير فرع');
+  const [selectedRole, setSelectedRole] = useState<Role>('مدير عام الفرع');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { policies: allPolicies } = useFirebase();
@@ -110,7 +110,7 @@ function RolesContent() {
       const data = snapshot.val();
       if (data) {
         // Decode keys from Firebase
-        const decodedPermissions: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
+        const decodedPermissions: RolePermissions = { 'مدير عام الفرع': {}, 'كاشير': {}, 'مشرف': {} };
         for (const role of ROLES) {
             const rolePermissions = data[role];
             if (rolePermissions) {
@@ -133,7 +133,7 @@ function RolesContent() {
         });
         set(rolesRef, defaultPermissions);
         
-        const decodedForState: RolePermissions = { 'مدير فرع': {}, 'كاشير': {}, 'مشرف': {} };
+        const decodedForState: RolePermissions = { 'مدير عام الفرع': {}, 'كاشير': {}, 'مشرف': {} };
          ROLES.forEach(role => {
              const screens = Object.values(allScreens).flat();
             decodedForState[role] = screens.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {});
@@ -304,5 +304,3 @@ export default function RolesPage() {
     </SidebarProvider>
   );
 }
-
-
