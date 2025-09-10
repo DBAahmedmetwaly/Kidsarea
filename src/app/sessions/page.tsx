@@ -68,6 +68,8 @@ function SessionsContent() {
     if (!user) return null;
     return employees.find(e => e.username === user.username);
   }, [user, employees]);
+  
+  const canChangeBranch = !currentUser || currentUser.branch === 'كل الفروع' || user?.username === 'admin';
 
   // Filters
   const [selectedBranch, setSelectedBranch] = useState('all');
@@ -79,10 +81,10 @@ function SessionsContent() {
 
 
   useEffect(() => {
-    if (currentUser && currentUser.branch !== 'كل الفروع') {
+    if (currentUser && !canChangeBranch) {
         setSelectedBranch(currentUser.branch);
     }
-  }, [currentUser]);
+  }, [currentUser, canChangeBranch]);
 
 
   const filteredSessions = useMemo(() => {
@@ -124,7 +126,7 @@ function SessionsContent() {
   }
   
   const clearFilters = () => {
-    if (currentUser && currentUser.branch !== 'كل الفروع') {
+    if (currentUser && !canChangeBranch) {
         // Don't clear branch if it's locked
     } else {
         setSelectedBranch('all');
@@ -302,7 +304,7 @@ function SessionsContent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
-                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={!canChangeBranch}>
                             <SelectTrigger>
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>
@@ -448,6 +450,7 @@ export default function SessionsPage() {
 
 
     
+
 
 
 
