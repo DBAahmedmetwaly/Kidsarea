@@ -32,33 +32,33 @@ export default function ChangePasswordDialog({ open, onOpenChange }: { open: boo
 
     const handleConfirm = async () => {
         if (!newPassword || newPassword !== confirmPassword) {
-            toast({ messageKey: 'invalidInput', description: "كلمتا المرور الجديدتان غير متطابقتين."});
+            toast({ messageKey: 'passwordMismatch' });
             return;
         }
 
         if (!user || !('id' in user)) {
-            toast({ messageKey: 'saveError', description: "لا يمكن تغيير كلمة مرور هذا المستخدم."});
+            toast({ messageKey: 'passwordUserError' });
             return;
         }
 
         const currentUserData = employees.find(e => e.id === (user as Employee).id);
         if (!currentUserData) {
-            toast({ messageKey: 'saveError', description: "لم يتم العثور على المستخدم."});
+            toast({ messageKey: 'passwordUserNotFound' });
             return;
         }
 
         if (currentUserData.password !== currentPassword) {
-            toast({ messageKey: 'wrongPassword', description: "كلمة المرور الحالية غير صحيحة."});
+            toast({ messageKey: 'passwordIncorrect' });
             return;
         }
 
         try {
             const employeeRef = ref(db, `employees/${(user as Employee).id}`);
             await update(employeeRef, { password: newPassword });
-            toast({ messageKey: 'saveSuccess', description: "تم تغيير كلمة المرور بنجاح."});
+            toast({ messageKey: 'passwordUpdateSuccess' });
             onOpenChange(false);
         } catch (error) {
-            toast({ messageKey: 'saveError', description: "فشل تحديث كلمة المرور."});
+            toast({ messageKey: 'passwordUpdateError' });
             console.error(error);
         }
     }

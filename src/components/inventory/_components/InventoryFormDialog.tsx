@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -83,21 +84,21 @@ export default function InventoryFormDialog({
     
     const handleSubmit = () => {
         if (!isEditMode && !selectedProduct) {
-            toast({ title: "خطأ في الإدخال", description: "يرجى اختيار منتج.", variant: "destructive" });
+            toast({ messageKey: "inventoryProductRequired" });
             return;
         }
         if (!price || parseFloat(price) < 0 || !quantity || parseInt(quantity) < 0) {
-            toast({ title: "خطأ في الإدخال", description: "يرجى إدخال سعر وكمية صالحين.", variant: "destructive" });
+            toast({ messageKey: "inventoryInvalidPriceQuantity" });
             return;
         }
         if (!branch) {
-            toast({ title: "خطأ", description: "لم يتم العثور على الفرع المحدد.", variant: "destructive" });
+            toast({ messageKey: "inventoryBranchNotFound" });
             return;
         }
 
         const product = isEditMode && initialData ? products.find(p => p.id === initialData.productId) : selectedProduct;
         if (!product) {
-            toast({ title: "خطأ", description: "لم يتم العثور على المنتج المحدد.", variant: "destructive" });
+            toast({ messageKey: "inventoryProductNotFound" });
             return;
         }
 

@@ -56,8 +56,7 @@ export default function BranchFormDialog({
     const handleFormSubmit = () => {
         if (!name || !manager) {
             toast({
-                messageKey: 'invalidInput',
-                description: "يرجى تعبئة جميع الحقول.",
+                messageKey: 'branchFormFieldsError',
             });
             return;
         }

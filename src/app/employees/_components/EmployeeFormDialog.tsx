@@ -75,8 +75,7 @@ export default function EmployeeFormDialog({
     const handleSubmit = () => {
         if (!name || !role || !branch) {
             toast({
-                messageKey: 'invalidInput',
-                description: "يرجى تعبئة جميع الحقول الأساسية.",
+                messageKey: 'employeeFormFieldsError',
             });
             return;
         }
@@ -85,8 +84,7 @@ export default function EmployeeFormDialog({
 
         if (requiresCredentials && (!username || !password)) {
             toast({
-                messageKey: 'invalidInput',
-                description: "يجب إدخال اسم المستخدم وكلمة المرور لهذا الدور.",
+                messageKey: 'employeeCredentialsRequiredError',
             });
             return;
         }
