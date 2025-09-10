@@ -50,7 +50,7 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
   notes,
 }, ref) => {
   
-  const show = (key: keyof PosReceiptProps['settings']) => !settings || settings[key];
+  const show = (key: keyof PosReceiptProps['settings']) => !settings || !!settings[key];
   const receiptWidth = settings?.receiptWidth || 72;
   const safeChildren = children || [];
 
