@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState } from 'react';
 import {
@@ -31,33 +32,33 @@ export default function ChangePasswordDialog({ open, onOpenChange }: { open: boo
 
     const handleConfirm = async () => {
         if (!newPassword || newPassword !== confirmPassword) {
-            toast({ title: "خطأ", description: "كلمتا المرور الجديدتان غير متطابقتين.", variant: 'destructive'});
+            toast({ messageKey: 'invalidInput', description: "كلمتا المرور الجديدتان غير متطابقتين."});
             return;
         }
 
         if (!user || !('id' in user)) {
-            toast({ title: "خطأ", description: "لا يمكن تغيير كلمة مرور هذا المستخدم.", variant: 'destructive'});
+            toast({ messageKey: 'saveError', description: "لا يمكن تغيير كلمة مرور هذا المستخدم."});
             return;
         }
 
         const currentUserData = employees.find(e => e.id === (user as Employee).id);
         if (!currentUserData) {
-            toast({ title: "خطأ", description: "لم يتم العثور على المستخدم.", variant: 'destructive'});
+            toast({ messageKey: 'saveError', description: "لم يتم العثور على المستخدم."});
             return;
         }
 
         if (currentUserData.password !== currentPassword) {
-            toast({ title: "خطأ", description: "كلمة المرور الحالية غير صحيحة.", variant: 'destructive'});
+            toast({ messageKey: 'wrongPassword', description: "كلمة المرور الحالية غير صحيحة."});
             return;
         }
 
         try {
             const employeeRef = ref(db, `employees/${(user as Employee).id}`);
             await update(employeeRef, { password: newPassword });
-            toast({ title: "نجاح", description: "تم تغيير كلمة المرور بنجاح."});
+            toast({ messageKey: 'saveSuccess', description: "تم تغيير كلمة المرور بنجاح."});
             onOpenChange(false);
         } catch (error) {
-            toast({ title: "خطأ", description: "فشل تحديث كلمة المرور.", variant: 'destructive'});
+            toast({ messageKey: 'saveError', description: "فشل تحديث كلمة المرور."});
             console.error(error);
         }
     }

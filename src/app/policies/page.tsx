@@ -180,16 +180,15 @@ function PoliciesContent() {
       const policiesRef = ref(db, `policies/${selectedBranchId}`);
       await set(policiesRef, values);
       toast({
-        title: 'تم الحفظ بنجاح',
+        messageKey: 'saveSuccess',
         description: `تم تحديث سياسات ${selectedBranchId === 'default' ? 'الافتراضية' : `فرع ${branches.find(b=>b.id === selectedBranchId)?.name}`}.`,
       });
       // No need to manually reset form, the useEffect will handle it when `policies` from context updates.
     } catch (error) {
       console.error('Failed to save policies:', error);
       toast({
-        title: 'خطأ',
+        messageKey: 'saveError',
         description: 'فشل حفظ السياسات. يرجى المحاولة مرة أخرى.',
-        variant: 'destructive',
       });
     }
   }
@@ -207,12 +206,12 @@ function PoliciesContent() {
         await update(ref(db), updates);
 
         toast({
-            title: 'تم التطبيق بنجاح',
+            messageKey: 'saveSuccess',
             description: 'تم فرض السياسات الحالية على جميع الفروع.',
         });
 
     } catch (error) {
-        toast({ title: 'فشل تطبيق السياسات', variant: 'destructive'});
+        toast({ messageKey: 'saveError', description: 'فشل تطبيق السياسات'});
         console.error(error);
     }
   };

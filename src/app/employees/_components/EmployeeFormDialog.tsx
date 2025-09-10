@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -74,9 +75,8 @@ export default function EmployeeFormDialog({
     const handleSubmit = () => {
         if (!name || !role || !branch) {
             toast({
-                title: "خطأ في الإدخال",
+                messageKey: 'invalidInput',
                 description: "يرجى تعبئة جميع الحقول الأساسية.",
-                variant: "destructive",
             });
             return;
         }
@@ -85,9 +85,8 @@ export default function EmployeeFormDialog({
 
         if (requiresCredentials && (!username || !password)) {
             toast({
-                title: "خطأ في الإدخال",
+                messageKey: 'invalidInput',
                 description: "يجب إدخال اسم المستخدم وكلمة المرور لهذا الدور.",
-                variant: "destructive",
             });
             return;
         }

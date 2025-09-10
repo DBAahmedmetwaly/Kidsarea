@@ -1,5 +1,10 @@
 
 
+import type { notificationMessages } from './notifications';
+
+export type NotificationKey = keyof typeof notificationMessages;
+
+
 export interface CustomerChild {
     id: string; // Unique identifier for the child
     name: string;
@@ -46,7 +51,7 @@ export interface Game {
     status: 'Available' | 'Maintenance';
     categoryId: string;
     categoryName: string;
-    paymentModel: 'prepaid' | 'postpaid'; // prepaid (cart), postpaid (play then pay)
+    paymentModel: 'prepaid' | 'postpaid'; // prepaid (cart), postpaid (cart)
     price?: number; // hourly rate for postpaid
     fixedTimePackages?: { duration: number; price: number; label: string }[];
 }
@@ -54,7 +59,7 @@ export interface Game {
 export interface Employee {
     id:string;
     name: string;
-    role: 'مدير فرع' | 'كاشير' | 'مدير عام الفرع';
+    role: 'مدير عام الفرع' | 'كاشير' | 'مدير فرع';
     branch: string | 'كل الفروع';
     status: 'Active' | 'On Leave' | 'Disabled';
     username?: string;

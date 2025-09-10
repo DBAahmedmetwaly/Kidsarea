@@ -9,6 +9,8 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 import { useFirebase } from "@/context/FirebaseContext";
+import { getNotificationMessage } from "@/lib/notifications";
+import type { NotificationKey } from "@/lib/types";
 
 const TOAST_LIMIT = 3
 const TOAST_REMOVE_DELAY = 1000000
@@ -142,10 +144,16 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
+type Toast = Omit<ToasterToast, "id"> & {
+    messageKey: NotificationKey,
+    messageArgs?: any[]
+}
 
-function toast({ ...props }: Toast) {
+
+function toast({ messageKey, messageArgs = [], ...props }: Toast) {
   const id = genId()
+
+  const message = getNotificationMessage(messageKey, ...messageArgs);
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -158,6 +166,7 @@ function toast({ ...props }: Toast) {
     type: "ADD_TOAST",
     toast: {
       ...props,
+      ...message,
       id,
       open: true,
       onOpenChange: (open) => {

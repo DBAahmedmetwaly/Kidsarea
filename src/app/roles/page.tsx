@@ -178,15 +178,14 @@ function RolesContent() {
       await update(roleRef, encodedRolePermissions);
 
       toast({
-        title: 'تم الحفظ بنجاح',
+        messageKey: 'saveSuccess',
         description: `تم تحديث صلاحيات دور "${selectedRole}".`,
       });
     } catch (error) {
       console.error('Failed to save permissions:', error);
       toast({
-        title: 'خطأ',
+        messageKey: 'saveError',
         description: 'فشل حفظ الصلاحيات. يرجى المحاولة مرة أخرى.',
-        variant: 'destructive',
       });
     }
   };

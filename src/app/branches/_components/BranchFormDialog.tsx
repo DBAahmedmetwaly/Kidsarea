@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -55,9 +56,8 @@ export default function BranchFormDialog({
     const handleFormSubmit = () => {
         if (!name || !manager) {
             toast({
-                title: "خطأ في الإدخال",
+                messageKey: 'invalidInput',
                 description: "يرجى تعبئة جميع الحقول.",
-                variant: "destructive",
             });
             return;
         }

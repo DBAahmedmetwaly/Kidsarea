@@ -1,4 +1,5 @@
 
+
 'use client';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -101,17 +102,10 @@ function BranchesContent() {
           const newSafeRef = push(ref(db, 'safes'));
           await set(newSafeRef, newSafe);
 
-           toast({
-              title: "تمت الإضافة بنجاح",
-              description: `تمت إضافة فرع "${newBranch.name}" وخزينته التلقائية بنجاح.`,
-          });
+           toast({ messageKey: 'branchAdded', messageArgs: [newBranch.name] });
       } catch (e) {
           console.error(e);
-          toast({
-              title: "خطأ",
-              description: "لم يتم إضافة الفرع أو الخزينة.",
-              variant: 'destructive'
-          })
+          toast({ messageKey: 'branchAddError' });
       }
   };
   
@@ -120,20 +114,20 @@ function BranchesContent() {
             const branchRef = ref(db, `branches/${branchData.id}`);
             const { id, ...dataToUpdate } = branchData;
             await update(branchRef, dataToUpdate);
-            toast({ title: 'تم التعديل بنجاح', description: `تم تحديث فرع "${branchData.name}".` });
+            toast({ messageKey: 'branchUpdated', messageArgs: [branchData.name] });
         } catch(e) {
              console.error(e);
-            toast({ title: 'خطأ في التعديل', variant: 'destructive' });
+            toast({ messageKey: 'branchUpdateError' });
         }
     };
 
     const handleDeleteBranch = async (branchId: string) => {
         try {
             await remove(ref(db, `branches/${branchId}`));
-            toast({ title: 'تم الحذف بنجاح' });
+            toast({ messageKey: 'deleteSuccess' });
         } catch(e) {
              console.error(e);
-            toast({ title: 'خطأ', description: 'لم يتم حذف الفرع.', variant: 'destructive' });
+            toast({ messageKey: 'branchDeleteError' });
         }
     }
 
@@ -166,15 +160,9 @@ function BranchesContent() {
   const handlePasswordConfirm = (password: string) => {
      if (password === 'sansan') {
         setShowAddButton(true);
-        toast({
-            title: "تمكين الإضافة",
-            description: "تم تفعيل زر إضافة فرع جديد.",
-        });
+        toast({ messageKey: 'enableBranchAdd' });
     } else {
-         toast({
-            title: "كلمة مرور خاطئة",
-            variant: 'destructive'
-        });
+         toast({ messageKey: 'wrongPassword' });
     }
   }
 
