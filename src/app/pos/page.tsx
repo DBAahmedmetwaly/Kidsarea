@@ -595,7 +595,7 @@ function CheckInDialog({
             setSearchQuery("");
             setNotes("");
         }
-    }, [open]);
+    }, [open, setSelectedCustomer]);
 
     const handleCustomerSelect = (customer: Customer) => {
         setSelectedCustomer(customer);
@@ -705,7 +705,7 @@ function CheckInDialog({
                 sessionDetails: {
                     children: allChildren,
                     game: selectedGame.name,
-                    branchName: selectedGame.branch,
+                    branchName: selectedGame.branch, // This will be updated later
                     parentName: selectedCustomer.parentName,
                     phoneNumbers: selectedCustomer.phoneNumbers,
                     packageDuration: totalPackageDuration,
@@ -722,7 +722,7 @@ function CheckInDialog({
             const sessionDetails: Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'> = {
                 children: allChildren,
                 game: selectedGame.name,
-                branchName: selectedGame.branch,
+                branchName: selectedGame.branch, // This will be updated later
                 parentName: selectedCustomer.parentName,
                 phoneNumbers: selectedCustomer.phoneNumbers,
                 notes: notes,
@@ -2350,5 +2350,6 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
