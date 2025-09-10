@@ -39,7 +39,7 @@ export default function EmployeeFormDialog({
     const currentUser = employees.find(e => e.username === user?.username);
 
     const [name, setName] = useState('');
-    const [role, setRole] = useState<'مشرف' | 'كاشير' | 'مدير عام الفرع' | ''>('');
+    const [role, setRole] = useState<'مدير فرع' | 'كاشير' | 'مدير عام الفرع' | ''>('');
     const [branch, setBranch] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -81,7 +81,7 @@ export default function EmployeeFormDialog({
             return;
         }
 
-        const requiresCredentials = role === 'كاشير' || role === 'مدير عام الفرع' || role === 'مشرف';
+        const requiresCredentials = role === 'كاشير' || role === 'مدير عام الفرع' || role === 'مدير فرع';
 
         if (requiresCredentials && (!username || !password)) {
             toast({
@@ -134,13 +134,13 @@ export default function EmployeeFormDialog({
                                 <SelectValue placeholder="اختر الدور" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="مشرف">مشرف</SelectItem>
+                                <SelectItem value="مدير فرع">مدير فرع</SelectItem>
                                 <SelectItem value="كاشير">كاشير</SelectItem>
                                 <SelectItem value="مدير عام الفرع">مدير عام الفرع</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-                     {(role === 'كاشير' || role === 'مدير عام الفرع' || role === 'مشرف') && (
+                     {(role === 'كاشير' || role === 'مدير عام الفرع' || role === 'مدير فرع') && (
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="username" className="text-right">اسم المستخدم</Label>

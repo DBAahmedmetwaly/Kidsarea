@@ -15,7 +15,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { allMenuItems } from '@/components/layout/AppSidebar';
 
 type Permissions = Record<string, boolean>;
-type Role = 'مشرف' | 'كاشير' | 'مدير فرع';
+type Role = 'مدير فرع' | 'كاشير' | 'مدير عام الفرع';
 type RolePermissions = Record<Role, Permissions>;
 
 interface PermissionsContextType {

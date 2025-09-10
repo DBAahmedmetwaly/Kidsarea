@@ -54,7 +54,7 @@ export interface Game {
 export interface Employee {
     id:string;
     name: string;
-    role: 'مشرف' | 'كاشير' | 'مدير عام الفرع';
+    role: 'مدير فرع' | 'كاشير' | 'مدير عام الفرع';
     branch: string | 'كل الفروع';
     status: 'Active' | 'On Leave' | 'Disabled';
     username?: string;

@@ -181,7 +181,7 @@ function CashierPerformanceReport({ sessions, subscriptions, shiftRecords, selec
     
     const performanceData = useMemo(() => {
         const cashiers = employees.filter(emp => {
-            const isCashierRole = emp.role === 'كاشير' || emp.role === 'مدير فرع' || emp.role === 'مشرف';
+            const isCashierRole = emp.role === 'كاشير' || emp.role === 'مدير فرع' || emp.role === 'مدير فرع';
             if (!isCashierRole) return false;
 
             const isBranchMatch = selectedBranch === 'all' || emp.branch === selectedBranch || emp.branch === 'كل الفروع';
@@ -370,7 +370,7 @@ function ReportsContent() {
     const employeeIncomeData = useMemo(() => {
         const incomeByEmployee: { [key: string]: number } = {};
         const cashiers = employees.filter(e => {
-            const roleMatch = e.role === 'كاشير' || e.role === 'مدير فرع' || e.role === 'مشرف';
+            const roleMatch = e.role === 'كاشير' || e.role === 'مدير فرع' || e.role === 'مدير فرع';
             const branchMatch = selectedBranch === 'all' || e.branch === selectedBranch || e.branch === 'كل الفروع';
             return roleMatch && branchMatch;
         });

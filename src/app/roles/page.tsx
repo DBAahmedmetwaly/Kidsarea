@@ -72,8 +72,8 @@ const SPECIAL_PERMISSIONS: { href: string; label: string }[] = [
     // { href: '/permissions/apply-discount', label: 'إمكانية عمل خصم' }
 ];
 
-type Role = 'مشرف' | 'كاشير' | 'مدير عام الفرع';
-const ROLES: Role[] = ['مدير عام الفرع', 'كاشير', 'مشرف'];
+type Role = 'مدير فرع' | 'كاشير' | 'مدير عام الفرع';
+const ROLES: Role[] = ['مدير عام الفرع', 'كاشير', 'مدير فرع'];
 
 type Permissions = Record<string, boolean>;
 type RolePermissions = Record<Role, Permissions>;
@@ -110,7 +110,7 @@ function RolesContent() {
       const data = snapshot.val();
       if (data) {
         // Decode keys from Firebase
-        const decodedPermissions: RolePermissions = { 'مدير عام الفرع': {}, 'كاشير': {}, 'مشرف': {} };
+        const decodedPermissions: RolePermissions = { 'مدير عام الفرع': {}, 'كاشير': {}, 'مدير فرع': {} };
         for (const role of ROLES) {
             const rolePermissions = data[role];
             if (rolePermissions) {
@@ -133,7 +133,7 @@ function RolesContent() {
         });
         set(rolesRef, defaultPermissions);
         
-        const decodedForState: RolePermissions = { 'مدير عام الفرع': {}, 'كاشير': {}, 'مشرف': {} };
+        const decodedForState: RolePermissions = { 'مدير عام الفرع': {}, 'كاشير': {}, 'مدير فرع': {} };
          ROLES.forEach(role => {
              const screens = Object.values(allScreens).flat();
             decodedForState[role] = screens.reduce((acc, screen) => ({ ...acc, [screen.href]: true }), {});

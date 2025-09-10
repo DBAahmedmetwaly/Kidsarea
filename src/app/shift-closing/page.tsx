@@ -75,7 +75,7 @@ function ShiftClosingForm() {
   
   const currentUser = employees.find(e => e.username === user?.username);
 
-  const employeesWithShifts = employees.filter(e => e.role === 'كاشير' || e.role === 'مشرف' || e.role === 'مدير عام الفرع');
+  const employeesWithShifts = employees.filter(e => e.role === 'كاشير' || e.role === 'مدير فرع' || e.role === 'مدير عام الفرع');
   const [openCombobox, setOpenCombobox] = useState(false);
 
   const form = useForm<CloseShiftFormValues>({
@@ -350,7 +350,7 @@ function OpenShiftForm() {
     const [openCombobox, setOpenCombobox] = useState(false);
     
     const currentUser = employees.find(e => e.username === user?.username);
-    const employeesWithShifts = employees.filter(e => e.role === 'كاشير' || e.role === 'مشرف' || e.role === 'مدير عام الفرع');
+    const employeesWithShifts = employees.filter(e => e.role === 'كاشير' || e.role === 'مدير فرع' || e.role === 'مدير عام الفرع');
 
     const form = useForm<OpenShiftFormValues>({
         resolver: zodResolver(openShiftSchema),
