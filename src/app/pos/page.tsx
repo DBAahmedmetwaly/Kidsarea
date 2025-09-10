@@ -1752,34 +1752,29 @@ function PosTrackingContent() {
 
 
     const handleTimeEnd = useCallback((session: Child) => {
-        const showToast = () => {
-            // Check if the session is still active before showing a new toast.
-            const isSessionStillActive = activeChildren.some(child => child.id === session.id);
-            if (!isSessionStillActive) {
-                stopNotificationForSession(session.id); // Clean up the interval
-                return;
-            }
+        const isSessionStillActive = activeChildren.some(child => child.id === session.id);
+        if (!isSessionStillActive) {
+            stopNotificationForSession(session.id); // Clean up the interval
+            return;
+        }
 
-            // Check if the current user should see this notification
-            const isUserInCorrectBranch = !currentUser || currentUser.branch === 'كل الفروع' || currentUser.branch === session.branchName;
-            if (!isUserInCorrectBranch) {
-                return; 
-            }
-            
-            toast({
-                title: "🔔 انتهى الوقت!",
-                description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c => c.name).join(', ')}.`,
-                variant: "destructive",
-                duration: (policies?.toastDuration || 5) * 1000,
-            });
-        };
+        // Check if the current user should see this notification
+        const isUserInCorrectBranch = !currentUser || currentUser.branch === 'كل الفروع' || currentUser.branch === session.branchName;
+        if (!isUserInCorrectBranch) {
+            return; 
+        }
 
-        showToast(); // Show immediate toast
+        toast({
+            title: "🔔 انتهى الوقت!",
+            description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c => c.name).join(', ')}.`,
+            variant: "destructive",
+            duration: (policies?.toastDuration || 5) * 1000,
+        });
 
-        const intervalSeconds = policies?.packageOvertimeNotificationInterval || 60;
-        const intervalId = setInterval(showToast, intervalSeconds * 1000);
-        notificationIntervals.set(session.id, intervalId);
-    }, [policies, toast, notificationIntervals, activeChildren, stopNotificationForSession, currentUser]);
+        // The interval is no longer needed, we show the toast once.
+        stopNotificationForSession(session.id);
+
+    }, [policies, toast, activeChildren, stopNotificationForSession, currentUser]);
 
   const hasTimeExpired = (session: Child) => {
     if (!session.packageDuration) return false;
@@ -2349,6 +2344,7 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
 
