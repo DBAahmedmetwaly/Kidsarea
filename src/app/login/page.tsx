@@ -34,7 +34,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    if (username === 'admin' && password === '123456') {
+    if (username === 'admin' && password === '131415') {
         login({ username: 'admin' });
         toast({
         title: 'تم تسجيل الدخول بنجاح',
