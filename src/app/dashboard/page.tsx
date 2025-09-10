@@ -277,14 +277,14 @@ function DashboardContent() {
     }, [completedSessions, productSales, selectedBranch, fromDate, toDate]);
 
     const clearFilters = () => {
-        if (currentUser && currentUser.branch !== 'كل الفروع') {
-             // Don't clear branch if it's locked
-        } else {
-            setSelectedBranch('all');
+        if (!currentUser || currentUser.branch === 'كل الفروع' || user?.username === 'admin') {
+           setSelectedBranch('all');
         }
         setFromDate(subDays(new Date(), 6));
         setToDate(new Date());
     }
+
+    const canChangeBranch = !currentUser || currentUser.branch === 'كل الفروع' || user?.username === 'admin';
 
     return (
         <div className="flex flex-col gap-8">
@@ -314,7 +314,7 @@ function DashboardContent() {
                 <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
-                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={!canChangeBranch}>
                             <SelectTrigger>
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>

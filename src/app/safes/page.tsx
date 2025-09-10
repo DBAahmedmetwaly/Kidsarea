@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -56,17 +57,18 @@ function SafesContent() {
         if (!user) return null;
         return employees.find(e => e.username === user.username);
     }, [user, employees]);
+    
+    const canManageSafes = !currentUser || currentUser.branch === 'كل الفروع' || user?.username === 'admin';
 
     const filteredSafes = useMemo(() => {
-        if (!currentUser || currentUser.branch === 'كل الفروع') {
+        if (canManageSafes) {
             return safes;
         }
         return safes.filter(s => s.branchName === currentUser.branch);
-    }, [safes, currentUser]);
+    }, [safes, currentUser, canManageSafes]);
 
 
     const handleAddSafe = async (newSafe: Omit<Safe, 'id'>) => {
-        // Check if a safe already exists for the selected branch
         const existingSafeForBranch = safes.find(s => s.branchName === newSafe.branchName);
         if (existingSafeForBranch) {
             toast({
@@ -115,14 +117,16 @@ function SafesContent() {
             <SidebarTrigger />
         </div>
         <h1 className="text-lg font-semibold md:text-2xl">إدارة الخزائن</h1>
-        <div className="ms-auto flex items-center gap-2">
-          <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
-            <PlusCircle className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              إضافة خزينة
-            </span>
-          </Button>
-        </div>
+        {canManageSafes && (
+            <div className="ms-auto flex items-center gap-2">
+            <Button size="sm" className="h-8 gap-1" onClick={() => setAddDialogOpen(true)}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                إضافة خزينة
+                </span>
+            </Button>
+            </div>
+        )}
       </div>
       <Card>
         <CardHeader>
@@ -138,9 +142,11 @@ function SafesContent() {
                 <TableHead className="text-right">اسم الخزينة</TableHead>
                 <TableHead className="text-right">الفرع</TableHead>
                 <TableHead className="text-right">الرصيد الحالي</TableHead>
-                <TableHead className="text-center">
-                  <span>الإجراءات</span>
-                </TableHead>
+                {canManageSafes && (
+                    <TableHead className="text-center">
+                        <span>الإجراءات</span>
+                    </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -155,27 +161,28 @@ function SafesContent() {
                   <TableCell className="font-bold text-green-600 text-right">
                     {`ج.م ${safe.balance.toFixed(2)}`}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">تبديل القائمة</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>تعديل</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteSafe(safe.id)}>
-                          حذف
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  {canManageSafes && (
+                    <TableCell className="text-center">
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                            >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">تبديل القائمة</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteSafe(safe.id)}>
+                            حذف
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                   )}
                 </TableRow>
               ))}
             </TableBody>
@@ -201,3 +208,4 @@ export default function SafesPage() {
 }
 
     
+

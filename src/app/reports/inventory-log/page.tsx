@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -49,12 +50,14 @@ function InventoryLogContent() {
         if (!user) return null;
         return employees.find(e => e.username === user.username);
     }, [user, employees]);
+    
+    const canChangeBranch = !currentUser || currentUser.branch === 'كل الفروع' || user?.username === 'admin';
 
     useEffect(() => {
-        if (currentUser && currentUser.branch !== 'كل الفروع') {
+        if (currentUser && !canChangeBranch) {
             setBranchFilter(currentUser.branch);
         }
-    }, [currentUser]);
+    }, [currentUser, canChangeBranch]);
 
     const filteredMovements = useMemo(() => {
         return (inventoryMovements || []).filter(item => {
@@ -69,7 +72,7 @@ function InventoryLogContent() {
     }, [inventoryMovements, productFilter, branchFilter, typeFilter, fromDate, toDate]);
     
      const clearFilters = () => {
-        if (currentUser && currentUser.branch !== 'كل الفروع') {
+        if (!canChangeBranch) {
             // Don't clear branch filter
         } else {
             setBranchFilter('all');
@@ -132,7 +135,7 @@ function InventoryLogContent() {
                     </div>
                      <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
-                        <Select value={branchFilter} onValueChange={setBranchFilter} disabled={currentUser?.branch !== 'كل الفروع'}>
+                        <Select value={branchFilter} onValueChange={setBranchFilter} disabled={!canChangeBranch}>
                             <SelectTrigger>
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>

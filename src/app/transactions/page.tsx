@@ -58,11 +58,13 @@ function TransactionsContent() {
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
 
+  const canChangeBranch = !currentUser || currentUser.branch === 'كل الفروع' || user?.username === 'admin';
+
   useEffect(() => {
-    if (currentUser && currentUser.branch !== 'كل الفروع') {
+    if (currentUser && !canChangeBranch) {
         setSelectedBranch(currentUser.branch);
     }
-  }, [currentUser]);
+  }, [currentUser, canChangeBranch]);
   
 
   const filteredSafes = useMemo(() => {
@@ -98,7 +100,7 @@ function TransactionsContent() {
   }, [allTransactions, selectedBranch, selectedSafe, selectedType, fromDate, toDate]);
   
   const clearFilters = () => {
-    if (currentUser && currentUser.branch !== 'كل الفروع') {
+    if (!canChangeBranch) {
         // Don't clear branch if it's locked
     } else {
         setSelectedBranch('all');
@@ -186,7 +188,7 @@ function TransactionsContent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">الفرع</label>
-                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={currentUser?.branch !== 'كل الفروع'}>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={!canChangeBranch}>
                             <SelectTrigger>
                                 <SelectValue placeholder="اختر الفرع" />
                             </SelectTrigger>

@@ -1,9 +1,9 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { MoreHorizontal, PlusCircle, Archive } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
 import {
@@ -74,7 +74,10 @@ function InventoryContent() {
 
     const currentUser = useMemo(() => employees.find(e => e.username === user?.username), [employees, user]);
     
-    const [selectedBranch, setSelectedBranch] = useState(currentUser?.branch === 'كل الفروع' ? branches[0]?.name || '' : currentUser?.branch || '');
+    const [selectedBranch, setSelectedBranch] = useState(
+        (currentUser && currentUser.branch !== 'كل الفروع') ? currentUser.branch : (branches.length > 0 ? branches[0].name : '')
+    );
+     const canChangeBranch = !currentUser || currentUser.branch === 'كل الفروع' || user?.username === 'admin';
 
      const handleFormSubmit = async (itemData: Omit<InventoryItem, 'id'> | InventoryItem, movement?: Omit<InventoryMovement, 'id'>) => {
         try {
@@ -146,7 +149,7 @@ function InventoryContent() {
             <Select 
                 value={selectedBranch} 
                 onValueChange={setSelectedBranch} 
-                disabled={currentUser?.branch !== 'كل الفروع'}
+                disabled={!canChangeBranch}
             >
                 <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="اختر فرع..." />
