@@ -99,8 +99,8 @@ export const PosReceipt = React.forwardRef<HTMLDivElement, PosReceiptProps>(({
        <div className='space-y-1 border-b border-dashed border-gray-400 pb-1 mb-1'>
             {show('showReceiptId') && <div className="grid grid-cols-2"><span>رقم الفاتورة:</span> <span className='text-left'>{receiptId}</span></div>}
             {show('showCashierName') && <div className="grid grid-cols-2"><span>الكاشير:</span> <span className='text-left'>{cashierName}</span></div>}
-            {show('showParentName') && <div className="grid grid-cols-2"><span>ولي الأمر:</span> <span className='text-left'>{parentName}</span></div>}
-            {show('showCustomerPhone') && <div className="grid grid-cols-2"><span>الهاتف:</span> <span className='text-left font-mono'>{(phoneNumbers || []).join('/')}</span></div>}
+            {show('showParentName') && parentName && <div className="grid grid-cols-2"><span>ولي الأمر:</span> <span className='text-left'>{parentName}</span></div>}
+            {show('showCustomerPhone') && phoneNumbers && phoneNumbers.length > 0 && <div className="grid grid-cols-2"><span>الهاتف:</span> <span className='text-left font-mono'>{(phoneNumbers || []).join('/')}</span></div>}
             {show('showChildName') && <div className="grid grid-cols-2"><span>الأطفال ({safeChildren.length}):</span> <span className='text-left'>{safeChildren.map(c => c.name).join(', ')}</span></div>}
        </div>
 
