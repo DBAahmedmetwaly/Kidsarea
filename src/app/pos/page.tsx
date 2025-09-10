@@ -680,7 +680,7 @@ function CheckInDialog({
         
         if (isPrepaid) {
             if (Object.keys(selectedPackages).length === 0) {
-                toast({ title: "يرجى اختيار باقة وقت واحدة على الأقل", variant: "destructive" });
+                toast({ messageKey: 'invalidInput', description: "يرجى اختيار باقة وقت واحدة على الأقل" });
                 return;
             }
             
@@ -1295,7 +1295,7 @@ function PosTrackingContent() {
         const originalSessionRef = ref(db, `sessions/completed/${childToCheckout.prepaidSessionId}`);
         const snapshot = await get(originalSessionRef);
         if (!snapshot.exists()) {
-            toast({ title: "خطأ", description: "لم يتم العثور على الجلسة الأصلية.", variant: "destructive" });
+            toast({ messageKey: 'saveError', description: "لم يتم العثور على الجلسة الأصلية." });
             return;
         }
 
@@ -1316,13 +1316,13 @@ function PosTrackingContent() {
 
     const handleOvertimeCheckout = async (receivedAmount: number) => {
         if (!childToCheckout || !childToCheckout.prepaidSessionId) {
-             toast({ title: 'خطأ', description: 'لا يمكن العثور على الفاتورة الأصلية لهذه الجلسة.', variant: 'destructive' });
+             toast({ messageKey: 'saveError', description: 'لا يمكن العثور على الفاتورة الأصلية لهذه الجلسة.' });
              return;
         }
         const originalSessionRef = ref(db, `sessions/completed/${childToCheckout.prepaidSessionId}`);
         const snapshot = await get(originalSessionRef);
         if (!snapshot.exists()) {
-            toast({ title: "خطأ", description: "لم يتم العثور على الجلسة الأصلية.", variant: "destructive" });
+            toast({ messageKey: 'saveError', description: "لم يتم العثور على الجلسة الأصلية." });
             return;
         }
 
@@ -1347,7 +1347,7 @@ function PosTrackingContent() {
 
         } catch (error) {
              console.error("Overtime checkout update failed:", error);
-            toast({ title: "خطأ", description: "فشل تحديث الجلسة الأصلية.", variant: "destructive" });
+            toast({ messageKey: 'saveError', description: "فشل تحديث الجلسة الأصلية." });
         }
     }
 
@@ -1439,7 +1439,7 @@ function PosTrackingContent() {
          toast({ title: "تم تسجيل الخروج بنجاح" });
     } catch (err) {
         console.error(err);
-        toast({ title: 'خطأ في تسجيل الخروج', variant: 'destructive' });
+        toast({ messageKey: 'saveError', description: 'خطأ في تسجيل الخروج' });
     }
 };
 
@@ -1448,9 +1448,9 @@ function PosTrackingContent() {
     
     if (policies && policies.maxCapacity && (activeChildren.length + children.length) > policies.maxCapacity) {
         toast({
-            title: 'تم الوصول للحد الأقصى',
+            messageKey: 'invalidInput',
             description: `لا يمكن إضافة المزيد من الأطفال. السعة القصوى هي ${policies.maxCapacity} طفل.`,
-            variant: 'destructive',
+            
         });
         return;
     }
@@ -1460,15 +1460,15 @@ function PosTrackingContent() {
 
     if (alreadyActiveChildren.length > 0) {
         toast({
-            title: 'طفل نشط بالفعل',
+            messageKey: 'invalidInput',
             description: `الطفل "${alreadyActiveChildren[0].name}" موجود بالفعل في جلسة نشطة.`,
-            variant: 'destructive'
+            
         });
         return;
     }
 
     if (!user || !user.username || !currentUser) {
-        toast({ title: 'خطأ', description: 'لم يتم تحديد الكاشير الحالي.', variant: 'destructive' });
+        toast({ messageKey: 'saveError', description: 'لم يتم تحديد الكاشير الحالي.' });
         return;
     }
     
@@ -1492,7 +1492,7 @@ function PosTrackingContent() {
         toast({ title: 'تم تسجيل الدخول بنجاح', description: `تم تسجيل دخول الأطفال: ${children.map(c=>c.name).join(', ')}.` });
     } catch(err) {
         console.error(err);
-        toast({ title: 'خطأ في تسجيل الدخول', variant: 'destructive'})
+        toast({ messageKey: 'saveError', description: 'خطأ في تسجيل الدخول'})
     }
   };
 
@@ -1500,17 +1500,14 @@ function PosTrackingContent() {
       try {
           const existingCustomer = customers.find(c => (c.phoneNumbers || []).some(p => newCustomerData.phoneNumbers.includes(p)));
           if (existingCustomer) {
-                toast({ title: "خطأ", description: "هذا الرقم مسجل لعميل آخر.", variant: 'destructive' });
+                toast({ messageKey: 'customerPhoneExistsError' });
                 return;
           }
           const customersRef = ref(db, 'customers');
           const newCustomerRef = push(customersRef);
           const finalData = { ...newCustomerData, createdAt: new Date().toISOString() };
           await set(newCustomerRef, finalData);
-          toast({
-                title: "تمت الإضافة بنجاح",
-                description: `تمت إضافة العميل "${newCustomerData.parentName}".`,
-          });
+          toast({ messageKey: 'customerAddedSuccess', messageArgs: [newCustomerData.parentName] });
           setCustomerFormOpen(false); // Close dialog on success
       } catch(e) {
           console.error(e);
@@ -1522,7 +1519,7 @@ function PosTrackingContent() {
             const customerRef = ref(db, `customers/${customerToUpdate.id}`);
             const { id, ...customerData } = customerToUpdate;
             await update(customerRef, customerData);
-            toast({ title: "تم التعديل بنجاح" });
+            toast({ messageKey: 'customerUpdateSuccess' });
             setCustomerFormOpen(false); // Close dialog on success
             // Update the selected customer in the check-in dialog if it's open
             if (isCheckInDialogOpen && selectedCustomer?.id === customerToUpdate.id) {
@@ -1530,7 +1527,7 @@ function PosTrackingContent() {
             }
         } catch (e) {
             console.error(e);
-            toast({ title: "خطأ في التعديل", variant: 'destructive' });
+            toast({ messageKey: 'customerUpdateError' });
         }
     };
 
@@ -1624,7 +1621,7 @@ function PosTrackingContent() {
 
     const branch = branches.find(b => b.name === currentUser.branch);
     if (!branch) {
-        toast({ title: "خطأ", description: "لم يتم العثور على الفرع الحالي.", variant: "destructive"});
+        toast({ messageKey: 'saveError', description: "لم يتم العثور على الفرع الحالي."});
         return;
     }
     
@@ -1749,22 +1746,24 @@ function PosTrackingContent() {
 
     } catch (error) {
         console.error("Sale confirmation error:", error);
-        toast({ title: "خطأ", description: "فشل تسجيل عملية البيع.", variant: "destructive"});
+        toast({ messageKey: 'saveError', description: "فشل تسجيل عملية البيع."});
     }
   };
 
 
     const handleTimeEnd = useCallback((session: Child) => {
         const showToast = () => {
+            // Check if the session is still active before showing a new toast.
             const isSessionStillActive = activeChildren.some(child => child.id === session.id);
-            const isUserInCorrectBranch = !currentUser || currentUser.branch === 'كل الفروع' || currentUser.branch === session.branchName;
-            
             if (!isSessionStillActive) {
                 stopNotificationForSession(session.id); // Clean up the interval
                 return;
             }
+
+            // Check if the current user should see this notification
+            const isUserInCorrectBranch = !currentUser || currentUser.branch === 'كل الفروع' || currentUser.branch === session.branchName;
             if (!isUserInCorrectBranch) {
-                return; // Don't show toast if user is in a different branch
+                return; 
             }
             
             toast({
@@ -2350,6 +2349,7 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
 
