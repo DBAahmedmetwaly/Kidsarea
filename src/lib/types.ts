@@ -157,6 +157,7 @@ export interface Policies {
     packagePricingModel: 'per_session' | 'per_child';
     toastDuration: number;
     buyOneHourGetXFreeMinutes: number; // 0 for disabled, or 15, 30, 60 etc.
+    enableNotifications?: boolean;
 }
 
 export interface Customer {

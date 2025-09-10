@@ -149,8 +149,29 @@ type Toast = Omit<ToasterToast, "id"> & {
     messageArgs?: any[]
 }
 
+let enableNotifications = true; // Default value
+
+function updateNotificationSetting(policies: any[] | undefined) {
+    if (policies) {
+        const defaultPolicies = policies.find(p => p.id === 'default');
+        if (defaultPolicies && typeof defaultPolicies.enableNotifications === 'boolean') {
+            enableNotifications = defaultPolicies.enableNotifications;
+        } else {
+            enableNotifications = true; // Default to true if not set
+        }
+    }
+}
+
 
 function toast({ messageKey, messageArgs = [], ...props }: Toast) {
+  if (!enableNotifications) {
+    return {
+      id: '',
+      dismiss: () => {},
+      update: () => {},
+    };
+  }
+
   const id = genId()
 
   const message = getNotificationMessage(messageKey, ...messageArgs);
@@ -184,9 +205,13 @@ function toast({ messageKey, messageArgs = [], ...props }: Toast) {
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
-  const { policies } = useFirebase(); // Use the hook here
+  const { policies } = useFirebase();
   const defaultPolicies = policies.find(p => p.id === 'default');
   const toastDuration = (defaultPolicies?.toastDuration || 5) * 1000;
+  
+  React.useEffect(() => {
+    updateNotificationSetting(policies);
+  }, [policies]);
 
 
   React.useEffect(() => {

@@ -94,6 +94,7 @@ const policiesSchema = z.object({
   packagePricingModel: z.enum(['per_session', 'per_child']),
   toastDuration: z.coerce.number().int().min(1, 'المدة يجب أن تكون ثانية واحدة على الأقل'),
   buyOneHourGetXFreeMinutes: z.coerce.number().optional(),
+  enableNotifications: z.boolean().optional(),
 });
 
 type PoliciesFormValues = z.infer<typeof policiesSchema>;
@@ -141,6 +142,7 @@ const defaultPolicies: PoliciesFormValues = {
       packagePricingModel: 'per_session',
       toastDuration: 5,
       buyOneHourGetXFreeMinutes: 0,
+      enableNotifications: true,
 }
 
 function PoliciesContent() {
@@ -278,7 +280,30 @@ function PoliciesContent() {
             <CardHeader>
               <CardTitle>السياسات العامة</CardTitle>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <CardContent className="space-y-6">
+                 <FormField
+                    control={form.control}
+                    name="enableNotifications"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                            تفعيل الإشعارات
+                        </FormLabel>
+                        <FormDescription>
+                           تشغيل أو إيقاف جميع الإشعارات المنبثقة في النظام (مثل رسائل النجاح والخطأ).
+                        </FormDescription>
+                        </div>
+                        <FormControl>
+                        <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                        />
+                        </FormControl>
+                    </FormItem>
+                    )}
+                />
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6 border-t">
               <FormField
                 control={form.control}
                 name="appName"
@@ -355,6 +380,7 @@ function PoliciesContent() {
                   </FormItem>
                 )}
               />
+              </div>
             </CardContent>
           </Card>
 
