@@ -673,9 +673,9 @@ function CheckInDialog({
 
 
     const handleConfirm = () => {
-        const allChildren = [...selectedChildren, ...guestChildren.filter(g => g.name)];
+        const allChildren = [...selectedChildren, ...guestChildren.filter(g => g.name.trim() !== '')];
         if (!selectedCustomer || allChildren.length === 0 || !selectedGame) return;
-        
+
         const isPrepaid = selectedGame.paymentModel === 'prepaid';
         
         if (isPrepaid) {
@@ -2328,6 +2328,7 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
 
