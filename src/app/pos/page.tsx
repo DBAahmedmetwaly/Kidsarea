@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -1385,8 +1384,15 @@ function PosTrackingContent() {
         packagePrice: child.packagePrice,
         packageName: child.packageName,
         packageDuration: child.packageDuration,
-        overtimeCost: receiptDetails.overtimeCost,
         notes: receiptDetails.notes,
+        // Ensure these have default values
+        totalCost: receiptDetails.totalCost ?? 0,
+        amountReceived: receiptDetails.amountReceived,
+        costBeforeDiscount: receiptDetails.costBeforeDiscount ?? 0,
+        durationCost: receiptDetails.durationCost,
+        entryFee: receiptDetails.entryFee,
+        discount: receiptDetails.discount,
+        overtimeCost: receiptDetails.overtimeCost,
     };
     
     const printCondition = receiptSettings && !isPrepaidModification && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || (child.prepaidSessionId && !isPrepaidModification));
@@ -1399,10 +1405,11 @@ function PosTrackingContent() {
         if (child.prepaidSessionId) {
             const originalSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
             const updates: Partial<CompletedSession> = {
-                cost: finalReceiptDetails.totalCost,
-                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
-                discount: finalReceiptDetails.discount,
-                notes: finalReceiptDetails.notes,
+                cost: finalReceiptDetails.totalCost ?? 0,
+                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount ?? 0,
+                discount: finalReceiptDetails.discount ?? 0,
+                overtimeCost: finalReceiptDetails.overtimeCost ?? 0,
+                notes: finalReceiptDetails.notes || '',
                 checkOutTime: finalReceiptDetails.checkOutTime.getTime(),
                 durationMs: durationMs,
             };
@@ -1414,7 +1421,7 @@ function PosTrackingContent() {
                 checkOutTime: checkOutTime.getTime(),
                 durationMs: durationMs,
                 cost: finalReceiptDetails.totalCost,
-                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount || 0,
+                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
                 durationCost: finalReceiptDetails.durationCost || 0,
                 entryFee: finalReceiptDetails.entryFee || 0,
                 discount: finalReceiptDetails.discount || 0,
@@ -2254,7 +2261,7 @@ function PosTrackingContent() {
                                             const pricePerUnit = item.cartQuantity > 0 ? item.price / item.cartQuantity : 0;
                                             return { 
                                                 name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, 
-                                                subtext: `${item.sessionDetails.parentName} (${item.sessionDetails.phoneNumbers[0]})`,
+                                                subtext: `${item.sessionDetails.parentName} (${(item.sessionDetails.phoneNumbers || []).join(' / ')})`,
                                                 price: pricePerUnit.toFixed(2) 
                                             };
                                         default:
@@ -2326,21 +2333,3 @@ export default function PosTrackingPage() {
 }
 
     
-
-
-
-
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
