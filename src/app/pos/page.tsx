@@ -680,7 +680,7 @@ function CheckInDialog({
         
         if (isPrepaid) {
             if (Object.keys(selectedPackages).length === 0) {
-                toast({ messageKey: 'invalidInput', description: "يرجى اختيار باقة وقت واحدة على الأقل" });
+                toast({ messageKey: 'posPackageRequired' });
                 return;
             }
             
@@ -1101,7 +1101,6 @@ function PosTrackingContent() {
   
   const [currentTime, setCurrentTime] = useState<string>('');
 
-  const notificationIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map()).current;
   const [customerFormIsEditMode, setCustomerFormIsEditMode] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
@@ -1223,13 +1222,6 @@ function PosTrackingContent() {
       setNoteViewerOpen(true);
   }
 
-  const stopNotificationForSession = useCallback((sessionId: string) => {
-    if (notificationIntervals.has(sessionId)) {
-        clearInterval(notificationIntervals.get(sessionId)!);
-        notificationIntervals.delete(sessionId);
-    }
-  }, [notificationIntervals]);
-  
   const calculateOvertimeCost = useCallback((session: Child): number => {
     if (!policies?.enablePackageOvertime || !session.packageDuration) return 0;
 
@@ -1258,8 +1250,6 @@ function PosTrackingContent() {
   
   const handleCheckoutClick = (session: Child) => {
     setChildToCheckout(session);
-    
-    stopNotificationForSession(session.id); // Stop notifications as soon as checkout starts
     
     const isPackageGame = session?.packageDuration && session.packageDuration > 0;
     if (isPackageGame) {
@@ -1355,7 +1345,6 @@ function PosTrackingContent() {
   const handleCheckOut = async (child: Child, receiptDetails: PosReceiptProps, isPrepaidModification: boolean = false) => {
     if (!child) return;
 
-    stopNotificationForSession(child.id);
     setCheckoutDialogOpen(false);
     setZeroCostCheckoutOpen(false);
     setEarlyCheckoutDiscountOpen(false);
@@ -1749,28 +1738,27 @@ function PosTrackingContent() {
   };
 
 
-    const handleTimeEnd = useCallback((session: Child) => {
-        if (!policies?.enablePackageOvertimeNotification) return;
+  const handleTimeEnd = useCallback((session: Child) => {
+    if (!policies?.enablePackageOvertimeNotification) return;
 
-        const isSessionStillActive = activeChildren.some(child => child.id === session.id);
-        if (!isSessionStillActive) {
-            stopNotificationForSession(session.id); // Clean up the interval
-            return;
-        }
+    const isSessionStillActive = activeChildren.some(child => child.id === session.id);
+    if (!isSessionStillActive) {
+        return;
+    }
 
-        // Check if the current user should see this notification
-        const isUserInCorrectBranch = !currentUser || currentUser.branch === 'كل الفروع' || currentUser.branch === session.branchName;
-        if (!isUserInCorrectBranch) {
-            return; 
-        }
+    // Check if the current user should see this notification
+    const isUserInCorrectBranch = !currentUser || currentUser.branch === 'كل الفروع' || currentUser.branch === session.branchName;
+    if (!isUserInCorrectBranch) {
+        return; 
+    }
 
-        toast({
-            messageKey: 'posTimeEndedNotification',
-            messageArgs: [session.children.map(c => c.name).join(', ')],
-            duration: (policies?.toastDuration || 5) * 1000,
-        });
+    toast({
+        messageKey: 'posTimeEndedNotification',
+        messageArgs: [session.children.map(c => c.name).join(', ')],
+        duration: (policies?.toastDuration || 5) * 1000,
+    });
 
-    }, [policies, toast, activeChildren, stopNotificationForSession, currentUser]);
+  }, [policies, toast, activeChildren, currentUser]);
 
   const hasTimeExpired = (session: Child) => {
     if (!session.packageDuration) return false;
@@ -1825,7 +1813,7 @@ function PosTrackingContent() {
 
 
   return (
-    <div className="relative h-full grid lg:grid-cols-3 gap-4">
+    <div className="relative h-full flex flex-col lg:grid lg:grid-cols-3 gap-4">
         {/* Main Content */}
         <div className="lg:col-span-2 flex flex-col gap-4">
             {/* Overlay for no active shift */}
@@ -1862,7 +1850,7 @@ function PosTrackingContent() {
                     <Clock className="h-5 w-5" />
                     <span className="font-mono font-bold text-lg" suppressHydrationWarning>{currentTime}</span>
                 </div>
-                <div className="ms-auto flex items-center gap-2">
+                <div className="ms-auto flex items-center gap-2 flex-wrap justify-end">
                      <Button size="sm" variant="outline" onClick={() => {
                         setCustomerFormOpen(true);
                         setCustomerFormIsEditMode(false);
@@ -2034,8 +2022,8 @@ function PosTrackingContent() {
                                     <TableHead className="text-right">{policies?.posLabels?.childColumnTitle || 'الطفل'}</TableHead>
                                     <TableHead className="text-right">الملاحظات</TableHead>
                                     <TableHead className="text-right">{policies?.posLabels?.parentColumnTitle || 'ولي الأمر'}</TableHead>
-                                    <TableHead className="text-center">رقم الهاتف</TableHead>
-                                    <TableHead className="text-center">رقم الإيصال</TableHead>
+                                    <TableHead className="text-center hidden md:table-cell">رقم الهاتف</TableHead>
+                                    <TableHead className="text-center hidden md:table-cell">رقم الإيصال</TableHead>
                                     <TableHead className="text-right">اللعبة</TableHead>
                                     <TableHead className="text-center">الوقت</TableHead>
                                     <TableHead className="text-center">إجراء</TableHead>
@@ -2065,8 +2053,8 @@ function PosTrackingContent() {
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">{session.parentName}</TableCell>
-                                    <TableCell className="text-center">{(session.phoneNumbers || []).join(' / ')}</TableCell>
-                                    <TableCell className="text-center font-mono">
+                                    <TableCell className="text-center hidden md:table-cell">{(session.phoneNumbers || []).join(' / ')}</TableCell>
+                                    <TableCell className="text-center font-mono hidden md:table-cell">
                                         {session.receiptNumber ? (
                                             <span className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                                                 <ReceiptIcon className="h-3 w-3" />
@@ -2128,7 +2116,7 @@ function PosTrackingContent() {
                                             <TableRow>
                                                 <TableHead className="text-right">الطفل</TableHead>
                                                 <TableHead className="text-right">ولي الأمر</TableHead>
-                                                <TableHead className="text-center">الهاتف</TableHead>
+                                                <TableHead className="text-center hidden sm:table-cell">الهاتف</TableHead>
                                                 <TableHead className="text-center">وقت الخروج</TableHead>
                                                 <TableHead className="text-center">التكلفة</TableHead>
                                             </TableRow>
@@ -2139,7 +2127,7 @@ function PosTrackingContent() {
                                                     <TableRow key={session.id}>
                                                         <TableCell className="font-medium text-right">{session.children?.map(c => c.name).join(', ') ?? 'N/A'}</TableCell>
                                                         <TableCell className="text-right">{session.parentName}</TableCell>
-                                                        <TableCell className="text-center">{session.phoneNumbers?.join(' / ')}</TableCell>
+                                                        <TableCell className="text-center hidden sm:table-cell">{session.phoneNumbers?.join(' / ')}</TableCell>
                                                         <TableCell className="text-center">{new Date(session.checkOutTime).toLocaleTimeString('ar-EG')}</TableCell>
                                                         <TableCell className="font-bold text-center">
                                                             <div className='flex items-center justify-center gap-2 whitespace-nowrap'>
@@ -2340,6 +2328,7 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
 
