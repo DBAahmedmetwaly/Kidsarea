@@ -1676,10 +1676,13 @@ function PosTrackingContent() {
             const completedSessionId = completedSessionRef.key!;
             const checkInTime = Date.now();
             
-            const combinedNotes = [gameItem.sessionDetails.notes, cartNotes].filter(Boolean).join(' - ');
+            const sessionDataForActive = {
+                ...gameItem.sessionDetails,
+                notes: [gameItem.sessionDetails.notes, cartNotes].filter(Boolean).join(' - '),
+            };
 
             const completedSession: CompletedSession = {
-                ...(gameItem.sessionDetails as Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>),
+                ...sessionDataForActive,
                 id: completedSessionId,
                 receiptNumber,
                 checkInTime: checkInTime,
@@ -1688,12 +1691,9 @@ function PosTrackingContent() {
                 cost: gameItem.price,
                 costBeforeDiscount: gameItem.price,
                 cashierUsername: user.username,
-                notes: combinedNotes,
             };
             await set(completedSessionRef, completedSession);
 
-            // Pass combined notes to the active session as well
-            const sessionDataForActive = { ...gameItem.sessionDetails, notes: combinedNotes };
             await handleStartSession(sessionDataForActive, completedSessionId, receiptNumber);
 
             const checkInDate = new Date(checkInTime);
@@ -2252,7 +2252,11 @@ function PosTrackingContent() {
                                             return { name: item.productName, price: item.price.toFixed(2) };
                                         case 'prepaid-game':
                                             const pricePerUnit = item.cartQuantity > 0 ? item.price / item.cartQuantity : 0;
-                                            return { name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, price: pricePerUnit.toFixed(2) };
+                                            return { 
+                                                name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, 
+                                                subtext: `${item.sessionDetails.parentName} (${item.sessionDetails.phoneNumbers[0]})`,
+                                                price: pricePerUnit.toFixed(2) 
+                                            };
                                         default:
                                             return { name: 'صنف غير معروف', price: '0.00' };
                                     }
@@ -2265,6 +2269,7 @@ function PosTrackingContent() {
                                         <p className="text-sm font-medium">
                                             {details.name}
                                         </p>
+                                        {details.subtext && <p className="text-xs text-muted-foreground">{details.subtext}</p>}
                                         <p className="text-xs text-muted-foreground">
                                            {`ج.م ${details.price}`}
                                         </p>
@@ -2328,6 +2333,7 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
 
