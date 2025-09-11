@@ -64,7 +64,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         
         activeUnsubscribe = onValue(activeRef, (snapshot) => {
             const data = snapshot.val();
-            setActiveChildren(data ? Object.values(data) : []);
+            const sessionsArray: Child[] = data ? Object.entries(data).map(([id, value]) => ({ id, ...(value as any) })) : [];
+            setActiveChildren(sessionsArray);
             handleLoad();
         });
 
