@@ -266,6 +266,8 @@ export interface ProductReceiptProps {
   cashierName: string;
   sessionInfo?: {
     children: CustomerChild[];
+    parentName: string;
+    phoneNumbers: string[];
     checkInTime: Date;
     expectedCheckOutTime: Date;
   }

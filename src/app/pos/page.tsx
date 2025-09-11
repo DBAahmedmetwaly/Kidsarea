@@ -1295,7 +1295,7 @@ function PosTrackingContent() {
         const originalSessionRef = ref(db, `sessions/completed/${childToCheckout.prepaidSessionId}`);
         const snapshot = await get(originalSessionRef);
         if (!snapshot.exists()) {
-            toast({ messageKey: 'saveError', description: "لم يتم العثور على الجلسة الأصلية." });
+            toast({ messageKey: 'posOriginalSessionNotFound' });
             return;
         }
 
@@ -1316,13 +1316,13 @@ function PosTrackingContent() {
 
     const handleOvertimeCheckout = async (receivedAmount: number) => {
         if (!childToCheckout || !childToCheckout.prepaidSessionId) {
-             toast({ messageKey: 'saveError', description: 'لا يمكن العثور على الفاتورة الأصلية لهذه الجلسة.' });
+             toast({ messageKey: 'posOvertimeOriginalInvoiceMissing' });
              return;
         }
         const originalSessionRef = ref(db, `sessions/completed/${childToCheckout.prepaidSessionId}`);
         const snapshot = await get(originalSessionRef);
         if (!snapshot.exists()) {
-            toast({ messageKey: 'saveError', description: "لم يتم العثور على الجلسة الأصلية." });
+            toast({ messageKey: 'posOriginalSessionNotFound' });
             return;
         }
 
@@ -1347,7 +1347,7 @@ function PosTrackingContent() {
 
         } catch (error) {
              console.error("Overtime checkout update failed:", error);
-            toast({ messageKey: 'saveError', description: "فشل تحديث الجلسة الأصلية." });
+            toast({ messageKey: 'posOvertimeCheckoutError' });
         }
     }
 
@@ -1436,10 +1436,10 @@ function PosTrackingContent() {
             await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
             await remove(ref(db, `sessions/active/${child.id}`));
         }
-         toast({ title: "تم تسجيل الخروج بنجاح" });
+         toast({ messageKey: 'posCheckoutSuccess' });
     } catch (err) {
         console.error(err);
-        toast({ messageKey: 'saveError', description: 'خطأ في تسجيل الخروج' });
+        toast({ messageKey: 'posCheckoutError' });
     }
 };
 
@@ -1448,9 +1448,8 @@ function PosTrackingContent() {
     
     if (policies && policies.maxCapacity && (activeChildren.length + children.length) > policies.maxCapacity) {
         toast({
-            messageKey: 'invalidInput',
-            description: `لا يمكن إضافة المزيد من الأطفال. السعة القصوى هي ${policies.maxCapacity} طفل.`,
-            
+            messageKey: 'posCapacityExceeded',
+            messageArgs: [policies.maxCapacity],
         });
         return;
     }
@@ -1460,15 +1459,14 @@ function PosTrackingContent() {
 
     if (alreadyActiveChildren.length > 0) {
         toast({
-            messageKey: 'invalidInput',
-            description: `الطفل "${alreadyActiveChildren[0].name}" موجود بالفعل في جلسة نشطة.`,
-            
+            messageKey: 'posChildAlreadyActive',
+            messageArgs: [alreadyActiveChildren[0].name],
         });
         return;
     }
 
     if (!user || !user.username || !currentUser) {
-        toast({ messageKey: 'saveError', description: 'لم يتم تحديد الكاشير الحالي.' });
+        toast({ messageKey: 'posCashierNotFound' });
         return;
     }
     
@@ -1489,10 +1487,10 @@ function PosTrackingContent() {
 
     try {
         await set(newSessionRef, newSession);
-        toast({ title: 'تم تسجيل الدخول بنجاح', description: `تم تسجيل دخول الأطفال: ${children.map(c=>c.name).join(', ')}.` });
+        toast({ messageKey: 'posCheckinSuccess', messageArgs: [children.map(c=>c.name).join(', ')] });
     } catch(err) {
         console.error(err);
-        toast({ messageKey: 'saveError', description: 'خطأ في تسجيل الدخول'})
+        toast({ messageKey: 'posCheckinError' })
     }
   };
 
@@ -1545,7 +1543,7 @@ function PosTrackingContent() {
             const existingItem = prevCart.find(cartItem => cartItem.id === itemWithDefaults.id);
             if (existingItem) {
                 if ('quantity' in item && existingItem.cartQuantity >= item.quantity) {
-                    toast({ title: "الكمية غير كافية", variant: "destructive" });
+                    toast({ messageKey: 'inventoryQuantityInsufficient' });
                     return prevCart;
                 }
                 return prevCart.map(cartItem => 
@@ -1555,7 +1553,7 @@ function PosTrackingContent() {
                 );
             } else {
                  if ('quantity' in item && item.quantity <= 0) {
-                    toast({ title: "نفدت الكمية", variant: "destructive" });
+                    toast({ messageKey: 'inventoryItemSoldOut' });
                     return prevCart;
                 }
                 return [...prevCart, { ...itemWithDefaults, cartQuantity: 1 }];
@@ -1621,7 +1619,7 @@ function PosTrackingContent() {
 
     const branch = branches.find(b => b.name === currentUser.branch);
     if (!branch) {
-        toast({ messageKey: 'saveError', description: "لم يتم العثور على الفرع الحالي."});
+        toast({ messageKey: 'posSaleBranchNotFound' });
         return;
     }
     
@@ -1711,7 +1709,7 @@ function PosTrackingContent() {
 
             const checkInDate = new Date(checkInTime);
             const expectedCheckOutTime = new Date(checkInDate.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
-            sessionInfoForReceipt = { children: gameItem.sessionDetails.children, checkInTime: checkInDate, expectedCheckOutTime: expectedCheckOutTime };
+            sessionInfoForReceipt = { children: gameItem.sessionDetails.children, parentName: gameItem.sessionDetails.parentName, phoneNumbers: gameItem.sessionDetails.phoneNumbers, checkInTime: checkInDate, expectedCheckOutTime: expectedCheckOutTime };
         }
         
         // Print one combined receipt
@@ -1739,14 +1737,14 @@ function PosTrackingContent() {
         };
         printReceipt(<ProductReceipt {...receiptProps} />);
         
-        toast({ title: "تمت عملية البيع بنجاح", description: "تم تسجيل الفاتورة وتحديث البيانات." });
+        toast({ messageKey: 'posSaleSuccess' });
         setCart([]);
         setCartNotes('');
         setSaleCheckoutOpen(false);
 
     } catch (error) {
         console.error("Sale confirmation error:", error);
-        toast({ messageKey: 'saveError', description: "فشل تسجيل عملية البيع."});
+        toast({ messageKey: 'posSaleError'});
     }
   };
 
@@ -1767,9 +1765,8 @@ function PosTrackingContent() {
         }
 
         toast({
-            title: "🔔 انتهى الوقت!",
-            description: `انتهى وقت اللعب للطفل/الأطفال: ${session.children.map(c => c.name).join(', ')}.`,
-            variant: "destructive",
+            messageKey: 'posTimeEndedNotification',
+            messageArgs: [session.children.map(c => c.name).join(', ')],
             duration: (policies?.toastDuration || 5) * 1000,
         });
 
@@ -2343,6 +2340,7 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
 

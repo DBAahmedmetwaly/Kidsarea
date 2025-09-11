@@ -21,6 +21,8 @@ export interface ProductReceiptProps {
   cashierName: string;
   sessionInfo?: {
     children: PosReceiptProps['children'];
+    parentName: string;
+    phoneNumbers: string[];
     checkInTime: Date;
     expectedCheckOutTime: Date;
   }
@@ -53,6 +55,8 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
       
       {sessionInfo && (
         <div className="space-y-0.5 border-t border-b border-dashed border-gray-400 py-1 my-1 text-xs">
+           {show('showParentName') && <div className="grid grid-cols-2"><span>ولي الأمر:</span> <span className='text-left font-bold'>{sessionInfo.parentName}</span></div>}
+           {show('showCustomerPhone') && <div className="grid grid-cols-2"><span>الهاتف:</span> <span className='text-left font-mono'>{sessionInfo.phoneNumbers.join(' / ')}</span></div>}
            <div className="grid grid-cols-2"><span>الأطفال:</span> <span className='text-left font-bold'>{sessionInfo.children.map(c => c.name).join(', ')}</span></div>
            <div className="grid grid-cols-2"><span>وقت الدخول:</span> <span className='text-left font-mono'>{sessionInfo.checkInTime.toLocaleTimeString('ar-EG')}</span></div>
            <div className="grid grid-cols-2"><span>الخروج المتوقع:</span> <span className='text-left font-mono'>{sessionInfo.expectedCheckOutTime.toLocaleTimeString('ar-EG')}</span></div>
