@@ -1679,7 +1679,7 @@ function PosTrackingContent() {
             const combinedNotes = [gameItem.sessionDetails.notes, cartNotes].filter(Boolean).join(' - ');
 
             const completedSession: CompletedSession = {
-                ...gameItem.sessionDetails,
+                ...(gameItem.sessionDetails as Omit<Child, 'id' | 'checkInTime' | 'cashierUsername'>),
                 id: completedSessionId,
                 receiptNumber,
                 checkInTime: checkInTime,
@@ -1813,7 +1813,7 @@ function PosTrackingContent() {
 
 
   return (
-    <div className="relative h-full flex flex-col lg:grid lg:grid-cols-3 gap-4">
+    <div className="relative h-full flex flex-col lg:grid lg:grid-cols-3 lg:gap-4">
         {/* Main Content */}
         <div className="lg:col-span-2 flex flex-col gap-4">
             {/* Overlay for no active shift */}
@@ -2328,6 +2328,7 @@ export default function PosTrackingPage() {
     
 
     
+
 
 
 
