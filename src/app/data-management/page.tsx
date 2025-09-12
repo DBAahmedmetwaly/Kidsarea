@@ -29,6 +29,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
+import dynamic from 'next/dynamic';
+
+const PasswordDialog = dynamic(() => import('./_components/PasswordDialog'));
 
 function DataManagementContent() {
   const { toast } = useToast();
@@ -36,6 +39,8 @@ function DataManagementContent() {
   const [loadingDelete, setLoadingDelete] = useState(false);
   const [loadingRestore, setLoadingRestore] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const handleBackup = async () => {
     setLoadingBackup(true);
@@ -172,8 +177,24 @@ function DataManagementContent() {
       });
     } finally {
         setLoadingDelete(false);
+        setDeleteConfirmOpen(false);
     }
   };
+
+  const handleDeleteRequest = () => {
+      setPasswordDialogOpen(true);
+  }
+
+  const handlePasswordConfirm = (password: string) => {
+      if (password === 'disha') {
+          setDeleteConfirmOpen(true);
+      } else {
+          toast({
+              title: "كلمة مرور خاطئة",
+              variant: "destructive"
+          });
+      }
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -269,40 +290,47 @@ function DataManagementContent() {
                        سيؤدي هذا إلى حذف جميع بيانات المعاملات (مثل الجلسات، المبيعات، المصروفات، إلخ) وتصفير أرصدة الخزائن، مع الاحتفاظ بالبيانات الأساسية مثل (العملاء، الموظفين، الفروع، المخزون، الألعاب، المنتجات، السياسات، والصلاحيات).
                     </AlertDescription>
                 </Alert>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" disabled={loadingDelete} className="mt-4">
-                     {loadingDelete ? (
-                        <>
-                            <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                            جاري الحذف...
-                        </>
-                    ) : (
-                        <>
-                            <Trash2 className="me-2 h-4 w-4" />
-                            حذف بيانات المعاملات
-                        </>
-                    )}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      هذا الإجراء لا يمكن التراجع عنه. هل تريد المتابعة؟
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteAllData} className="bg-destructive hover:bg-destructive/90">
-                      نعم، أحذف البيانات
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button variant="destructive" disabled={loadingDelete} className="mt-4" onClick={handleDeleteRequest}>
+                  {loadingDelete ? (
+                    <>
+                        <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                        جاري الحذف...
+                    </>
+                ) : (
+                    <>
+                        <Trash2 className="me-2 h-4 w-4" />
+                        حذف بيانات المعاملات
+                    </>
+                )}
+              </Button>
             </div>
         </CardContent>
       </Card>
+      
+      {isPasswordDialogOpen && (
+        <PasswordDialog 
+            open={isPasswordDialogOpen}
+            onOpenChange={setPasswordDialogOpen}
+            onConfirm={handlePasswordConfirm}
+        />
+      )}
+
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>هل أنت متأكد تمامًا؟</AlertDialogTitle>
+              <AlertDialogDescription>
+                هذا الإجراء لا يمكن التراجع عنه. هل تريد المتابعة؟
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAllData} className="bg-destructive hover:bg-destructive/90">
+                نعم، أحذف البيانات
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
