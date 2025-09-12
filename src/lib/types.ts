@@ -29,6 +29,10 @@ export interface Child {
   packagePrice?: number;
   prepaidSessionId?: string | null; // Links active session to the completed session that paid for it
   receiptNumber?: number;
+  // For pause/resume functionality
+  status?: 'playing' | 'paused';
+  pausedTime?: number; // Timestamp when the session was paused
+  totalPausedTime?: number; // Accumulated paused duration in milliseconds
 }
 
 export interface CompletedSession extends Child {

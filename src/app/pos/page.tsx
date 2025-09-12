@@ -20,7 +20,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon, FileText, Eye, Edit } from 'lucide-react';
+import { PlayCircle, Square, AlertTriangle, ChevronsUpDown, Check, PlusCircle, Star, Clock, Users, UserCheck, Briefcase, Search, ChevronDown, PackageCheck, Phone, ShoppingCart, Trash2, UserPlus, StarIcon, Minus, History, KeyRound, ReceiptIcon, FileText, Eye, Edit, Pause } from 'lucide-react';
 import AppSidebar from '@/components/layout/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Child, Game, Employee, Customer, Subscription, GameCategory, CustomerChild, CompletedSession, Policies, DayOfWeek, ReceiptSettings, Branch, InventoryItem, ProductSale, Product, ProductCategory, SubscriptionPlan, PrepaidGameCartItem, PosReceiptProps, ProductSaleItem, InventoryMovement } from '@/lib/types';
@@ -53,50 +53,64 @@ import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
-const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onTimeEnd }: { startTime: number, packageDuration?: number, gracePeriodInMinutes?: number, onTimeEnd?: () => void }) => {
+const TimeCounter = ({ session, onTimeEnd }: { session: Child, onTimeEnd?: () => void }) => {
+  const { startTime, packageDuration, status, pausedTime, totalPausedTime } = session;
   const [remaining, setRemaining] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
-  const [status, setStatus] = useState<'playing' | 'grace_period' | 'overtime'>('playing');
+  const [displayStatus, setDisplayStatus] = useState<'playing' | 'paused' | 'grace_period' | 'overtime'>(status || 'playing');
   const timeEnded = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     const updateTimer = () => {
-        const now = Date.now();
-        const elapsedMs = now - startTime;
-        setElapsed(elapsedMs);
-
+      if (status === 'paused' && pausedTime) {
+        const elapsedBeforePause = pausedTime - startTime - (totalPausedTime || 0);
+        setElapsed(elapsedBeforePause);
         if (packageDuration) {
-            const totalDurationMs = packageDuration * 60 * 1000;
-            const gracePeriodMs = gracePeriodInMinutes * 60 * 1000;
-            const newRemaining = Math.max(0, totalDurationMs - elapsedMs);
-            setRemaining(newRemaining);
-            
-            if (elapsedMs > totalDurationMs + gracePeriodMs) {
-                setStatus('overtime');
-            } else if (elapsedMs > totalDurationMs) {
-                setStatus('grace_period');
-            } else {
-                setStatus('playing');
-            }
-            
-            if (newRemaining === 0 && !timeEnded.current) {
-                timeEnded.current = true;
-                onTimeEnd?.();
-            }
+          const totalDurationMs = packageDuration * 60 * 1000;
+          const newRemaining = Math.max(0, totalDurationMs - elapsedBeforePause);
+          setRemaining(newRemaining);
         }
-    };
-    
-    updateTimer(); // Run once immediately
-    timerRef.current = setInterval(updateTimer, 1000);
+        setDisplayStatus('paused');
+        return;
+      }
 
-    return () => {
-        if (timerRef.current) clearInterval(timerRef.current);
+      const now = Date.now();
+      const currentTotalPausedTime = totalPausedTime || 0;
+      const elapsedMs = now - startTime - currentTotalPausedTime;
+      setElapsed(elapsedMs);
+
+      if (packageDuration) {
+        const totalDurationMs = packageDuration * 60 * 1000;
+        const gracePeriodInMinutes = 0; // Assuming no grace period for now, can be added from policies
+        const gracePeriodMs = gracePeriodInMinutes * 60 * 1000;
+        const newRemaining = Math.max(0, totalDurationMs - elapsedMs);
+        setRemaining(newRemaining);
+
+        if (elapsedMs > totalDurationMs + gracePeriodMs) {
+          setDisplayStatus('overtime');
+        } else if (elapsedMs > totalDurationMs) {
+          setDisplayStatus('grace_period');
+        } else {
+          setDisplayStatus('playing');
+        }
+
+        if (newRemaining === 0 && !timeEnded.current) {
+          timeEnded.current = true;
+          onTimeEnd?.();
+        }
+      } else {
+        setDisplayStatus('playing');
+      }
     };
-  }, [startTime, packageDuration, gracePeriodInMinutes, onTimeEnd]);
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [session, startTime, packageDuration, status, pausedTime, totalPausedTime, onTimeEnd]);
   
   const formatTime = (ms: number) => {
     if (ms < 0) ms = 0;
@@ -111,11 +125,15 @@ const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onT
   };
   
   const getOvertime = () => {
-      if (!packageDuration || !elapsed) return 0;
-      const packageDurationMs = packageDuration * 60 * 1000;
-      const gracePeriodMs = gracePeriodInMinutes * 60 * 1000;
-      return Math.max(0, elapsed - packageDurationMs - gracePeriodMs);
+    if (!packageDuration || !elapsed) return 0;
+    const packageDurationMs = packageDuration * 60 * 1000;
+    const gracePeriodMs = 0; // assuming no grace period for now
+    return Math.max(0, elapsed - packageDurationMs - gracePeriodMs);
   };
+  
+  if (displayStatus === 'paused') {
+    return <span className="font-mono font-bold text-gray-500" dir="ltr">{elapsed !== null ? formatTime(elapsed) : '...'}</span>;
+  }
 
   if (packageDuration) {
       if (remaining === null) return <span>...</span>;
@@ -123,7 +141,7 @@ const TimeCounter = ({ startTime, packageDuration, gracePeriodInMinutes = 0, onT
       let displayText = formatTime(remaining);
       let textColor = "";
 
-      switch (status) {
+      switch (displayStatus) {
           case 'grace_period':
               textColor = "text-orange-500";
               displayText = `00:00:00`;
@@ -241,7 +259,8 @@ function CheckOutDialog({
   const checkoutData = useMemo(() => {
     if (!child) return null;
     
-    const durationMs = Date.now() - child.checkInTime;
+    const pauseDuration = child.totalPausedTime || 0;
+    const durationMs = Date.now() - child.checkInTime - pauseDuration;
     const numberOfChildren = child.children.length;
     let costBeforeDiscount: number = 0;
     let durationCost: number = 0;
@@ -1223,8 +1242,9 @@ function PosTrackingContent() {
 
   const calculateOvertimeCost = useCallback((session: Child): number => {
     if (!policies?.enablePackageOvertime || !session.packageDuration) return 0;
-
-    const durationMs = Date.now() - session.checkInTime;
+    
+    const pauseDuration = session.totalPausedTime || 0;
+    const durationMs = Date.now() - session.checkInTime - pauseDuration;
     const packageDurationMs = session.packageDuration * 60 * 1000;
     const gracePeriodMs = (policies.packageOvertimeGracePeriod || 0) * 60 * 1000;
     const chargeableOvertimeMs = Math.max(0, durationMs - packageDurationMs - gracePeriodMs);
@@ -1253,7 +1273,7 @@ function PosTrackingContent() {
     const isPackageGame = session?.packageDuration && session.packageDuration > 0;
     if (isPackageGame) {
         
-        const remainingTimeMs = (session.checkInTime + session.packageDuration * 60 * 1000) - Date.now();
+        const remainingTimeMs = (session.checkInTime + (session.totalPausedTime || 0) + session.packageDuration * 60 * 1000) - Date.now();
         
         // If they leave early and the cashier can apply a discount
         if (remainingTimeMs > 5 * 60 * 1000 && canApplyDiscount) {
@@ -1317,13 +1337,15 @@ function PosTrackingContent() {
 
         const originalSession: CompletedSession = snapshot.val();
         const newTotalCost = originalSession.costBeforeDiscount + receivedAmount;
+        
+        const pauseDuration = childToCheckout.totalPausedTime || 0;
 
         const updates: Partial<CompletedSession> = {
             cost: newTotalCost,
             costBeforeDiscount: newTotalCost, // Update this to reflect the new total
             overtimeCost: receivedAmount, // Store the received amount as the overtime cost
             checkOutTime: new Date().getTime(),
-            durationMs: new Date().getTime() - originalSession.checkInTime,
+            durationMs: new Date().getTime() - originalSession.checkInTime - pauseDuration,
             notes: (originalSession.notes || '') + ` وقت إضافي: ${formatDuration(calculateOvertimeCost(childToCheckout) > 0 ? (receivedAmount / (policies?.packageOvertimeRatePerMinute || 1) * 60 * 1000) : 0)}`,
         };
 
@@ -1365,34 +1387,33 @@ function PosTrackingContent() {
         : cashier?.name || user?.username || 'N/A';
 
     const checkOutTime = new Date();
-    const durationMs = checkOutTime.getTime() - child.checkInTime;
+    const pauseDuration = child.totalPausedTime || 0;
+    const durationMs = checkOutTime.getTime() - child.checkInTime - pauseDuration;
 
-    const finalReceiptDetails = {
-        ...receiptDetails,
-        receiptId: `${child.branchName.substring(0,3).toUpperCase()}-${finalReceiptNumber}`,
-        settings: receiptSettings,
-        appName: allPolicies?.find(p => p.id === 'default')?.appName || 'FunTrack',
-        children: child.children,
-        parentName: child.parentName,
-        phoneNumbers: child.phoneNumbers,
-        gameName: child.game,
-        checkInTime: new Date(child.checkInTime),
-        checkOutTime: checkOutTime,
-        duration: formatDuration(durationMs),
-        cashierName: cashierName,
-        isSubscription: !!child.subscriptionId,
-        packagePrice: child.packagePrice,
-        packageName: child.packageName,
-        packageDuration: child.packageDuration,
-        notes: receiptDetails.notes,
-        // Ensure these have default values
-        totalCost: receiptDetails.totalCost ?? 0,
-        amountReceived: receiptDetails.amountReceived,
-        costBeforeDiscount: receiptDetails.costBeforeDiscount ?? 0,
-        durationCost: receiptDetails.durationCost,
-        entryFee: receiptDetails.entryFee,
-        discount: receiptDetails.discount,
-        overtimeCost: receiptDetails.overtimeCost,
+    const finalReceiptDetails: PosReceiptProps = {
+      receiptId: `${child.branchName.substring(0, 3).toUpperCase()}-${finalReceiptNumber}`,
+      settings: receiptSettings,
+      appName: allPolicies?.find(p => p.id === 'default')?.appName || 'FunTrack',
+      children: child.children,
+      parentName: child.parentName,
+      phoneNumbers: child.phoneNumbers,
+      gameName: child.game,
+      checkInTime: new Date(child.checkInTime),
+      checkOutTime: checkOutTime,
+      duration: formatDuration(durationMs),
+      cashierName: cashierName,
+      isSubscription: !!child.subscriptionId,
+      packagePrice: child.packagePrice,
+      packageName: child.packageName,
+      packageDuration: child.packageDuration,
+      notes: receiptDetails.notes,
+      totalCost: receiptDetails.totalCost ?? 0,
+      amountReceived: receiptDetails.amountReceived,
+      costBeforeDiscount: receiptDetails.costBeforeDiscount ?? 0,
+      durationCost: receiptDetails.durationCost,
+      entryFee: receiptDetails.entryFee,
+      discount: receiptDetails.discount,
+      overtimeCost: receiptDetails.overtimeCost,
     };
     
     const printCondition = receiptSettings && !isPrepaidModification && ( (finalReceiptDetails.amountReceived && finalReceiptDetails.amountReceived > 0) || (child.prepaidSessionId && !isPrepaidModification));
@@ -1405,10 +1426,10 @@ function PosTrackingContent() {
         if (child.prepaidSessionId) {
             const originalSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
             const updates: Partial<CompletedSession> = {
-                cost: finalReceiptDetails.totalCost ?? 0,
-                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount ?? 0,
-                discount: finalReceiptDetails.discount ?? 0,
-                overtimeCost: finalReceiptDetails.overtimeCost ?? 0,
+                cost: finalReceiptDetails.totalCost,
+                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
+                discount: finalReceiptDetails.discount,
+                overtimeCost: finalReceiptDetails.overtimeCost,
                 notes: finalReceiptDetails.notes || '',
                 checkOutTime: finalReceiptDetails.checkOutTime.getTime(),
                 durationMs: durationMs,
@@ -1479,6 +1500,8 @@ function PosTrackingContent() {
       cashierUsername: user.username,
       prepaidSessionId: prepaidSessionId || null,
       receiptNumber: receiptNumber || undefined,
+      status: 'playing',
+      totalPausedTime: 0,
     };
 
     try {
@@ -1489,6 +1512,29 @@ function PosTrackingContent() {
         toast({ messageKey: 'posCheckinError' })
     }
   };
+  
+    const handlePauseSession = async (session: Child) => {
+        const sessionRef = ref(db, `sessions/active/${session.id}`);
+        await update(sessionRef, {
+            status: 'paused',
+            pausedTime: Date.now(),
+        });
+    };
+
+    const handleResumeSession = async (session: Child) => {
+        if (!session.pausedTime) return;
+
+        const pauseDuration = Date.now() - session.pausedTime;
+        const newTotalPausedTime = (session.totalPausedTime || 0) + pauseDuration;
+
+        const sessionRef = ref(db, `sessions/active/${session.id}`);
+        await update(sessionRef, {
+            status: 'playing',
+            pausedTime: null,
+            totalPausedTime: newTotalPausedTime,
+        });
+    };
+
 
   const handleAddCustomer = async (newCustomerData: Omit<Customer, 'id' | 'createdAt'>) => {
       try {
@@ -1769,7 +1815,7 @@ function PosTrackingContent() {
 
   const hasTimeExpired = (session: Child) => {
     if (!session.packageDuration) return false;
-    const elapsedMs = Date.now() - session.checkInTime;
+    const elapsedMs = Date.now() - session.checkInTime - (session.totalPausedTime || 0);
     const totalDurationMs = session.packageDuration * 60 * 1000;
     return elapsedMs >= totalDurationMs;
   }
@@ -2039,7 +2085,7 @@ function PosTrackingContent() {
                             <TableBody>
                                 {searchedActiveChildren.length > 0 ? (
                                 searchedActiveChildren.map((session) => (
-                                    <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30")}>
+                                    <TableRow key={session.id} className={cn(hasTimeExpired(session) && "bg-orange-100 dark:bg-orange-900/30", session.status === 'paused' && 'bg-gray-100 dark:bg-gray-800/30 opacity-70')}>
                                     <TableCell className="font-medium text-right align-top">
                                         <p>{session.children.map(c=>c.name).join(', ')}</p>
                                     </TableCell>
@@ -2072,13 +2118,22 @@ function PosTrackingContent() {
                                     <TableCell className="text-right">{session.game}</TableCell>
                                     <TableCell className="text-center">
                                         <TimeCounter 
-                                            startTime={session.checkInTime} 
-                                            packageDuration={session.packageDuration}
-                                            gracePeriodInMinutes={policies?.packageOvertimeGracePeriod}
+                                            session={session}
                                             onTimeEnd={() => handleTimeEnd(session)} 
                                         />
                                     </TableCell>
                                     <TableCell className="text-center flex gap-2 justify-center">
+                                        {session.status === 'paused' ? (
+                                            <Button variant="secondary" size="sm" onClick={() => handleResumeSession(session)} disabled={!hasActiveShift}>
+                                                <PlayCircle className="me-2 h-4 w-4" />
+                                                استئناف
+                                            </Button>
+                                        ) : (
+                                            <Button variant="outline" size="sm" onClick={() => handlePauseSession(session)} disabled={!hasActiveShift}>
+                                                <Pause className="me-2 h-4 w-4" />
+                                                إيقاف
+                                            </Button>
+                                        )}
                                         <Button
                                         variant="destructive"
                                         size="sm"
