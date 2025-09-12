@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -57,7 +58,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/toolti
 
 
 const TimeCounter = ({ session, onTimeEnd }: { session: Child, onTimeEnd?: () => void }) => {
-  const { startTime, packageDuration, status, pausedTime, totalPausedTime } = session;
+  const { checkInTime, packageDuration, status, pausedTime, totalPausedTime } = session;
   const [remaining, setRemaining] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const [displayStatus, setDisplayStatus] = useState<'playing' | 'paused' | 'grace_period' | 'overtime'>(status || 'playing');
@@ -67,7 +68,7 @@ const TimeCounter = ({ session, onTimeEnd }: { session: Child, onTimeEnd?: () =>
   useEffect(() => {
     const updateTimer = () => {
       if (status === 'paused' && pausedTime) {
-        const elapsedBeforePause = pausedTime - startTime - (totalPausedTime || 0);
+        const elapsedBeforePause = pausedTime - checkInTime - (totalPausedTime || 0);
         setElapsed(elapsedBeforePause);
         if (packageDuration) {
           const totalDurationMs = packageDuration * 60 * 1000;
@@ -80,7 +81,7 @@ const TimeCounter = ({ session, onTimeEnd }: { session: Child, onTimeEnd?: () =>
 
       const now = Date.now();
       const currentTotalPausedTime = totalPausedTime || 0;
-      const elapsedMs = now - startTime - currentTotalPausedTime;
+      const elapsedMs = now - checkInTime - currentTotalPausedTime;
       setElapsed(elapsedMs);
 
       if (packageDuration) {
@@ -110,7 +111,7 @@ const TimeCounter = ({ session, onTimeEnd }: { session: Child, onTimeEnd?: () =>
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [session, startTime, packageDuration, status, pausedTime, totalPausedTime, onTimeEnd]);
+  }, [session, checkInTime, packageDuration, status, pausedTime, totalPausedTime, onTimeEnd]);
   
   const formatTime = (ms: number) => {
     if (ms < 0) ms = 0;
@@ -1426,10 +1427,10 @@ function PosTrackingContent() {
         if (child.prepaidSessionId) {
             const originalSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
             const updates: Partial<CompletedSession> = {
-                cost: finalReceiptDetails.totalCost,
-                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
-                discount: finalReceiptDetails.discount,
-                overtimeCost: finalReceiptDetails.overtimeCost,
+                cost: finalReceiptDetails.totalCost ?? 0,
+                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount ?? 0,
+                discount: finalReceiptDetails.discount ?? 0,
+                overtimeCost: finalReceiptDetails.overtimeCost ?? 0,
                 notes: finalReceiptDetails.notes || '',
                 checkOutTime: finalReceiptDetails.checkOutTime.getTime(),
                 durationMs: durationMs,
@@ -1729,8 +1730,10 @@ function PosTrackingContent() {
             const completedSessionId = completedSessionRef.key!;
             const checkInTime = Date.now();
             
-            const sessionDataForActive = {
+            const sessionDataForActive: Omit<CompletedSession, 'id' | 'checkInTime' | 'checkOutTime' | 'durationMs' | 'cashierUsername' | 'cost' | 'costBeforeDiscount' > = {
                 ...gameItem.sessionDetails,
+                parentName: gameItem.sessionDetails.parentName,
+                phoneNumbers: gameItem.sessionDetails.phoneNumbers,
                 notes: [gameItem.sessionDetails.notes, cartNotes].filter(Boolean).join(' - '),
             };
 
@@ -1747,7 +1750,7 @@ function PosTrackingContent() {
             };
             await set(completedSessionRef, completedSession);
 
-            await handleStartSession(sessionDataForActive, completedSessionId, receiptNumber);
+            await handleStartSession(sessionDataForActive as any, completedSessionId, receiptNumber);
 
             const checkInDate = new Date(checkInTime);
             const expectedCheckOutTime = new Date(checkInDate.getTime() + (gameItem.sessionDetails.packageDuration || 0) * 60 * 1000);
@@ -2388,3 +2391,4 @@ export default function PosTrackingPage() {
 }
 
     
+
