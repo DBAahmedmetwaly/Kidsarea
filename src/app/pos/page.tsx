@@ -54,7 +54,7 @@ import { Separator } from '@/components/ui/separator';
 import { ProductReceipt, type ProductReceiptProps } from '@/components/ProductReceipt';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const TimeCounter = ({ session, onTimeEnd }: { session: Child, onTimeEnd?: () => void }) => {
@@ -2272,7 +2272,7 @@ function PosTrackingContent() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { totalCost: 0 } as PosReceiptProps, true)}>تأكيد الخروج</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { costBeforeDiscount: 0, totalCost: 0 } as PosReceiptProps, true)}>تأكيد الخروج</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -2391,4 +2391,5 @@ export default function PosTrackingPage() {
 }
 
     
+
 
