@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -1802,6 +1801,7 @@ function PosTrackingContent() {
                 checkOutTime: checkInTime,
                 durationMs: 0,
                 cost: gameItem.price,
+                amountReceived: amountPaid,
                 costBeforeDiscount: gameItem.price,
                 cashierUsername: user.username,
             };
@@ -2454,13 +2454,5 @@ export default function PosTrackingPage() {
         </SidebarProvider>
     );
 }
-
-    
-
-
-
-
-
-
 
     
