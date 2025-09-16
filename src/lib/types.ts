@@ -268,6 +268,8 @@ export interface ProductReceiptProps {
   items: { name: string; quantity: number; price: number }[];
   totalAmount: number;
   cashierName: string;
+  amountPaid?: number;
+  change?: number;
   sessionInfo?: {
     children: CustomerChild[];
     parentName: string;
@@ -350,6 +352,8 @@ export interface ProductSale {
     receiptNumber: number;
     items: ProductSaleItem[];
     totalAmount: number;
+    amountPaid?: number;
+    change?: number;
     branchName: string;
     cashierName: string;
     cashierUsername: string;

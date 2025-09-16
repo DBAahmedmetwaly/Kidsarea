@@ -19,6 +19,8 @@ export interface ProductReceiptProps {
   items: ReceiptItem[];
   totalAmount: number;
   cashierName: string;
+  amountPaid?: number;
+  change?: number;
   sessionInfo?: {
     children: PosReceiptProps['children'];
     parentName: string;
@@ -37,6 +39,8 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
   items,
   totalAmount,
   cashierName,
+  amountPaid,
+  change,
   sessionInfo,
   notes
 }, ref) => {
@@ -87,10 +91,24 @@ export const ProductReceipt = React.forwardRef<HTMLDivElement, ProductReceiptPro
         </table>
       </div>
       
-       <div className="flex justify-between items-center text-lg font-bold p-1 mt-1 bg-gray-200 rounded-md">
-            <span>الإجمالي</span>
-            <span>{`ج.م ${totalAmount.toFixed(2)}`}</span>
-        </div>
+       <div className="space-y-1 text-sm mt-1">
+            <div className="flex justify-between items-center font-bold">
+                <span>الإجمالي المطلوب:</span>
+                <span>{`ج.م ${totalAmount.toFixed(2)}`}</span>
+            </div>
+            {amountPaid !== undefined && (
+                 <div className="flex justify-between items-center">
+                    <span>المدفوع:</span>
+                    <span>{`ج.م ${amountPaid.toFixed(2)}`}</span>
+                </div>
+            )}
+             {change !== undefined && change > 0 && (
+                 <div className="flex justify-between items-center">
+                    <span>الباقي:</span>
+                    <span>{`ج.م ${change.toFixed(2)}`}</span>
+                </div>
+            )}
+       </div>
       
       {notes && (
           <div className="mt-2 text-xs border-t border-dashed pt-1">

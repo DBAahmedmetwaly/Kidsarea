@@ -952,135 +952,72 @@ function CheckInDialog({
 
 type CartItem = (InventoryItem | PrepaidGameCartItem) & { cartQuantity: number };
 
-function EarlyCheckoutDialog({
-  open,
-  onOpenChange,
-  session,
-  onConfirm,
+function SaleCheckoutDialog({
+    open,
+    onOpenChange,
+    cartTotal,
+    onConfirm
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  session: Child | null;
-  onConfirm: (discount: number, notes: string) => void;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    cartTotal: number;
+    onConfirm: (amountPaid: number, change: number) => void;
 }) {
-  const [discount, setDiscount] = useState('');
-  const [notes, setNotes] = useState('');
-
-
-  useEffect(() => {
-    if (open) {
-      setDiscount('');
-      setNotes('خروج مبكر');
+    const [amountReceived, setAmountReceived] = useState('');
+    const amountReceivedInputRef = useRef<HTMLInputElement>(null);
+    
+    useEffect(() => {
+        if(open) {
+            setAmountReceived('');
+            setTimeout(() => {
+                amountReceivedInputRef.current?.focus();
+            }, 100);
+        }
+    }, [open]);
+    
+    const change = (parseFloat(amountReceived) || 0) - cartTotal;
+    
+    const handleConfirm = () => {
+        onConfirm(parseFloat(amountReceived) || 0, change);
+        onOpenChange(false);
     }
-  }, [open]);
-
-  if (!session) return null;
-
-  const handleConfirm = () => {
-    const discountValue = parseFloat(discount) || 0;
-    onConfirm(discountValue, notes);
-    onOpenChange(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>خصم الخروج المبكر</DialogTitle>
-          <DialogDescription>
-            الطفل يغادر مبكراً. التكلفة الأصلية للباقة كانت {session.packagePrice?.toFixed(2) || '0.00'} ج.م.
-            أدخل قيمة الخصم.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="py-4 space-y-4">
-            <div>
-                <Label htmlFor="early-discount">قيمة الخصم (ج.م)</Label>
-                <Input
-                    id="early-discount"
-                    type="number"
-                    value={discount}
-                    onChange={(e) => setDiscount(e.target.value)}
-                    placeholder="0.00"
-                />
-            </div>
-             <div>
-                <Label htmlFor="early-notes">ملاحظات</Label>
-                <Input
-                    id="early-notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="سبب الخروج المبكر"
-                />
-            </div>
-        </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="secondary" onClick={() => onOpenChange(false)}>إلغاء</Button>
-          </DialogClose>
-          <Button onClick={handleConfirm}>تأكيد الخصم والخروج</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function OvertimeDialog({
-  open,
-  onOpenChange,
-  session,
-  overtimeCost,
-  onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  session: Child | null;
-  overtimeCost: number;
-  onConfirm: (receivedAmount: number) => void;
-}) {
-  const [amountReceived, setAmountReceived] = useState('');
-
-  useEffect(() => {
-    if(open) {
-        setAmountReceived('');
-    }
-  }, [open]);
-  
-  if (!session) return null;
-  
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-                <DialogTitle>تحصيل وقت إضافي</DialogTitle>
-                <DialogDescription>
-                    جلسة الطفل: <span className="font-bold">{session.children.map(c => c.name).join(', ')}</span> في لعبة <span className="font-bold">{session.game}</span>.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-                <div className="flex justify-between items-center text-lg p-3 bg-muted rounded-md">
-                    <span className="font-medium">تكلفة الوقت الإضافي:</span>
-                    <span className="font-bold text-primary">{`ج.م ${overtimeCost.toFixed(2)}`}</span>
+    
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>إتمام عملية الدفع</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                     <div className="flex justify-between items-center text-lg p-3 bg-muted rounded-md">
+                        <span className="font-medium">المبلغ المطلوب:</span>
+                        <span className="font-bold text-primary">{`ج.م ${cartTotal.toFixed(2)}`}</span>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="sale-amount-received">المبلغ المستلم</Label>
+                        <Input
+                            id="sale-amount-received"
+                            ref={amountReceivedInputRef}
+                            type="number"
+                            value={amountReceived}
+                            onChange={(e) => setAmountReceived(e.target.value)}
+                            placeholder="أدخل المبلغ المستلم من العميل"
+                        />
+                    </div>
+                     {amountReceived && (
+                        <div className={`flex justify-between items-center text-lg p-3 rounded-md ${change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            <span className="font-medium">الباقي:</span>
+                            <span className="font-bold">{`ج.م ${change.toFixed(2)}`}</span>
+                        </div>
+                    )}
                 </div>
-                 <div>
-                    <Label htmlFor="overtime-amount">المبلغ المحصّل</Label>
-                    <Input
-                        id="overtime-amount"
-                        type="number"
-                        value={amountReceived}
-                        onChange={(e) => setAmountReceived(e.target.value)}
-                        placeholder="أدخل المبلغ المحصّل..."
-                    />
-                </div>
-            </div>
-            <DialogFooter>
-                 <DialogClose asChild>
-                    <Button variant="secondary">إلغاء</Button>
-                </DialogClose>
-                <Button onClick={() => onConfirm(parseFloat(amountReceived) || 0)}>تأكيد التحصيل</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-  )
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="secondary">إلغاء</Button></DialogClose>
+                    <Button onClick={handleConfirm} disabled={!amountReceived}>تأكيد الدفع</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
 }
 
 function PosTrackingContent() {
@@ -1408,9 +1345,9 @@ function PosTrackingContent() {
       packageName: child.packageName,
       packageDuration: child.packageDuration,
       notes: receiptDetails.notes,
-      totalCost: receiptDetails.totalCost ?? 0,
+      totalCost: receiptDetails.totalCost,
       amountReceived: receiptDetails.amountReceived,
-      costBeforeDiscount: receiptDetails.costBeforeDiscount ?? 0,
+      costBeforeDiscount: receiptDetails.costBeforeDiscount,
       durationCost: receiptDetails.durationCost,
       entryFee: receiptDetails.entryFee,
       discount: receiptDetails.discount,
@@ -1657,7 +1594,7 @@ function PosTrackingContent() {
     return sum + (price * item.cartQuantity);
   }, 0), [cart]);
 
-  const handleConfirmSale = async () => {
+  const handleConfirmSale = async (amountPaid: number, change: number) => {
     if (!user?.username || !currentUser || cart.length === 0) return;
 
     const branch = branches.find(b => b.name === currentUser.branch);
@@ -1693,7 +1630,9 @@ function PosTrackingContent() {
                 id: saleId, 
                 receiptNumber, 
                 items: saleRecordItems, 
-                totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0), 
+                totalAmount: productItemsInCart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0),
+                amountPaid: amountPaid,
+                change: change,
                 branchName: currentUser.branch, 
                 cashierUsername: user.username, 
                 cashierName: currentUser.name, 
@@ -1731,7 +1670,7 @@ function PosTrackingContent() {
             const checkInTime = Date.now();
             
             const sessionDataForActive: Omit<CompletedSession, 'id' | 'checkInTime' | 'checkOutTime' | 'durationMs' | 'cashierUsername' | 'cost' | 'costBeforeDiscount' > = {
-                ...gameItem.sessionDetails,
+                ...(gameItem.sessionDetails as any),
                 parentName: gameItem.sessionDetails.parentName,
                 phoneNumbers: gameItem.sessionDetails.phoneNumbers,
                 notes: [gameItem.sessionDetails.notes, cartNotes].filter(Boolean).join(' - '),
@@ -1777,6 +1716,8 @@ function PosTrackingContent() {
                 return { name, quantity: item.cartQuantity, price };
             }), 
             totalAmount: cartTotal, 
+            amountPaid: amountPaid,
+            change: change,
             sessionInfo: sessionInfoForReceipt, 
             notes: cartNotes 
         };
@@ -2366,12 +2307,18 @@ function PosTrackingContent() {
                         <span>الإجمالي:</span>
                         <span>{`ج.م ${cartTotal.toFixed(2)}`}</span>
                     </div>
-                    <Button className="w-full" disabled={cart.length === 0 || !hasActiveShift} onClick={handleConfirmSale}>
+                    <Button className="w-full" disabled={cart.length === 0 || !hasActiveShift} onClick={() => setSaleCheckoutOpen(true)}>
                         إتمام الدفع
                     </Button>
                 </CardContent>
             </Card>
         </div>
+        <SaleCheckoutDialog 
+            open={isSaleCheckoutOpen}
+            onOpenChange={setSaleCheckoutOpen}
+            cartTotal={cartTotal}
+            onConfirm={handleConfirmSale}
+        />
     </div>
   );
 }
@@ -2391,5 +2338,6 @@ export default function PosTrackingPage() {
 }
 
     
+
 
 
