@@ -154,6 +154,8 @@ function SessionsContent() {
         checkOutTime: new Date(session.checkOutTime),
         duration: formatDuration(session.durationMs),
         totalCost: session.cost,
+        amountReceived: session.amountReceived,
+        costBeforeDiscount: session.costBeforeDiscount,
         durationCost: session.durationCost,
         entryFee: session.entryFee,
         discount: session.discount,
@@ -195,7 +197,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={12}>
+            <TableCell colSpan={13}>
                 <Loader2 className="mx-auto h-6 w-6 animate-spin" />
             </TableCell>
           </TableRow>
@@ -207,7 +209,7 @@ function SessionsContent() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={12} className="h-24 text-center">
+            <TableCell colSpan={13} className="h-24 text-center">
               لا توجد جلسات مطابقة للبحث.
             </TableCell>
           </TableRow>
@@ -251,6 +253,9 @@ function SessionsContent() {
                         {session.subscriptionId && <Star className="h-4 w-4 text-yellow-500" />}
                         {(session.packagePrice !== undefined || session.packageName) && <PackageCheck className="h-4 w-4 text-blue-500" />}
                     </div>
+                </TableCell>
+                 <TableCell className="font-bold text-center text-green-600">
+                    {session.amountReceived !== undefined ? `ج.م ${session.amountReceived.toFixed(2)}` : `ج.م ${session.cost.toFixed(2)}`}
                 </TableCell>
                 <TableCell className="text-center whitespace-nowrap">
                 {new Date(
@@ -409,6 +414,7 @@ function SessionsContent() {
                         <TableHead className="text-center">مدة اللعب</TableHead>
                         <TableHead className="text-right">الملاحظات</TableHead>
                         <TableHead className="text-center">التكلفة النهائية</TableHead>
+                        <TableHead className="text-center">المبلغ المدفوع</TableHead>
                         <TableHead className="text-center">وقت الخروج</TableHead>
                         <TableHead className="text-center">إجراء</TableHead>
                     </TableRow>
@@ -450,6 +456,7 @@ export default function SessionsPage() {
 
 
     
+
 
 
 

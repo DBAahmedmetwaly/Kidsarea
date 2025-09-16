@@ -41,6 +41,7 @@ export interface CompletedSession extends Child {
     durationMs: number;
     cost: number; // Total cost
     costBeforeDiscount: number;
+    amountReceived?: number;
     durationCost?: number;
     entryFee?: number;
     discount?: number;

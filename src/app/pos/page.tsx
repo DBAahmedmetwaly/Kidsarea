@@ -1365,6 +1365,7 @@ function PosTrackingContent() {
             const originalSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
             const updates: Partial<CompletedSession> = {
                 cost: finalReceiptDetails.totalCost ?? 0,
+                amountReceived: finalReceiptDetails.amountReceived ?? 0,
                 costBeforeDiscount: finalReceiptDetails.costBeforeDiscount ?? 0,
                 discount: finalReceiptDetails.discount ?? 0,
                 overtimeCost: finalReceiptDetails.overtimeCost ?? 0,
@@ -1380,6 +1381,7 @@ function PosTrackingContent() {
                 checkOutTime: checkOutTime.getTime(),
                 durationMs: durationMs,
                 cost: finalReceiptDetails.totalCost,
+                amountReceived: finalReceiptDetails.amountReceived,
                 costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
                 durationCost: finalReceiptDetails.durationCost || 0,
                 entryFee: finalReceiptDetails.entryFee || 0,
@@ -2259,8 +2261,8 @@ function PosTrackingContent() {
                                         case 'prepaid-game':
                                             const pricePerUnit = item.cartQuantity > 0 ? item.price / item.cartQuantity : 0;
                                             return { 
-                                                name: `باقة: ${item.sessionDetails.game} (${item.sessionDetails.children.map(c => c.name).join(', ')})`, 
-                                                subtext: `${item.sessionDetails.parentName} (${(item.sessionDetails.phoneNumbers || []).join(' / ')})`,
+                                                name: `باقة: ${item.sessionDetails.game}`, 
+                                                subtext: `${item.sessionDetails.children.map(c => c.name).join(', ')} - ${item.sessionDetails.parentName} (${(item.sessionDetails.phoneNumbers || []).join(' / ')})`,
                                                 price: pricePerUnit.toFixed(2) 
                                             };
                                         default:
@@ -2338,6 +2340,7 @@ export default function PosTrackingPage() {
 }
 
     
+
 
 
 
