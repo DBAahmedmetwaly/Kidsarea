@@ -1020,6 +1020,113 @@ function SaleCheckoutDialog({
     )
 }
 
+function OvertimeDialog({ open, onOpenChange, session, overtimeCost, onConfirm }: { open: boolean; onOpenChange: (open: boolean) => void; session: Child | null; overtimeCost: number; onConfirm: (amountPaid: number) => void; }) {
+    const [amountReceived, setAmountReceived] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if(open) {
+            setAmountReceived(overtimeCost.toFixed(2));
+            setTimeout(() => inputRef.current?.focus(), 100);
+        }
+    }, [open, overtimeCost]);
+    
+    if (!session) return null;
+
+    const handleConfirm = () => {
+        onConfirm(parseFloat(amountReceived) || 0);
+    }
+
+    return (
+         <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>تسوية الوقت الإضافي</DialogTitle>
+                    <DialogDescription>
+                        الجلسة تجاوزت الوقت المدفوع. الرجاء تحصيل قيمة الوقت الإضافي من العميل.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="flex justify-between items-center text-lg p-3 bg-red-50 border border-red-200 rounded-md">
+                        <span className="font-medium">تكلفة الوقت الإضافي:</span>
+                        <span className="font-bold text-red-700">{`ج.م ${overtimeCost.toFixed(2)}`}</span>
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="overtime-amount">المبلغ المستلم</Label>
+                        <Input
+                            id="overtime-amount"
+                            ref={inputRef}
+                            type="number"
+                            value={amountReceived}
+                            onChange={(e) => setAmountReceived(e.target.value)}
+                        />
+                    </div>
+                </div>
+                 <DialogFooter>
+                    <DialogClose asChild><Button variant="secondary">إلغاء</Button></DialogClose>
+                    <Button variant="destructive" onClick={handleConfirm} disabled={!amountReceived}>
+                        تأكيد الخروج
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+
+function EarlyCheckoutDialog({ open, onOpenChange, session, onConfirm }: { open: boolean, onOpenChange: (open: boolean) => void, session: Child | null, onConfirm: (discount: number, notes: string) => void }) {
+    const [discount, setDiscount] = useState('');
+    const [notes, setNotes] = useState('');
+    
+    useEffect(() => {
+        if (!open) {
+            setDiscount('');
+            setNotes('');
+        }
+    }, [open]);
+
+    if (!session) return null;
+    
+    const handleConfirm = () => {
+        onConfirm(parseFloat(discount) || 0, notes);
+    }
+    
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                 <DialogHeader>
+                    <DialogTitle>خروج مبكر من باقة</DialogTitle>
+                    <DialogDescription>
+                        العميل يغادر قبل انتهاء وقت الباقة. يمكنك تطبيق خصم تعويضي.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <Alert>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>ملاحظة هامة</AlertTitle>
+                        <AlertDescription>
+                          هذا الخصم هو خصم إداري لتعويض العميل عن الوقت المتبقي. سيتم تسجيله في ملاحظات الفاتورة.
+                        </AlertDescription>
+                    </Alert>
+                    <div className="space-y-2">
+                        <Label htmlFor="early-discount">مبلغ الخصم (ج.م)</Label>
+                        <Input id="early-discount" type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="أدخل مبلغ الخصم" />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="early-notes">سبب الخصم (ملاحظات)</Label>
+                        <Textarea id="early-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="اذكر سبب الخصم (مثال: خروج مبكر بناءً على طلب العميل)" />
+                    </div>
+                </div>
+                 <DialogFooter>
+                    <DialogClose asChild><Button variant="secondary">إلغاء</Button></DialogClose>
+                    <Button onClick={handleConfirm}>تأكيد الخروج مع الخصم</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+
 function PosTrackingContent() {
   const { games, policies: allPolicies, openShifts, employees, branches, gameCategories, products, inventory, productCategories, receiptSettings } = useFirebase();
   const { user } = useAuth();
@@ -2215,7 +2322,7 @@ function PosTrackingContent() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { costBeforeDiscount: 0, totalCost: 0 } as PosReceiptProps, true)}>تأكيد الخروج</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleCheckOut(childToCheckout!, { costBeforeDiscount: 0, totalCost: 0, amountReceived:0 } as PosReceiptProps, true)}>تأكيد الخروج</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -2340,6 +2447,7 @@ export default function PosTrackingPage() {
 }
 
     
+
 
 
 
