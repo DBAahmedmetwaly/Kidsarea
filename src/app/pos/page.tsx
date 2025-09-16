@@ -1436,6 +1436,14 @@ function PosTrackingContent() {
     const pauseDuration = child.totalPausedTime || 0;
     const durationMs = checkOutTime.getTime() - child.checkInTime - pauseDuration;
 
+    let finalNotes = [child.notes, receiptDetails.notes].filter(Boolean).join(' - ');
+    const remainingAmount = (receiptDetails.totalCost || 0) - (receiptDetails.amountReceived || 0);
+    if (remainingAmount > 0) {
+        const remainingNote = `متبقي مبلغ ${remainingAmount.toFixed(2)} ج.م`;
+        finalNotes = [finalNotes, remainingNote].filter(Boolean).join(' - ');
+    }
+
+
     const finalReceiptDetails: PosReceiptProps = {
       receiptId: `${child.branchName.substring(0, 3).toUpperCase()}-${finalReceiptNumber}`,
       settings: receiptSettings,
@@ -1452,7 +1460,7 @@ function PosTrackingContent() {
       packagePrice: child.packagePrice,
       packageName: child.packageName,
       packageDuration: child.packageDuration,
-      notes: receiptDetails.notes,
+      notes: finalNotes, // Use the combined notes
       totalCost: receiptDetails.totalCost,
       amountReceived: receiptDetails.amountReceived,
       costBeforeDiscount: receiptDetails.costBeforeDiscount,
@@ -1472,12 +1480,12 @@ function PosTrackingContent() {
         if (child.prepaidSessionId) {
             const originalSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
              const updates: Partial<CompletedSession> = {
-                cost: finalReceiptDetails.totalCost,
-                amountReceived: finalReceiptDetails.amountReceived,
-                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
-                discount: finalReceiptDetails.discount,
-                overtimeCost: finalReceiptDetails.overtimeCost,
-                notes: finalReceiptDetails.notes || '',
+                cost: finalReceiptDetails.totalCost ?? 0,
+                amountReceived: finalReceiptDetails.amountReceived ?? 0,
+                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount ?? 0,
+                discount: finalReceiptDetails.discount ?? 0,
+                overtimeCost: finalReceiptDetails.overtimeCost ?? 0,
+                notes: finalNotes,
                 checkOutTime: finalReceiptDetails.checkOutTime.getTime(),
                 durationMs: durationMs,
             };
@@ -1496,7 +1504,7 @@ function PosTrackingContent() {
                 discount: finalReceiptDetails.discount || 0,
                 receiptNumber: finalReceiptNumber,
                 overtimeCost: finalReceiptDetails.overtimeCost || 0,
-                notes: finalReceiptDetails.notes || '',
+                notes: finalNotes,
             };
             await set(ref(db, `sessions/completed/${child.id}`), sessionToSave);
             await remove(ref(db, `sessions/active/${child.id}`));
