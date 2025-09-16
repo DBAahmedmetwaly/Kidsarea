@@ -1064,7 +1064,7 @@ function OvertimeDialog({ open, onOpenChange, session, overtimeCost, onConfirm }
                 </div>
                  <DialogFooter>
                     <DialogClose asChild><Button variant="secondary">إلغاء</Button></DialogClose>
-                    <Button variant="destructive" onClick={handleConfirm} disabled={!amountReceived}>
+                    <Button variant="destructive" onClick={handleConfirm}>
                         تأكيد الخروج
                     </Button>
                 </DialogFooter>
@@ -1387,6 +1387,7 @@ function PosTrackingContent() {
 
         const updates: Partial<CompletedSession> = {
             cost: newTotalCost,
+            amountReceived: (originalSession.amountReceived || originalSession.cost) + receivedAmount, // Add to what was already paid
             costBeforeDiscount: newTotalCost, // Update this to reflect the new total
             overtimeCost: receivedAmount, // Store the received amount as the overtime cost
             checkOutTime: new Date().getTime(),
@@ -1470,12 +1471,12 @@ function PosTrackingContent() {
     try {
         if (child.prepaidSessionId) {
             const originalSessionRef = ref(db, `sessions/completed/${child.prepaidSessionId}`);
-            const updates: Partial<CompletedSession> = {
-                cost: finalReceiptDetails.totalCost ?? 0,
-                amountReceived: finalReceiptDetails.amountReceived ?? 0,
-                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount ?? 0,
-                discount: finalReceiptDetails.discount ?? 0,
-                overtimeCost: finalReceiptDetails.overtimeCost ?? 0,
+             const updates: Partial<CompletedSession> = {
+                cost: finalReceiptDetails.totalCost,
+                amountReceived: finalReceiptDetails.amountReceived,
+                costBeforeDiscount: finalReceiptDetails.costBeforeDiscount,
+                discount: finalReceiptDetails.discount,
+                overtimeCost: finalReceiptDetails.overtimeCost,
                 notes: finalReceiptDetails.notes || '',
                 checkOutTime: finalReceiptDetails.checkOutTime.getTime(),
                 durationMs: durationMs,
@@ -2452,3 +2453,6 @@ export default function PosTrackingPage() {
 
 
 
+
+
+    
